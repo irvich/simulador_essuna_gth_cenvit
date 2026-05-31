@@ -25,6 +25,8 @@ function scoreLevelColor(pct: number): string {
   return "#f87171";
 }
 
+const BASE = import.meta.env.BASE_URL;
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Top bar — ambos logos, visible en todas las pantallas
 // ──────────────────────────────────────────────────────────────────────────────
@@ -33,7 +35,7 @@ function TopBar() {
     <header className="topbar">
       <div className="topbar-inner">
         <div className="topbar-brand">
-          <img src="/logo-cenvit.png" alt="CENVIT" className="topbar-logo" />
+          <img src={`${BASE}logo-cenvit.png`} alt="CENVIT" className="topbar-logo" />
           <div className="topbar-brand-text">
             <span className="topbar-brand-name">CENVIT</span>
             <span className="topbar-brand-sub">Centro Educativo y de Negocios con Visión Integral del Talento Humano</span>
@@ -47,7 +49,7 @@ function TopBar() {
             <span className="topbar-author-name">Iván Viteri</span>
             <span className="topbar-author-sub">Psicología Laboral en acción</span>
           </div>
-          <img src="/logo-ivan-viteri.jpg" alt="Iván Viteri" className="topbar-author-logo" />
+          <img src={`${BASE}logo-ivan-viteri.jpg`} alt="Iván Viteri" className="topbar-author-logo" />
         </div>
       </div>
     </header>
@@ -147,7 +149,7 @@ function ResultsFooter() {
       <p className="footer-label">Herramienta desarrollada por</p>
       <div className="footer-logos">
         <div className="footer-logo-block">
-          <img src="/logo-cenvit.png" alt="CENVIT" className="footer-logo" />
+          <img src={`${BASE}logo-cenvit.png`} alt="CENVIT" className="footer-logo" />
           <div>
             <span className="footer-logo-name">CENVIT</span>
             <span className="footer-logo-sub">Centro Educativo y de Negocios con Visión Integral del Talento Humano</span>
@@ -155,7 +157,7 @@ function ResultsFooter() {
         </div>
         <div className="footer-sep" />
         <div className="footer-logo-block">
-          <img src="/logo-ivan-viteri.jpg" alt="Iván Viteri" className="footer-logo iv-logo" />
+          <img src={`${BASE}logo-ivan-viteri.jpg`} alt="Iván Viteri" className="footer-logo iv-logo" />
           <div>
             <span className="footer-logo-name">Iván Viteri</span>
             <span className="footer-logo-sub">Psicología Laboral en acción</span>
