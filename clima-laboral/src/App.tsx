@@ -472,7 +472,15 @@ export default function App() {
               </div>
             </div>
 
-            <div className="results-actions">
+            <div className="results-actions no-print">
+              <button className="btn-export" onClick={() => window.print()}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+                  <polyline points="6 9 6 2 18 2 18 9"/>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                  <rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                Exportar PDF
+              </button>
               <button className="btn-primary" onClick={startSurvey}>Nueva evaluación</button>
               <button className="btn-secondary" onClick={restart}>Volver al inicio</button>
             </div>
@@ -1207,6 +1215,147 @@ const css = `
 
   .btn-secondary:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
   .btn-secondary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── BOTÓN EXPORTAR ──────────────────────────────────── */
+  .btn-export {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 22px;
+    border-radius: 16px;
+    border: 1px solid rgba(212,175,55,0.45);
+    background: rgba(212,175,55,0.1);
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 0.95rem;
+    transition: transform 0.18s, filter 0.18s, background 0.18s;
+  }
+
+  .btn-export:hover {
+    background: rgba(212,175,55,0.18);
+    transform: translateY(-1px);
+  }
+
+  /* ── IMPRESIÓN / PDF ──────────────────────────────────── */
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+    body {
+      background: #ffffff !important;
+      color: #071b33 !important;
+      font-size: 11pt;
+    }
+
+    .topbar { display: none !important; }
+    .no-print { display: none !important; }
+
+    .shell { background: white !important; }
+
+    .container {
+      width: 100% !important;
+      padding: 12mm 14mm 12mm !important;
+      margin: 0 !important;
+    }
+
+    /* Encabezado de resultados */
+    .results-header {
+      background: #f8fafc !important;
+      border: 1px solid #e2e8f0 !important;
+      backdrop-filter: none !important;
+      box-shadow: none !important;
+      padding: 18pt 20pt !important;
+    }
+
+    .results-title { color: #071b33 !important; font-size: 22pt !important; }
+    .eyebrow { color: #d4af37 !important; }
+    .gold { color: #d4af37 !important; }
+
+    /* Tarjeta score global */
+    .global-card {
+      background: #f8fafc !important;
+      border: 1px solid #e2e8f0 !important;
+      backdrop-filter: none !important;
+      box-shadow: none !important;
+      break-inside: avoid;
+    }
+
+    .global-label { color: #64748b !important; }
+    .global-legend span { font-size: 8pt !important; }
+    .global-bar-track { background: #e2e8f0 !important; }
+
+    /* Gráficos */
+    .chart-grid {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      break-inside: avoid;
+    }
+
+    .radar-card,
+    .breakdown-card {
+      background: #f8fafc !important;
+      border: 1px solid #e2e8f0 !important;
+      backdrop-filter: none !important;
+      box-shadow: none !important;
+    }
+
+    .radar-card h2,
+    .breakdown-card h2 { color: #64748b !important; font-size: 11pt !important; }
+
+    .breakdown-name { color: inherit !important; }
+    .breakdown-pct  { font-size: 9pt !important; }
+
+    /* Barra de puntaje */
+    div[style*="rgba(255,255,255,0.08)"] {
+      background: #e2e8f0 !important;
+    }
+
+    /* Recomendaciones */
+    .recs-section {
+      background: #f8fafc !important;
+      border: 1px solid #e2e8f0 !important;
+      backdrop-filter: none !important;
+      box-shadow: none !important;
+      break-before: page;
+    }
+
+    .recs-section > h2 { color: #d4af37 !important; font-size: 13pt !important; }
+
+    .recs-grid {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+    }
+
+    .rec-card {
+      border: 1px solid #e2e8f0 !important;
+      background: #f8fafc !important;
+      break-inside: avoid;
+    }
+
+    .rec-text { color: #334155 !important; font-size: 9pt !important; }
+    .rec-dim  { font-size: 8pt !important; }
+
+    /* Pie de página */
+    .results-footer {
+      background: #f1f5f9 !important;
+      border: 1px solid #e2e8f0 !important;
+      break-inside: avoid;
+    }
+
+    .footer-label { color: #64748b !important; }
+    .footer-logo-name { color: #071b33 !important; }
+    .footer-logo-sub  { color: #64748b !important; }
+    .footer-sep { background: #e2e8f0 !important; }
+
+    /* Logos */
+    .topbar-logo,
+    .footer-logo {
+      background: white !important;
+      border: 1px solid #e2e8f0 !important;
+    }
+
+    /* SVG radar */
+    svg text { fill: #334155 !important; }
+  }
 
   /* ── RESPONSIVE ───────────────────────────────────────── */
   @media (max-width: 720px) {
