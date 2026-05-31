@@ -238,6 +238,13 @@ export default function App() {
         {screen === "home" && (
           <>
             <header className="hero">
+              <div className="brand-row">
+                <img src="/logo-cenvit.png" alt="Logo CENVIT" className="brand-logo" />
+                <div className="brand-text">
+                  <span className="brand-name">CENVIT</span>
+                  <span className="brand-tagline">Centro Educativo y de Negocios con Visión Integral del Talento Humano</span>
+                </div>
+              </div>
               <div className="hero-badge">Diagnóstico Organizacional</div>
               <h1>Medidor de Clima Laboral</h1>
               <p className="hero-sub">
@@ -303,12 +310,15 @@ export default function App() {
           <div className="survey-wrap">
             {/* Progress header */}
             <div className="survey-header">
-              <div>
-                <p className="eyebrow" style={{ color: currentDimension.color }}>
-                  Dimensión {dimensionIndex + 1} de {DIMENSIONS.length}
-                </p>
-                <h2 className="survey-title">{currentDimension.label}</h2>
-                <p className="survey-desc">{currentDimension.description}</p>
+              <div className="survey-brand">
+                <img src="/logo-cenvit.png" alt="CENVIT" className="survey-logo" />
+                <div>
+                  <p className="eyebrow" style={{ color: currentDimension.color }}>
+                    Dimensión {dimensionIndex + 1} de {DIMENSIONS.length}
+                  </p>
+                  <h2 className="survey-title">{currentDimension.label}</h2>
+                  <p className="survey-desc">{currentDimension.description}</p>
+                </div>
               </div>
               <div className="dim-progress">
                 {DIMENSIONS.map((d, i) => (
@@ -410,6 +420,9 @@ export default function App() {
         {screen === "results" && (
           <div className="results-wrap">
             <div className="results-header">
+              <div className="results-brand">
+                <img src="/logo-cenvit.png" alt="CENVIT" className="results-logo" />
+              </div>
               <p className="eyebrow gold">Informe de Clima Laboral</p>
               <h1 className="results-title">
                 {orgName ? orgName : "Tu organización"}
@@ -565,6 +578,81 @@ const css = `
     border-radius: 28px;
     backdrop-filter: blur(12px);
     margin-bottom: 20px;
+  }
+
+  .brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 28px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .brand-logo {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    background: white;
+    border-radius: 16px;
+    padding: 8px;
+    border: 2px solid rgba(212,175,55,0.45);
+    flex-shrink: 0;
+  }
+
+  .brand-text {
+    text-align: left;
+  }
+
+  .brand-name {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    line-height: 1.1;
+  }
+
+  .brand-tagline {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.4;
+    max-width: 260px;
+    margin-top: 3px;
+  }
+
+  .survey-brand {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .survey-logo {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    background: white;
+    border-radius: 12px;
+    padding: 6px;
+    border: 1px solid rgba(212,175,55,0.4);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .results-brand {
+    margin-bottom: 16px;
+  }
+
+  .results-logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    background: white;
+    border-radius: 14px;
+    padding: 8px;
+    border: 2px solid rgba(212,175,55,0.45);
   }
 
   .hero-badge {
