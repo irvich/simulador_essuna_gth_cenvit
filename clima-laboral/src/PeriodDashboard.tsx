@@ -3,6 +3,7 @@ import { DIMENSIONS, QUESTIONS } from "./questions";
 import {
   RadarChart,
   ScoreBar,
+  scoreLevel,
   scoreLevelColor,
   scoreLevelLabel,
   type DimScore,
@@ -275,6 +276,27 @@ export function PeriodDashboard({
               </div>
             </div>
           )}
+
+          {/* ── Recomendaciones por dimensión ─────────────── */}
+          <div className="recs-section">
+            <h2>Recomendaciones por Dimensión</h2>
+            <div className="recs-grid">
+              {scores.map(({ dim, pct }) => {
+                const level = scoreLevel(pct);
+                return (
+                  <div key={dim.key} className="rec-card" style={{ borderLeftColor: dim.color, background: dim.colorSoft + "55" }}>
+                    <div className="rec-header">
+                      <span className="rec-dim" style={{ color: dim.color }}>{dim.label}</span>
+                      <span className="rec-badge" style={{ background: scoreLevelColor(pct) + "22", color: scoreLevelColor(pct), border: `1px solid ${scoreLevelColor(pct)}44` }}>
+                        {pct}% · {scoreLevelLabel(pct)}
+                      </span>
+                    </div>
+                    <p className="rec-text">{dim.recommendation[level]}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           <QuestionAnalysis responses={responses} />
 

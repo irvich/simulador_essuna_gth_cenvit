@@ -71,6 +71,15 @@ export async function getEmpresaById(empresaId: string): Promise<Empresa | null>
   return data.length > 0 ? data[0] : null;
 }
 
+export async function updateEmpresaPassword(empresaId: string, newPassword: string): Promise<void> {
+  const password_hash = await sha256(newPassword);
+  await sbFetch(`/empresas?id=eq.${empresaId}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ password_hash }),
+  });
+}
+
 export async function createEmpresa(nombre: string, usuario: string, password: string): Promise<Empresa> {
   const password_hash = await sha256(password);
   const res = await sbFetch("/empresas", {

@@ -8,6 +8,7 @@ import {
   getPeriodsForCompany,
   getResponsesForPeriod,
   savePlanAccion,
+  updateEmpresaPassword,
 } from "./storage";
 import type { ActionRow, Empresa, Periodo, SurveyResponse } from "./types";
 
@@ -65,6 +66,13 @@ export function CompanyDashboard({
 
   const [copyOk, setCopyOk] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
+
+  const [showPwChange, setShowPwChange] = useState(false);
+  const [newPw, setNewPw] = useState("");
+  const [newPwConfirm, setNewPwConfirm] = useState("");
+  const [pwChanging, setPwChanging] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwOk, setPwOk] = useState(false);
 
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonSummaries, setComparisonSummaries] = useState<PeriodSummary[]>([]);
@@ -196,7 +204,36 @@ export function CompanyDashboard({
     }
   }
 
-  function copyUrl(url: string) {
+  async function handlePwChange() {
+    if (newPw.length < 6) { setPwError("La contraseña debe tener al menos 6 caracteres."); return; }
+    if (newPw !== newPwConfirm) { setPwError("Las contraseñas no coinciden."); return; }
+    setPwChanging(true);
+    setPwError("");
+    try {
+      await updateEmpresaPassword(empresa.id, newPw);
+      setPwOk(true);
+      setNewPw("");
+      setNewPwConfirm("");
+      setShowPwChange(false);
+      setTimeout(() => setPwOk(false), 4000);
+    } catch {
+      setPwError("No se pudo actualizar la contraseña. Intenta de nuevo.");
+    } finally {
+      setPwChanging(false);
+    }
+  }
+
+  async function shareUrl(url: string, empresaNombre: string) {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Encuesta de Clima Laboral",
+          text: `Completa la encuesta de clima laboral de ${empresaNombre}. Es confidencial y solo toma unos minutos.`,
+          url,
+        });
+        return;
+      } catch {}
+    }
     navigator.clipboard.writeText(url).then(() => {
       setCopyOk(true);
       setTimeout(() => setCopyOk(false), 2500);
@@ -223,8 +260,48 @@ export function CompanyDashboard({
           <p className="eyebrow gold">Panel de Empresa</p>
           <h1 className="company-name">{empresa.nombre}</h1>
         </div>
-        <button className="btn-secondary" onClick={onLogout}>Cerrar sesión</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {pwOk && <span style={{ fontSize: "0.78rem", color: "#22c55e", fontWeight: 700 }}>✓ Contraseña actualizada</span>}
+          <button
+            className="admin-link"
+            onClick={() => { setShowPwChange((v) => !v); setPwError(""); }}
+          >
+            Cambiar contraseña
+          </button>
+          <button className="btn-secondary" onClick={onLogout}>Cerrar sesión</button>
+        </div>
       </div>
+
+      {showPwChange && (
+        <div className="create-period-form" style={{ marginBottom: 20 }}>
+          <label>Nueva contraseña (mínimo 6 caracteres)</label>
+          <div className="create-period-form-row" style={{ flexWrap: "wrap" }}>
+            <input
+              className="org-input"
+              type="password"
+              placeholder="Nueva contraseña"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              style={{ flex: 1, minWidth: 160 }}
+            />
+            <input
+              className="org-input"
+              type="password"
+              placeholder="Confirmar contraseña"
+              value={newPwConfirm}
+              onChange={(e) => setNewPwConfirm(e.target.value)}
+              style={{ flex: 1, minWidth: 160 }}
+            />
+            <button className="btn-primary" onClick={handlePwChange} disabled={pwChanging}>
+              {pwChanging ? "Guardando…" : "Actualizar"}
+            </button>
+            <button className="btn-secondary" onClick={() => { setShowPwChange(false); setPwError(""); }}>
+              Cancelar
+            </button>
+          </div>
+          {pwError && <p className="admin-error" style={{ marginTop: 8 }}>{pwError}</p>}
+        </div>
+      )}
 
       {error && <p className="admin-error" style={{ marginBottom: 16 }}>{error}</p>}
 
@@ -261,9 +338,9 @@ export function CompanyDashboard({
                   <button
                     className="btn-primary"
                     style={{ padding: "6px 14px", fontSize: "0.8rem", flexShrink: 0 }}
-                    onClick={() => copyUrl(surveyUrl(activePeriodo.id, empresa.id))}
+                    onClick={() => shareUrl(surveyUrl(activePeriodo.id, empresa.id), empresa.nombre)}
                   >
-                    {copyOk ? "¡Copiado!" : "Copiar"}
+                    {copyOk ? "¡Copiado!" : "Compartir"}
                   </button>
                 </div>
               </div>

@@ -10,6 +10,7 @@ import {
   getPeriodsForCompany,
   getResponsesForPeriod,
   savePlanAccion,
+  updateEmpresaPassword,
 } from "./storage";
 import type { ActionRow, Empresa, Periodo, SurveyResponse } from "./types";
 
@@ -34,6 +35,12 @@ export function Admin({ onExit }: { onExit: () => void }) {
   const [periodoPlan, setPeriodoPlan] = useState<ActionRow[] | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState("");
+
+  // Reset password (admin)
+  const [resetingId, setResetingId] = useState<string | null>(null);
+  const [resetPw, setResetPw] = useState("");
+  const [resetError, setResetError] = useState("");
+  const [resetOkId, setResetOkId] = useState<string | null>(null);
 
   // Create empresa form
   const [showForm, setShowForm] = useState(false);
@@ -96,6 +103,20 @@ export function Admin({ onExit }: { onExit: () => void }) {
       setPeriodoPlan(plan);
     } catch { setDataError("No se pudieron cargar las respuestas."); }
     finally { setDataLoading(false); }
+  }
+
+  async function handleResetPassword(empId: string) {
+    if (!resetPw || resetPw.length < 6) { setResetError("Mínimo 6 caracteres."); return; }
+    setResetError("");
+    try {
+      await updateEmpresaPassword(empId, resetPw);
+      setResetingId(null);
+      setResetPw("");
+      setResetOkId(empId);
+      setTimeout(() => setResetOkId(null), 3000);
+    } catch {
+      setResetError("No se pudo actualizar la contraseña.");
+    }
   }
 
   async function handleCreateEmpresa() {
@@ -353,18 +374,46 @@ export function Admin({ onExit }: { onExit: () => void }) {
       {!dataLoading && (
         <div className="empresa-list">
           {empresas.map((emp) => (
-            <div key={emp.id} className="empresa-card">
-              <div>
-                <div className="empresa-name">{emp.nombre}</div>
-                <div className="empresa-usuario">@{emp.usuario}</div>
+            <div key={emp.id} className="empresa-card" style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                <div>
+                  <div className="empresa-name">{emp.nombre}</div>
+                  <div className="empresa-usuario">@{emp.usuario}</div>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  {resetOkId === emp.id && <span style={{ fontSize: "0.76rem", color: "#22c55e", fontWeight: 700 }}>✓ Contraseña actualizada</span>}
+                  <button
+                    className="admin-link"
+                    onClick={() => { setResetingId(resetingId === emp.id ? null : emp.id); setResetPw(""); setResetError(""); }}
+                    style={{ fontSize: "0.76rem" }}
+                  >
+                    {resetingId === emp.id ? "Cancelar" : "Restablecer contraseña"}
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    style={{ padding: "7px 18px", fontSize: "0.85rem" }}
+                    onClick={() => handleSelectEmpresa(emp)}
+                  >
+                    Ver períodos →
+                  </button>
+                </div>
               </div>
-              <button
-                className="btn-secondary"
-                style={{ padding: "7px 18px", fontSize: "0.85rem" }}
-                onClick={() => handleSelectEmpresa(emp)}
-              >
-                Ver períodos →
-              </button>
+              {resetingId === emp.id && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <input
+                    className="org-input"
+                    type="password"
+                    placeholder="Nueva contraseña (mín. 6 caracteres)"
+                    value={resetPw}
+                    onChange={(e) => { setResetPw(e.target.value); setResetError(""); }}
+                    style={{ flex: 1, minWidth: 200, padding: "8px 12px", fontSize: "0.88rem" }}
+                  />
+                  <button className="btn-primary" onClick={() => handleResetPassword(emp.id)} style={{ padding: "8px 16px", fontSize: "0.85rem" }}>
+                    Guardar
+                  </button>
+                  {resetError && <span className="admin-error" style={{ fontSize: "0.78rem" }}>{resetError}</span>}
+                </div>
+              )}
             </div>
           ))}
         </div>
