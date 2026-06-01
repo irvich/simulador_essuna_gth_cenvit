@@ -399,6 +399,12 @@ export const css = `
   .footer-logo-sub { display: block; font-size: 0.7rem; color: var(--muted); line-height: 1.4; max-width: 200px; text-align: left; margin-top: 2px; }
   .footer-sep { width: 1px; height: 48px; background: rgba(255,255,255,0.12); flex-shrink: 0; }
 
+  /* ── Dimension distribution bars ─────────────────────────── */
+  .dim-dist-wrap { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+  .dist-bar-track { flex: 1; height: 7px; border-radius: 4px; overflow: hidden; display: flex; background: rgba(255,255,255,0.07); cursor: default; }
+  .dist-bar-track > div { height: 100%; transition: width 0.4s; }
+  .dist-align-badge { flex-shrink: 0; font-size: 0.67rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; letter-spacing: 0.04em; }
+
   .print-only { display: none; }
 
   /* ── PRINT / PDF ──────────────────────────────────────── */

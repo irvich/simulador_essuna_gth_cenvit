@@ -122,21 +122,24 @@ function DeptDrillDown({ deptName, deptResponses, globalScores }: {
           const global = globalScores.find((s) => s.dim.key === dim.key)?.pct ?? 0;
           const delta = pct - global;
           return (
-            <div key={dim.key} className="dept-drill-row">
-              <div className="dept-drill-dim-name" style={{ color: dim.color }}>{dim.shortLabel}</div>
-              <div className="dept-drill-bar-track">
-                <div style={{ width: `${pct}%`, height: "100%", background: dim.color, borderRadius: 3, transition: "width 0.4s" }} />
-                <div
-                  className="dept-drill-avg-line"
-                  style={{ left: `${global}%` }}
-                  title={`Empresa: ${global}%`}
-                />
+            <React.Fragment key={dim.key}>
+              <div className="dept-drill-row">
+                <div className="dept-drill-dim-name" style={{ color: dim.color }}>{dim.shortLabel}</div>
+                <div className="dept-drill-bar-track">
+                  <div style={{ width: `${pct}%`, height: "100%", background: dim.color, borderRadius: 3, transition: "width 0.4s" }} />
+                  <div
+                    className="dept-drill-avg-line"
+                    style={{ left: `${global}%` }}
+                    title={`Empresa: ${global}%`}
+                  />
+                </div>
+                <div className="dept-drill-pct" style={{ color: dim.color }}>{pct}%</div>
+                <div className={`dept-drill-delta ${delta > 2 ? "delta-up" : delta < -2 ? "delta-down" : "delta-same"}`}>
+                  {delta > 0 ? `+${delta}` : delta === 0 ? "=" : delta}
+                </div>
               </div>
-              <div className="dept-drill-pct" style={{ color: dim.color }}>{pct}%</div>
-              <div className={`dept-drill-delta ${delta > 2 ? "delta-up" : delta < -2 ? "delta-down" : "delta-same"}`}>
-                {delta > 0 ? `+${delta}` : delta === 0 ? "=" : delta}
-              </div>
-            </div>
+              <DimDistribution responses={deptResponses} dimKey={dim.key} />
+            </React.Fragment>
           );
         })}
       </div>
@@ -405,6 +408,51 @@ function globalAverage(responses: SurveyResponse[]): number {
   return count === 0 ? 0 : Math.round((sum / count / 5) * 100);
 }
 
+const DIST_COLORS = ["#f87171", "#fb923c", "#fbbf24", "#86efac", "#22c55e"];
+const DIST_LABELS = ["Muy en desacuerdo", "En desacuerdo", "Neutral", "De acuerdo", "Muy de acuerdo"];
+
+function useDimDistribution(responses: SurveyResponse[], dimKey: string) {
+  return useMemo(() => {
+    const ids = QUESTIONS.filter((q) => q.dimension === dimKey).map((q) => q.id);
+    const counts = [0, 0, 0, 0, 0];
+    let total = 0;
+    for (const r of responses) {
+      for (const qid of ids) {
+        const v = r.answers[qid];
+        if (v !== undefined) { counts[v - 1]++; total++; }
+      }
+    }
+    if (total === 0) return null;
+    const pcts = counts.map((c) => (c / total) * 100);
+    // Standard deviation on 1-5 scale
+    const mean = counts.reduce((s, c, i) => s + c * (i + 1), 0) / total;
+    const variance = counts.reduce((s, c, i) => s + c * (i + 1 - mean) ** 2, 0) / total;
+    const sd = Math.sqrt(variance);
+    return { pcts, sd: Math.round(sd * 10) / 10, total };
+  }, [responses, dimKey]);
+}
+
+function DimDistribution({ responses, dimKey }: { responses: SurveyResponse[]; dimKey: string }) {
+  const dist = useDimDistribution(responses, dimKey);
+  if (!dist) return null;
+  const { pcts, sd } = dist;
+  const alignLabel = sd <= 0.85 ? "Alineado" : sd <= 1.25 ? "Diverso" : "Polarizado";
+  const alignColor = sd <= 0.85 ? "#22c55e" : sd <= 1.25 ? "#d4af37" : "#f87171";
+  const tooltip = pcts.map((p, i) => `${DIST_LABELS[i]}: ${Math.round(p)}%`).join(" · ");
+  return (
+    <div className="dim-dist-wrap">
+      <div className="dist-bar-track" title={tooltip}>
+        {pcts.map((p, i) =>
+          p > 0 ? <div key={i} style={{ width: `${p}%`, background: DIST_COLORS[i] }} title={`${DIST_LABELS[i]}: ${Math.round(p)}%`} /> : null
+        )}
+      </div>
+      <span className="dist-align-badge" style={{ color: alignColor, borderColor: alignColor + "44", background: alignColor + "12" }}>
+        {alignLabel} · σ {sd.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
 export function PeriodDashboard({
   responses,
   periodoLabel,
@@ -622,6 +670,7 @@ export function PeriodDashboard({
                       </span>
                     </div>
                     <ScoreBar pct={pct} color={dim.color} />
+                    <DimDistribution responses={effectiveResponses} dimKey={dim.key} />
                   </div>
                 ))}
               </div>
