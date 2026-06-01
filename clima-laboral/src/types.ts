@@ -2,7 +2,9 @@ export type DimensionKey =
   | "liderazgo"
   | "comunicacion"
   | "trabajo_en_equipo"
-  | "motivacion";
+  | "motivacion"
+  | "condiciones_seguridad"
+  | "desarrollo_crecimiento";
 
 export interface Question {
   id: number;
@@ -16,6 +18,16 @@ export interface Recommendation {
   high: string;
 }
 
+/** Acciones sugeridas para la matriz del plan de acción (por dimensión). */
+export interface ActionTemplate {
+  /** Acción concreta de mejora sugerida segun el nivel. */
+  action: { low: string; medium: string; high: string };
+  /** Indicador o KPI para dar seguimiento. */
+  indicator: string;
+  /** Responsable típico de la acción. */
+  responsible: string;
+}
+
 export interface DimensionConfig {
   key: DimensionKey;
   label: string;
@@ -24,8 +36,29 @@ export interface DimensionConfig {
   color: string;
   colorSoft: string;
   recommendation: Recommendation;
+  actionTemplate: ActionTemplate;
 }
 
 export type LikertValue = 1 | 2 | 3 | 4 | 5;
 
 export type Answers = Record<number, LikertValue>;
+
+/** Una respuesta enviada por un participante de la organización. */
+export interface SurveyResponse {
+  id: string;
+  createdAt: string;
+  department: string;
+  answers: Answers;
+}
+
+/** Fila editable de la matriz del plan de acción. */
+export interface ActionRow {
+  dimension: string;
+  finding: string;
+  level: string;
+  action: string;
+  responsible: string;
+  deadline: string;
+  indicator: string;
+  priority: "Alta" | "Media" | "Baja";
+}
