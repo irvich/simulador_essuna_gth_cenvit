@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { IS_SUPABASE_ENABLED } from "./config";
 import {
   DEPARTMENTS,
   DIMENSIONS,
@@ -17,13 +18,40 @@ import {
 } from "./shared";
 import { ActionMatrix } from "./ActionMatrix";
 import { Admin } from "./Admin";
-import { submitResponse } from "./storage";
+import { CompanyDashboard } from "./CompanyDashboard";
+import { loginEmpresa, submitResponse } from "./storage";
 import { css } from "./styles";
-import type { Answers, LikertValue } from "./types";
+import type { Answers, Empresa, LikertValue } from "./types";
 
-type Screen = "home" | "survey" | "thanks" | "myresults" | "admin";
+type Screen =
+  | "landing"
+  | "home"
+  | "companyLogin"
+  | "companyDash"
+  | "survey"
+  | "thanks"
+  | "myresults"
+  | "admin";
 
-function TopBar({ onAdmin }: { onAdmin: () => void }) {
+function getInitialScreen(): Screen {
+  if (typeof window === "undefined") return "landing";
+  const params = new URLSearchParams(window.location.search);
+  // Employee survey URL: ?periodo=UUID&empresa=UUID
+  if (IS_SUPABASE_ENABLED && params.get("periodo") && params.get("empresa")) return "home";
+  return IS_SUPABASE_ENABLED ? "landing" : "home";
+}
+
+function TopBar({
+  onAdmin,
+  empresa,
+  onLogout,
+  showAdminBtn,
+}: {
+  onAdmin: () => void;
+  empresa: Empresa | null;
+  onLogout: () => void;
+  showAdminBtn: boolean;
+}) {
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -42,7 +70,23 @@ function TopBar({ onAdmin }: { onAdmin: () => void }) {
           </div>
           <img src={`${BASE}logo-ivan-viteri.jpg`} alt="Iván Viteri" className="topbar-author-logo" />
         </div>
-        <button className="admin-link no-print" onClick={onAdmin}>Panel Admin</button>
+        {empresa && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: "0.8rem", color: "var(--muted)", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {empresa.nombre}
+            </span>
+            <button
+              className="admin-link no-print"
+              onClick={onLogout}
+              style={{ borderColor: "rgba(248,113,113,0.35)", color: "#fca5a5" }}
+            >
+              Salir
+            </button>
+          </div>
+        )}
+        {!empresa && showAdminBtn && (
+          <button className="admin-link no-print" onClick={onAdmin}>Panel Admin</button>
+        )}
       </div>
     </header>
   );
@@ -74,13 +118,30 @@ function ResultsFooter() {
 }
 
 export default function App() {
-  const initialAdmin = typeof window !== "undefined" && window.location.hash === "#admin";
-  const [screen, setScreen] = useState<Screen>(initialAdmin ? "admin" : "home");
+  const [screen, setScreen] = useState<Screen>(getInitialScreen);
+  const [empresa, setEmpresa] = useState<Empresa | null>(null);
+
+  // Employee survey context (from URL params)
+  const [surveyPeriodoId, setSurveyPeriodoId] = useState<string | null>(null);
+  const [surveyEmpresaId, setSurveyEmpresaId] = useState<string | null>(null);
+
+  // Survey state
   const [department, setDepartment] = useState("");
   const [dimensionIndex, setDimensionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+
+  // Read URL params on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pId = params.get("periodo");
+    const eId = params.get("empresa");
+    if (IS_SUPABASE_ENABLED && pId && eId) {
+      setSurveyPeriodoId(pId);
+      setSurveyEmpresaId(eId);
+    }
+  }, []);
 
   const currentDimension = DIMENSIONS[dimensionIndex];
   const currentQuestions = QUESTIONS.filter((q) => q.dimension === currentDimension.key);
@@ -91,8 +152,7 @@ export default function App() {
       DIMENSIONS.map((dim) => {
         const dimQ = QUESTIONS.filter((q) => q.dimension === dim.key);
         const total = dimQ.reduce((sum, q) => sum + (answers[q.id] ?? 0), 0);
-        const pct = Math.round((total / (dimQ.length * 5)) * 100);
-        return { dim, pct };
+        return { dim, pct: Math.round((total / (dimQ.length * 5)) * 100) };
       }),
     [answers]
   );
@@ -117,10 +177,15 @@ export default function App() {
     setSubmitting(true);
     setSubmitError("");
     try {
-      await submitResponse(department || "Sin especificar", answers);
+      await submitResponse(
+        department || "Sin especificar",
+        answers,
+        surveyPeriodoId ?? undefined,
+        surveyEmpresaId ?? undefined
+      );
       setScreen("thanks");
       window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch (e) {
+    } catch {
       setSubmitError("No se pudo enviar tu respuesta. Revisa tu conexión e inténtalo de nuevo.");
     } finally {
       setSubmitting(false);
@@ -147,84 +212,207 @@ export default function App() {
     setAnswers({});
     setDimensionIndex(0);
     setDepartment("");
-    setScreen("home");
-    if (typeof window !== "undefined" && window.location.hash) {
-      history.replaceState(null, "", window.location.pathname + window.location.search);
+    setSubmitError("");
+    if (empresa) {
+      setScreen("companyDash");
+    } else if (surveyPeriodoId) {
+      // Employee mode: go back to home so another person can fill on same device
+      setScreen("home");
+    } else {
+      setScreen(IS_SUPABASE_ENABLED ? "landing" : "home");
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function handleLogout() {
+    setEmpresa(null);
+    setScreen("landing");
+  }
+
+  const showAdminBtn = screen !== "admin" && screen !== "companyLogin" && screen !== "companyDash";
+
   return (
     <div className="shell">
       <style>{css}</style>
-      <TopBar onAdmin={() => setScreen("admin")} />
+      <TopBar
+        onAdmin={() => setScreen("admin")}
+        empresa={empresa}
+        onLogout={handleLogout}
+        showAdminBtn={showAdminBtn}
+      />
 
       <main className="container">
-        {/* ── ADMIN ─────────────────────────────────────────────── */}
-        {screen === "admin" && <Admin onExit={restart} />}
 
-        {/* ── HOME ──────────────────────────────────────────────── */}
-        {screen === "home" && (
-          <>
-            <header className="hero">
+        {/* ── ADMIN ─────────────────────────────────────────────── */}
+        {screen === "admin" && (
+          <Admin onExit={() => setScreen(IS_SUPABASE_ENABLED ? "landing" : "home")} />
+        )}
+
+        {/* ── LANDING (Supabase mode entry point) ───────────────── */}
+        {screen === "landing" && (
+          <div className="landing-wrap">
+            <header className="hero" style={{ marginBottom: 28 }}>
               <div className="hero-badge">Diagnóstico Organizacional</div>
               <h1>Medidor de Clima Laboral</h1>
               <p className="hero-sub">
-                Evalúa <strong>6 dimensiones clave</strong> del ambiente de trabajo mediante{" "}
-                <strong>{QUESTIONS.length} preguntas</strong> con escala Likert 1–5. Tus respuestas son{" "}
-                <strong>confidenciales</strong> y se suman al resultado global de la organización.
+                Plataforma para medir el ambiente de trabajo cada 6 meses.
+                Cada empresa gestiona sus propios períodos y accede a su historial de resultados.
               </p>
-
-              <div className="dimensions-preview">
-                {DIMENSIONS.map((d) => (
-                  <div key={d.key} className="dim-chip" style={{ borderColor: d.color, color: d.color }}>
-                    {d.label}
-                  </div>
-                ))}
-              </div>
-
-              <div className="org-input-wrap">
-                <label className="org-label">Tu área o departamento</label>
-                <select className="org-select" value={department} onChange={(e) => setDepartment(e.target.value)}>
-                  <option value="">Selecciona tu departamento…</option>
-                  {DEPARTMENTS.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-
-              <button className="btn-primary" onClick={startSurvey} disabled={!department}>
-                Comenzar encuesta →
-              </button>
-              {!department && <p className="warning-msg">Selecciona tu departamento para comenzar.</p>}
             </header>
 
-            <div className="info-grid">
-              {DIMENSIONS.map((d) => (
-                <div key={d.key} className="info-card" style={{ borderTopColor: d.color }}>
-                  <p className="info-label" style={{ color: d.color }}>{d.label}</p>
-                  <p className="info-desc">{d.description}</p>
-                </div>
-              ))}
+            <div className="landing-cards">
+              <div className="landing-card" onClick={() => setScreen("companyLogin")}>
+                <div className="landing-card-icon">🏢</div>
+                <h2>Acceso Empresa</h2>
+                <p>
+                  Inicia sesión con las credenciales de tu organización para gestionar mediciones,
+                  compartir encuestas y ver el historial.
+                </p>
+                <button className="btn-primary" style={{ width: "100%" }}>Ingresar →</button>
+              </div>
+              <div className="landing-card" onClick={() => setScreen("admin")}>
+                <div className="landing-card-icon">⚙️</div>
+                <h2>Administración</h2>
+                <p>
+                  Panel para consultores CENVIT. Crea y gestiona empresas clientes,
+                  revisa resultados y exporta informes.
+                </p>
+                <button className="btn-secondary" style={{ width: "100%" }}>Administrador →</button>
+              </div>
             </div>
 
-            <div className="how-card">
+            <div className="how-card" style={{ marginTop: 24 }}>
               <h2>¿Cómo funciona?</h2>
               <div className="steps">
                 <div className="step">
                   <span className="step-num">1</span>
-                  <p>Cada colaborador responde las {QUESTIONS.length} afirmaciones desde su propio dispositivo.</p>
+                  <p>La empresa inicia un período de medición y obtiene un enlace único para compartir con sus colaboradores.</p>
                 </div>
                 <div className="step">
                   <span className="step-num">2</span>
-                  <p>Las respuestas se consolidan de forma anónima en el resultado de la organización.</p>
+                  <p>Cada colaborador responde las {QUESTIONS.length} preguntas desde su propio dispositivo de forma confidencial.</p>
                 </div>
                 <div className="step">
                   <span className="step-num">3</span>
-                  <p>El panel administrativo muestra el clima global, por dimensión y el plan de acción.</p>
+                  <p>Los resultados se consolidan en el panel de la empresa y se comparan con mediciones anteriores.</p>
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── COMPANY LOGIN ──────────────────────────────────────── */}
+        {screen === "companyLogin" && (
+          <CompanyLoginForm
+            onLogin={(emp) => { setEmpresa(emp); setScreen("companyDash"); }}
+            onBack={() => setScreen("landing")}
+          />
+        )}
+
+        {/* ── COMPANY DASHBOARD ─────────────────────────────────── */}
+        {screen === "companyDash" && empresa && (
+          <CompanyDashboard empresa={empresa} onLogout={handleLogout} />
+        )}
+
+        {/* ── HOME (demo mode OR employee survey URL) ───────────── */}
+        {screen === "home" && (
+          <>
+            {surveyPeriodoId ? (
+              /* Employee mode: simplified survey start */
+              <header className="hero">
+                <div className="hero-badge">Encuesta de Clima Laboral</div>
+                <h1>Tu opinión importa</h1>
+                <p className="hero-sub">
+                  Responde las <strong>{QUESTIONS.length} preguntas</strong> de forma confidencial.
+                  Tus respuestas se suman al diagnóstico global de la organización.
+                </p>
+                <div className="org-input-wrap">
+                  <label className="org-label">Tu área o departamento</label>
+                  <select
+                    className="org-select"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                  >
+                    <option value="">Selecciona tu departamento…</option>
+                    {DEPARTMENTS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <button className="btn-primary" onClick={startSurvey} disabled={!department}>
+                  Comenzar encuesta →
+                </button>
+                {!department && (
+                  <p className="warning-msg">Selecciona tu departamento para comenzar.</p>
+                )}
+              </header>
+            ) : (
+              /* Demo mode: full landing */
+              <>
+                <header className="hero">
+                  <div className="hero-badge">Diagnóstico Organizacional</div>
+                  <h1>Medidor de Clima Laboral</h1>
+                  <p className="hero-sub">
+                    Evalúa <strong>6 dimensiones clave</strong> del ambiente de trabajo mediante{" "}
+                    <strong>{QUESTIONS.length} preguntas</strong> con escala Likert 1–5. Tus respuestas son{" "}
+                    <strong>confidenciales</strong> y se suman al resultado global de la organización.
+                  </p>
+                  <div className="dimensions-preview">
+                    {DIMENSIONS.map((d) => (
+                      <div key={d.key} className="dim-chip" style={{ borderColor: d.color, color: d.color }}>
+                        {d.label}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="org-input-wrap">
+                    <label className="org-label">Tu área o departamento</label>
+                    <select
+                      className="org-select"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                    >
+                      <option value="">Selecciona tu departamento…</option>
+                      {DEPARTMENTS.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button className="btn-primary" onClick={startSurvey} disabled={!department}>
+                    Comenzar encuesta →
+                  </button>
+                  {!department && (
+                    <p className="warning-msg">Selecciona tu departamento para comenzar.</p>
+                  )}
+                </header>
+
+                <div className="info-grid">
+                  {DIMENSIONS.map((d) => (
+                    <div key={d.key} className="info-card" style={{ borderTopColor: d.color }}>
+                      <p className="info-label" style={{ color: d.color }}>{d.label}</p>
+                      <p className="info-desc">{d.description}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="how-card">
+                  <h2>¿Cómo funciona?</h2>
+                  <div className="steps">
+                    <div className="step">
+                      <span className="step-num">1</span>
+                      <p>Cada colaborador responde las {QUESTIONS.length} afirmaciones desde su propio dispositivo.</p>
+                    </div>
+                    <div className="step">
+                      <span className="step-num">2</span>
+                      <p>Las respuestas se consolidan de forma anónima en el resultado de la organización.</p>
+                    </div>
+                    <div className="step">
+                      <span className="step-num">3</span>
+                      <p>El panel administrativo muestra el clima global, por dimensión y el plan de acción.</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
 
@@ -316,7 +504,9 @@ export default function App() {
                     : "Siguiente dimensión →"}
               </button>
             </div>
-            {!currentAnswered && <p className="warning-msg">Responde todas las preguntas de esta dimensión para continuar.</p>}
+            {!currentAnswered && (
+              <p className="warning-msg">Responde todas las preguntas de esta dimensión para continuar.</p>
+            )}
             {submitError && <p className="warning-msg">{submitError}</p>}
           </div>
         )}
@@ -329,7 +519,9 @@ export default function App() {
             <p>Tu respuesta fue registrada de forma confidencial y ya forma parte del diagnóstico de clima laboral de la organización.</p>
             <p>Cuantas más personas participen, más preciso será el resultado.</p>
             <div style={{ marginTop: 24, display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-              <button className="btn-secondary" onClick={() => setScreen("myresults")}>Ver mi resultado personal</button>
+              <button className="btn-secondary" onClick={() => setScreen("myresults")}>
+                Ver mi resultado personal
+              </button>
               <button className="btn-primary" onClick={restart}>Finalizar</button>
             </div>
           </div>
@@ -428,6 +620,75 @@ export default function App() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+// ── Inline company login form ──────────────────────────────────────────────────
+function CompanyLoginForm({
+  onLogin,
+  onBack,
+}: {
+  onLogin: (empresa: Empresa) => void;
+  onBack: () => void;
+}) {
+  const [usuario, setUsuario] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleLogin() {
+    if (!usuario.trim() || !password) { setError("Ingresa usuario y contraseña."); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const emp = await loginEmpresa(usuario.trim(), password);
+      if (emp) {
+        onLogin(emp);
+      } else {
+        setError("Usuario o contraseña incorrectos.");
+      }
+    } catch {
+      setError("Error de conexión. Verifica la configuración de Supabase.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="admin-login">
+      <h1>Acceso Empresa</h1>
+      <p>
+        Ingresa con las credenciales de tu organización para gestionar tus mediciones de clima laboral
+        y acceder al historial de resultados.
+      </p>
+      <input
+        className="org-input"
+        type="text"
+        placeholder="Usuario"
+        value={usuario}
+        autoCapitalize="none"
+        autoComplete="username"
+        onChange={(e) => setUsuario(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+        style={{ marginBottom: 10 }}
+      />
+      <input
+        className="org-input"
+        type="password"
+        placeholder="Contraseña"
+        value={password}
+        autoComplete="current-password"
+        onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+      />
+      {error && <p className="admin-error">{error}</p>}
+      <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+        <button className="btn-primary" onClick={handleLogin} disabled={loading}>
+          {loading ? "Verificando…" : "Ingresar"}
+        </button>
+        <button className="btn-secondary" onClick={onBack}>Volver</button>
+      </div>
     </div>
   );
 }

@@ -62,3 +62,19 @@ export interface ActionRow {
   indicator: string;
   priority: "Alta" | "Media" | "Baja";
 }
+
+export interface Empresa {
+  id: string;
+  nombre: string;
+  usuario: string;
+  created_at?: string;
+}
+
+export interface Periodo {
+  id: string;
+  empresa_id: string;
+  etiqueta: string;
+  estado: "activo" | "cerrado";
+  created_at: string;
+  cerrado_at: string | null;
+}

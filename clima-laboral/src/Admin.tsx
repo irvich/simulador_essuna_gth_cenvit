@@ -1,116 +1,119 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { ADMIN_PASSWORD } from "./config";
-import { DIMENSIONS, QUESTIONS } from "./questions";
+import React, { useEffect, useState } from "react";
+import { ADMIN_PASSWORD, IS_SUPABASE_ENABLED } from "./config";
+import { PeriodDashboard } from "./PeriodDashboard";
 import {
-  RadarChart,
-  ScoreBar,
-  scoreLevelColor,
-  scoreLevelLabel,
-  type DimScore,
-} from "./shared";
-import { ActionMatrix } from "./ActionMatrix";
-import { clearLocalResponses, getAllResponses, storageMode } from "./storage";
-import type { SurveyResponse } from "./types";
+  clearLocalResponses,
+  createEmpresa,
+  getAllEmpresas,
+  getAllResponses,
+  getPeriodsForCompany,
+  getResponsesForPeriod,
+} from "./storage";
+import type { Empresa, Periodo, SurveyResponse } from "./types";
 
-function dimensionAverage(responses: SurveyResponse[], dimKey: string): number {
-  const dimQ = QUESTIONS.filter((q) => q.dimension === dimKey).map((q) => q.id);
-  let sum = 0;
-  let count = 0;
-  for (const r of responses) {
-    for (const qid of dimQ) {
-      const v = r.answers[qid];
-      if (v !== undefined) {
-        sum += v;
-        count += 1;
-      }
-    }
-  }
-  if (count === 0) return 0;
-  return Math.round((sum / count / 5) * 100);
-}
-
-function globalAverage(responses: SurveyResponse[]): number {
-  let sum = 0;
-  let count = 0;
-  for (const r of responses) {
-    for (const q of QUESTIONS) {
-      const v = r.answers[q.id];
-      if (v !== undefined) {
-        sum += v;
-        count += 1;
-      }
-    }
-  }
-  if (count === 0) return 0;
-  return Math.round((sum / count / 5) * 100);
-}
+type AdminView = "companies" | "periods" | "results";
 
 export function Admin({ onExit }: { onExit: () => void }) {
   const [authed, setAuthed] = useState(false);
   const [pw, setPw] = useState("");
-  const [error, setError] = useState("");
-  const [responses, setResponses] = useState<SurveyResponse[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
 
-  async function load() {
-    setLoading(true);
-    try {
-      const data = await getAllResponses();
-      setResponses(data);
-    } catch (e) {
-      setError("No se pudieron cargar las respuestas. Revisa la configuración de Supabase.");
-    } finally {
-      setLoading(false);
-    }
+  // Demo mode (no Supabase)
+  const [demoResponses, setDemoResponses] = useState<SurveyResponse[]>([]);
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  // Supabase mode state
+  const [adminView, setAdminView] = useState<AdminView>("companies");
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null);
+  const [empresaPeriodos, setEmpresaPeriodos] = useState<Periodo[]>([]);
+  const [selectedPeriodo, setSelectedPeriodo] = useState<Periodo | null>(null);
+  const [periodoResponses, setPeriodoResponses] = useState<SurveyResponse[]>([]);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [dataError, setDataError] = useState("");
+
+  // Create empresa form
+  const [showForm, setShowForm] = useState(false);
+  const [fNombre, setFNombre] = useState("");
+  const [fUsuario, setFUsuario] = useState("");
+  const [fPassword, setFPassword] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  function tryLogin() {
+    if (pw === ADMIN_PASSWORD) { setAuthed(true); setLoginError(""); }
+    else setLoginError("Contraseña incorrecta.");
   }
 
   useEffect(() => {
-    if (authed) load();
+    if (!authed) return;
+    if (IS_SUPABASE_ENABLED) {
+      loadEmpresas();
+    } else {
+      loadDemo();
+    }
   }, [authed]);
 
-  function tryLogin() {
-    if (pw === ADMIN_PASSWORD) {
-      setAuthed(true);
-      setError("");
-    } else {
-      setError("Contraseña incorrecta.");
+  async function loadDemo() {
+    setDemoLoading(true);
+    try { setDemoResponses(await getAllResponses()); }
+    catch { /* ignore */ }
+    finally { setDemoLoading(false); }
+  }
+
+  async function loadEmpresas() {
+    setDataLoading(true);
+    setDataError("");
+    try { setEmpresas(await getAllEmpresas()); }
+    catch { setDataError("No se pudieron cargar las empresas. Verifica la configuración de Supabase."); }
+    finally { setDataLoading(false); }
+  }
+
+  async function handleSelectEmpresa(emp: Empresa) {
+    setSelectedEmpresa(emp);
+    setAdminView("periods");
+    setDataLoading(true);
+    setDataError("");
+    try { setEmpresaPeriodos(await getPeriodsForCompany(emp.id)); }
+    catch { setDataError("No se pudieron cargar los períodos."); }
+    finally { setDataLoading(false); }
+  }
+
+  async function handleSelectPeriodo(p: Periodo) {
+    setSelectedPeriodo(p);
+    setAdminView("results");
+    setDataLoading(true);
+    setDataError("");
+    try { setPeriodoResponses(await getResponsesForPeriod(p.id)); }
+    catch { setDataError("No se pudieron cargar las respuestas."); }
+    finally { setDataLoading(false); }
+  }
+
+  async function handleCreateEmpresa() {
+    if (!fNombre.trim() || !fUsuario.trim() || !fPassword.trim()) {
+      setFormError("Completa todos los campos.");
+      return;
+    }
+    setCreating(true);
+    setFormError("");
+    try {
+      await createEmpresa(fNombre.trim(), fUsuario.trim(), fPassword.trim());
+      setFNombre(""); setFUsuario(""); setFPassword("");
+      setShowForm(false);
+      await loadEmpresas();
+    } catch {
+      setFormError("No se pudo crear la empresa. El usuario puede estar en uso.");
+    } finally {
+      setCreating(false);
     }
   }
 
-  const scores: DimScore[] = useMemo(
-    () => DIMENSIONS.map((dim) => ({ dim, pct: dimensionAverage(responses, dim.key) })),
-    [responses]
-  );
-
-  const globalPct = useMemo(() => globalAverage(responses), [responses]);
-
-  const departments = useMemo(() => {
-    const map = new Map<string, SurveyResponse[]>();
-    for (const r of responses) {
-      const key = r.department || "Sin especificar";
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(r);
-    }
-    return Array.from(map.entries())
-      .map(([name, list]) => ({ name, count: list.length, pct: globalAverage(list) }))
-      .sort((a, b) => b.count - a.count);
-  }, [responses]);
-
-  const strongest = useMemo(
-    () => [...scores].sort((a, b) => b.pct - a.pct)[0],
-    [scores]
-  );
-  const weakest = useMemo(
-    () => [...scores].sort((a, b) => a.pct - b.pct)[0],
-    [scores]
-  );
-
-  // ── Login screen ──────────────────────────────────────────────────────────
+  // ── Login ─────────────────────────────────────────────────────────────────
   if (!authed) {
     return (
       <div className="admin-login">
         <h1>Panel Administrativo</h1>
-        <p>Acceso restringido. Ingresa la contraseña para ver los resultados consolidados de la organización.</p>
+        <p>Acceso para consultores CENVIT. Ingresa la contraseña para continuar.</p>
         <input
           className="org-input"
           type="password"
@@ -119,7 +122,7 @@ export function Admin({ onExit }: { onExit: () => void }) {
           onChange={(e) => setPw(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && tryLogin()}
         />
-        {error && <p className="admin-error">{error}</p>}
+        {loginError && <p className="admin-error">{loginError}</p>}
         <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <button className="btn-primary" onClick={tryLogin}>Ingresar</button>
           <button className="btn-secondary" onClick={onExit}>Volver</button>
@@ -128,174 +131,234 @@ export function Admin({ onExit }: { onExit: () => void }) {
     );
   }
 
-  // ── Empty state ───────────────────────────────────────────────────────────
-  if (!loading && responses.length === 0) {
+  // ── Demo mode ─────────────────────────────────────────────────────────────
+  if (!IS_SUPABASE_ENABLED) {
     return (
-      <div className="results-wrap">
+      <div>
+        <div style={{ marginBottom: 20 }}>
+          <button className="btn-secondary" onClick={onExit}>← Volver al inicio</button>
+        </div>
         <div className="results-header">
-          <p className="eyebrow gold">Panel Administrativo</p>
-          <h1 className="results-title">Resultados de la Organización</h1>
-          <p className="results-meta">
-            Modo de datos:{" "}
-            <span className={`mode-pill ${storageMode === "supabase" ? "mode-supabase" : "mode-local"}`}>
-              {storageMode === "supabase" ? "Supabase (en línea)" : "Local (este dispositivo)"}
-            </span>
-          </p>
+          <p className="eyebrow gold">Panel Administrativo · Modo Demo</p>
+          <h1 className="results-title">Resultados (localStorage)</h1>
+          <p className="results-meta">Los datos solo existen en este navegador. Configura Supabase para modo multi-empresa.</p>
         </div>
-        <div className="empty-state">
-          <div className="big">📭</div>
-          <p>Aún no hay respuestas registradas.</p>
-          <p style={{ marginTop: 8 }}>Comparte el enlace de la encuesta con tu equipo para empezar a recolectar datos.</p>
-          <div style={{ marginTop: 20, display: "flex", gap: 10, justifyContent: "center" }}>
-            <button className="btn-secondary" onClick={load}>Actualizar</button>
-            <button className="btn-secondary" onClick={onExit}>Volver al inicio</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Dashboard ─────────────────────────────────────────────────────────────
-  return (
-    <div className="results-wrap">
-      <div className="results-header">
-        <p className="eyebrow gold">Panel Administrativo</p>
-        <h1 className="results-title">Resultados de la Organización</h1>
-        <p className="results-meta">
-          Modo de datos:{" "}
-          <span className={`mode-pill ${storageMode === "supabase" ? "mode-supabase" : "mode-local"}`}>
-            {storageMode === "supabase" ? "Supabase (en línea)" : "Local (este dispositivo)"}
-          </span>
-        </p>
-      </div>
-
-      {/* Stat cards */}
-      <div className="admin-statbar">
-        <div className="stat-card">
-          <div className="stat-num" style={{ color: "#38bdf8" }}>{responses.length}</div>
-          <div className="stat-label">Respuestas</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-num" style={{ color: scoreLevelColor(globalPct) }}>{globalPct}%</div>
-          <div className="stat-label">Índice global</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-num" style={{ color: strongest?.dim.color, fontSize: "1.05rem", paddingTop: 6 }}>
-            {strongest?.dim.shortLabel}
-          </div>
-          <div className="stat-label">Más fuerte ({strongest?.pct}%)</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-num" style={{ color: weakest?.dim.color, fontSize: "1.05rem", paddingTop: 6 }}>
-            {weakest?.dim.shortLabel}
-          </div>
-          <div className="stat-label">Más débil ({weakest?.pct}%)</div>
-        </div>
-      </div>
-
-      {/* Global index bar */}
-      <div className="global-card">
-        <p className="global-label">Índice Global de Clima Laboral · {responses.length} participante(s)</p>
-        <div className="global-score" style={{ color: scoreLevelColor(globalPct) }}>{globalPct}%</div>
-        <div
-          className="level-badge"
-          style={{
-            background: scoreLevelColor(globalPct) + "22",
-            borderColor: scoreLevelColor(globalPct) + "55",
-            color: scoreLevelColor(globalPct),
-          }}
-        >
-          {scoreLevelLabel(globalPct)}
-        </div>
-        <div className="global-bar-track">
-          <div className="global-bar-fill" style={{ width: `${globalPct}%`, background: scoreLevelColor(globalPct) }} />
-        </div>
-        <div className="global-legend">
-          <span style={{ color: "#f87171" }}>0–59% Crítico</span>
-          <span style={{ color: "#d4af37" }}>60–79% Regular</span>
-          <span style={{ color: "#22c55e" }}>80–100% Bueno</span>
-        </div>
-      </div>
-
-      {/* Radar + breakdown */}
-      <div className="chart-grid">
-        <div className="radar-card">
-          <h2>Perfil por Dimensión (promedio)</h2>
-          <div className="radar-wrap"><RadarChart scores={scores} /></div>
-        </div>
-        <div className="breakdown-card">
-          <h2>Promedio por Dimensión</h2>
-          <div className="breakdown-list">
-            {scores.map(({ dim, pct }) => (
-              <div key={dim.key} className="breakdown-item">
-                <div className="breakdown-header">
-                  <span className="breakdown-name" style={{ color: dim.color }}>{dim.label}</span>
-                  <span className="breakdown-pct" style={{ color: scoreLevelColor(pct) }}>
-                    {pct}% — {scoreLevelLabel(pct)}
-                  </span>
-                </div>
-                <ScoreBar pct={pct} color={dim.color} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Department breakdown */}
-      <div className="breakdown-card">
-        <h2>Resultados por Departamento</h2>
-        <div className="matrix-scroll">
-          <table className="dept-table">
-            <thead>
-              <tr>
-                <th>Departamento</th>
-                <th>Participantes</th>
-                <th>Índice global</th>
-                <th>Nivel</th>
-              </tr>
-            </thead>
-            <tbody>
-              {departments.map((d) => (
-                <tr key={d.name}>
-                  <td style={{ fontWeight: 700 }}>{d.name}</td>
-                  <td>{d.count}</td>
-                  <td style={{ color: scoreLevelColor(d.pct), fontWeight: 700 }}>{d.pct}%</td>
-                  <td>{scoreLevelLabel(d.pct)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Action matrix */}
-      <ActionMatrix scores={scores} />
-
-      {/* Actions */}
-      <div className="results-actions no-print">
-        <button className="btn-export" onClick={() => window.print()}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-            <polyline points="6 9 6 2 18 2 18 9" />
-            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-            <rect x="6" y="14" width="12" height="8" />
-          </svg>
-          Exportar informe PDF
-        </button>
-        <button className="btn-secondary" onClick={load}>Actualizar datos</button>
-        <button className="btn-secondary" onClick={onExit}>Volver al inicio</button>
-        {storageMode === "local" && (
+        {demoLoading ? (
+          <p style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>Cargando…</p>
+        ) : (
+          <PeriodDashboard responses={demoResponses} periodoLabel="Demo" />
+        )}
+        <div className="results-actions no-print" style={{ marginTop: 20 }}>
+          <button className="btn-secondary" onClick={loadDemo}>Actualizar datos</button>
+          <button className="btn-secondary" onClick={onExit}>Volver al inicio</button>
           <button
             className="btn-danger"
             onClick={() => {
-              if (confirm("¿Borrar todas las respuestas guardadas en este dispositivo? Esta acción no se puede deshacer.")) {
+              if (confirm("¿Borrar todas las respuestas guardadas en este navegador?")) {
                 clearLocalResponses();
-                load();
+                loadDemo();
               }
             }}
           >
             Borrar datos locales
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Period results ────────────────────────────────────────────────────────
+  if (adminView === "results" && selectedPeriodo && selectedEmpresa) {
+    if (dataLoading) {
+      return (
+        <p style={{ color: "var(--muted)", textAlign: "center", padding: 60 }}>Cargando resultados…</p>
+      );
+    }
+    return (
+      <PeriodDashboard
+        responses={periodoResponses}
+        periodoLabel={selectedPeriodo.etiqueta}
+        empresaNombre={selectedEmpresa.nombre}
+        onBack={() => { setAdminView("periods"); setSelectedPeriodo(null); }}
+      />
+    );
+  }
+
+  // ── Company periods ───────────────────────────────────────────────────────
+  if (adminView === "periods" && selectedEmpresa) {
+    return (
+      <div className="results-wrap">
+        <button
+          className="btn-secondary no-print"
+          onClick={() => { setAdminView("companies"); setSelectedEmpresa(null); setEmpresaPeriodos([]); }}
+          style={{ marginBottom: 20 }}
+        >
+          ← Todas las empresas
+        </button>
+
+        <div className="results-header">
+          <p className="eyebrow gold">Panel Administrativo</p>
+          <h1 className="results-title">{selectedEmpresa.nombre}</h1>
+          <p className="results-meta">Usuario: @{selectedEmpresa.usuario}</p>
+        </div>
+
+        {dataError && <p className="admin-error">{dataError}</p>}
+        {dataLoading && <p style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>Cargando períodos…</p>}
+
+        {!dataLoading && empresaPeriodos.length === 0 && (
+          <div className="empty-state">
+            <div className="big">📭</div>
+            <p>Esta empresa aún no tiene períodos de medición.</p>
+          </div>
         )}
+
+        {!dataLoading && empresaPeriodos.length > 0 && (
+          <div className="breakdown-card">
+            <h2>Períodos de medición</h2>
+            <div className="matrix-scroll">
+              <table className="comparison-table">
+                <thead>
+                  <tr>
+                    <th>Período</th>
+                    <th>Inicio</th>
+                    <th>Cierre</th>
+                    <th>Estado</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {empresaPeriodos.map((p) => (
+                    <tr key={p.id}>
+                      <td style={{ fontWeight: 700 }}>{p.etiqueta}</td>
+                      <td>{new Date(p.created_at).toLocaleDateString("es-ES")}</td>
+                      <td>{p.cerrado_at ? new Date(p.cerrado_at).toLocaleDateString("es-ES") : "—"}</td>
+                      <td>
+                        <span className={`estado-badge ${p.estado === "activo" ? "estado-activo" : "estado-cerrado"}`}>
+                          {p.estado === "activo" ? "Activo" : "Cerrado"}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="btn-secondary"
+                          style={{ padding: "5px 14px", fontSize: "0.8rem" }}
+                          onClick={() => handleSelectPeriodo(p)}
+                        >
+                          Ver resultados
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
+          <button className="btn-secondary" onClick={onExit}>Volver al inicio</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Companies list ────────────────────────────────────────────────────────
+  return (
+    <div className="results-wrap">
+      <div className="results-header">
+        <p className="eyebrow gold">Panel Administrativo</p>
+        <h1 className="results-title">Gestión de Empresas</h1>
+      </div>
+
+      {dataError && <p className="admin-error">{dataError}</p>}
+
+      {/* Create form */}
+      {showForm && (
+        <div className="create-empresa-form">
+          <h3>Nueva empresa</h3>
+          <div className="form-grid">
+            <div className="form-field">
+              <label>Nombre de la empresa</label>
+              <input
+                className="org-input"
+                value={fNombre}
+                onChange={(e) => setFNombre(e.target.value)}
+                placeholder="Acme Corp"
+              />
+            </div>
+            <div className="form-field">
+              <label>Usuario (para login)</label>
+              <input
+                className="org-input"
+                value={fUsuario}
+                onChange={(e) => setFUsuario(e.target.value)}
+                placeholder="acme"
+                autoCapitalize="none"
+              />
+            </div>
+          </div>
+          <div className="form-field" style={{ marginBottom: 14 }}>
+            <label>Contraseña</label>
+            <input
+              className="org-input"
+              type="password"
+              value={fPassword}
+              onChange={(e) => setFPassword(e.target.value)}
+              placeholder="Contraseña segura"
+            />
+          </div>
+          {formError && <p className="admin-error">{formError}</p>}
+          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+            <button className="btn-primary" onClick={handleCreateEmpresa} disabled={creating}>
+              {creating ? "Creando…" : "Crear empresa"}
+            </button>
+            <button className="btn-secondary" onClick={() => { setShowForm(false); setFormError(""); }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!showForm && (
+        <div style={{ marginBottom: 20 }}>
+          <button className="btn-primary" onClick={() => setShowForm(true)}>+ Agregar empresa</button>
+        </div>
+      )}
+
+      {dataLoading && (
+        <p style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>Cargando empresas…</p>
+      )}
+
+      {!dataLoading && empresas.length === 0 && (
+        <div className="empty-state">
+          <div className="big">🏢</div>
+          <p>Aún no hay empresas registradas.</p>
+          <p style={{ marginTop: 8 }}>Agrega la primera empresa con el botón de arriba.</p>
+        </div>
+      )}
+
+      {!dataLoading && (
+        <div className="empresa-list">
+          {empresas.map((emp) => (
+            <div key={emp.id} className="empresa-card">
+              <div>
+                <div className="empresa-name">{emp.nombre}</div>
+                <div className="empresa-usuario">@{emp.usuario}</div>
+              </div>
+              <button
+                className="btn-secondary"
+                style={{ padding: "7px 18px", fontSize: "0.85rem" }}
+                onClick={() => handleSelectEmpresa(emp)}
+              >
+                Ver períodos →
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ marginTop: 24, display: "flex", gap: 10 }}>
+        <button className="btn-secondary" onClick={loadEmpresas}>Actualizar</button>
+        <button className="btn-secondary" onClick={onExit}>Volver al inicio</button>
       </div>
     </div>
   );

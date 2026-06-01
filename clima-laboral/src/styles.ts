@@ -349,11 +349,106 @@ export const css = `
     .chart-grid { break-inside: avoid; }
   }
 
+  /* ── LANDING (multi-empresa) ─────────────────────────── */
+  .landing-wrap { padding: 8px 0 40px; }
+  .landing-cards {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    max-width: 660px; margin: 0 auto;
+  }
+  .landing-card {
+    background: rgba(7,27,51,0.72); border: 1px solid var(--border);
+    border-radius: 22px; padding: 32px 24px; text-align: center; cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s; backdrop-filter: blur(10px);
+  }
+  .landing-card:hover { border-color: rgba(56,189,248,0.4); transform: translateY(-2px); }
+  .landing-card-icon { font-size: 2.6rem; margin-bottom: 12px; }
+  .landing-card h2 { font-size: 1.2rem; font-weight: 900; color: var(--white); margin-bottom: 10px; }
+  .landing-card p { font-size: 0.86rem; color: var(--muted); line-height: 1.65; margin-bottom: 20px; }
+
+  /* ── COMPANY DASHBOARD ────────────────────────────────── */
+  .company-dash { max-width: 820px; margin: 0 auto; padding: 24px 0 60px; }
+  .company-dash-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; margin-bottom: 28px; flex-wrap: wrap;
+  }
+  .company-name { font-size: 1.6rem; font-weight: 900; color: var(--white); margin-top: 4px; }
+
+  .active-period-card {
+    background: rgba(56,189,248,0.06); border: 1px solid rgba(56,189,248,0.22);
+    border-radius: 20px; padding: 28px; margin-bottom: 22px;
+  }
+  .active-period-card h3 { font-size: 0.82rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sky); margin-bottom: 12px; }
+  .period-label-big { font-size: 2.2rem; font-weight: 900; color: var(--white); line-height: 1; margin-bottom: 4px; }
+  .period-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 20px; }
+  .period-stats-row { display: flex; gap: 28px; margin-bottom: 20px; flex-wrap: wrap; }
+  .period-stat { text-align: center; }
+  .period-stat-num { font-size: 2rem; font-weight: 900; color: var(--sky); line-height: 1; }
+  .period-stat-label { font-size: 0.72rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .survey-link-box {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;
+  }
+  .survey-link-label { font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .survey-link-row { display: flex; gap: 10px; align-items: center; }
+  .survey-link-url {
+    flex: 1; font-size: 0.78rem; color: var(--sky); word-break: break-all;
+    font-family: ui-monospace, monospace; line-height: 1.5;
+  }
+  .active-period-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .no-active-period {
+    background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15);
+    border-radius: 20px; padding: 36px 24px; text-align: center; margin-bottom: 22px;
+  }
+  .no-active-period > p { color: var(--muted); margin-bottom: 20px; font-size: 0.95rem; }
+  .create-period-form { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 20px; margin-top: 16px; text-align: left; }
+  .create-period-form label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 8px; }
+  .create-period-form-row { display: flex; gap: 10px; align-items: center; }
+
+  .period-history { margin-top: 28px; }
+  .period-history h3 { font-size: 1rem; font-weight: 700; color: var(--white); margin-bottom: 14px; }
+  .period-history-empty { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 28px 0; }
+
+  .comparison-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; min-width: 480px; }
+  .comparison-table th {
+    background: rgba(212,175,55,0.1); color: var(--gold); text-align: left;
+    padding: 10px 12px; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.08em;
+    text-transform: uppercase; border-bottom: 1px solid var(--border);
+  }
+  .comparison-table td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--white); }
+  .comparison-table tr:last-child td { border-bottom: none; }
+  .comparison-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .estado-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 800; }
+  .estado-activo { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+  .estado-cerrado { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+
+  /* ── ADMIN COMPANY MANAGEMENT ─────────────────────────── */
+  .empresa-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+  .empresa-card {
+    background: rgba(7,27,51,0.72); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; transition: border-color 0.18s;
+  }
+  .empresa-card:hover { border-color: rgba(56,189,248,0.3); }
+  .empresa-name { font-weight: 700; font-size: 1rem; color: var(--white); }
+  .empresa-usuario { font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
+  .create-empresa-form {
+    background: rgba(7,27,51,0.72); border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 18px; padding: 24px; margin-bottom: 22px;
+  }
+  .create-empresa-form h3 { font-size: 1rem; font-weight: 700; color: var(--white); margin-bottom: 16px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-field { display: flex; flex-direction: column; gap: 5px; }
+  .form-field label { font-size: 0.78rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+
   /* ── RESPONSIVE ───────────────────────────────────────── */
   @media (max-width: 860px) {
     .info-grid, .admin-statbar { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 720px) {
+    .landing-cards, .form-grid { grid-template-columns: 1fr; }
     .topbar-brand-sub, .topbar-divider, .topbar-author-sub { display: none; }
     .info-grid, .steps, .chart-grid, .recs-grid, .admin-statbar { grid-template-columns: 1fr; }
     .survey-header { flex-direction: column; }
