@@ -53,6 +53,7 @@ export function CompanyDashboard({
 
   const [showCreate, setShowCreate] = useState(false);
   const [newLabel, setNewLabel] = useState(suggestLabel());
+  const [newTotal, setNewTotal] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
@@ -121,12 +122,14 @@ export function CompanyDashboard({
 
   async function handleCreate() {
     if (!newLabel.trim()) { setCreateError("Ingresa una etiqueta para el período."); return; }
+    const total = parseInt(newTotal, 10);
     setCreating(true);
     setCreateError("");
     try {
-      await createPeriod(empresa.id, newLabel.trim());
+      await createPeriod(empresa.id, newLabel.trim(), isNaN(total) ? undefined : total);
       setShowCreate(false);
       setNewLabel(suggestLabel());
+      setNewTotal("");
       await loadPeriodos();
     } catch {
       setCreateError("No se pudo crear el período. Intenta de nuevo.");
@@ -246,6 +249,7 @@ export function CompanyDashboard({
         responses={viewingResponses}
         periodoLabel={viewingPeriodo.etiqueta}
         empresaNombre={empresa.nombre}
+        totalColaboradores={viewingPeriodo.total_colaboradores}
         savedPlan={viewingPlan}
         onSavePlan={handleSavePlan}
         onBack={() => setViewingPeriodo(null)}
@@ -325,6 +329,25 @@ export function CompanyDashboard({
                   </div>
                   <div className="period-stat-label">Respuestas recibidas</div>
                 </div>
+                {activePeriodo.total_colaboradores && (
+                  <div className="period-stat">
+                    <div className="period-stat-num" style={{ color: (() => {
+                      const pct = Math.round((activeResponses.length / activePeriodo.total_colaboradores!) * 100);
+                      return pct >= 70 ? "#22c55e" : pct >= 40 ? "#d4af37" : "#f87171";
+                    })() }}>
+                      {activeLoading ? "…" : `${Math.round((activeResponses.length / activePeriodo.total_colaboradores) * 100)}%`}
+                    </div>
+                    <div className="period-stat-label">Tasa de respuesta</div>
+                  </div>
+                )}
+                {activePeriodo.total_colaboradores && (
+                  <div className="period-stat">
+                    <div className="period-stat-num" style={{ color: "var(--muted)", fontSize: "1.4rem" }}>
+                      {activePeriodo.total_colaboradores}
+                    </div>
+                    <div className="period-stat-label">Colaboradores esperados</div>
+                  </div>
+                )}
               </div>
 
               <div className="survey-link-box">
@@ -373,20 +396,29 @@ export function CompanyDashboard({
               ) : (
                 <div className="create-period-form">
                   <label>Etiqueta del período (ej: 2026-S1, Primer semestre 2026)</label>
-                  <div className="create-period-form-row">
+                  <div className="create-period-form-row" style={{ flexWrap: "wrap" }}>
                     <input
                       className="org-input"
                       value={newLabel}
                       onChange={(e) => setNewLabel(e.target.value)}
                       placeholder="ej: 2026-S1"
-                      style={{ flex: 1 }}
+                      style={{ flex: 2, minWidth: 140 }}
+                    />
+                    <input
+                      className="org-input"
+                      type="number"
+                      min="1"
+                      value={newTotal}
+                      onChange={(e) => setNewTotal(e.target.value)}
+                      placeholder="Nº colaboradores (opcional)"
+                      style={{ flex: 1, minWidth: 140 }}
                     />
                     <button className="btn-primary" onClick={handleCreate} disabled={creating}>
                       {creating ? "Creando…" : "Crear"}
                     </button>
                     <button
                       className="btn-secondary"
-                      onClick={() => { setShowCreate(false); setCreateError(""); }}
+                      onClick={() => { setShowCreate(false); setCreateError(""); setNewTotal(""); }}
                     >
                       Cancelar
                     </button>

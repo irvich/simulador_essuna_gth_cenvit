@@ -103,11 +103,10 @@ export async function getPeriodById(periodoId: string): Promise<Periodo | null> 
   return data.length > 0 ? data[0] : null;
 }
 
-export async function createPeriod(empresaId: string, etiqueta: string): Promise<Periodo> {
-  const res = await sbFetch("/periodos", {
-    method: "POST",
-    body: JSON.stringify({ empresa_id: empresaId, etiqueta, estado: "activo" }),
-  });
+export async function createPeriod(empresaId: string, etiqueta: string, totalColaboradores?: number): Promise<Periodo> {
+  const body: Record<string, unknown> = { empresa_id: empresaId, etiqueta, estado: "activo" };
+  if (totalColaboradores && totalColaboradores > 0) body.total_colaboradores = totalColaboradores;
+  const res = await sbFetch("/periodos", { method: "POST", body: JSON.stringify(body) });
   const data = (await res.json()) as Periodo[];
   return data[0];
 }

@@ -8,6 +8,7 @@ export interface PeriodSummary {
   globalPct: number;
   dimScores: { key: string; pct: number }[];
   responseCount: number;
+  responsePct: number | null;
 }
 
 export function computePeriodSummary(periodo: Periodo, responses: SurveyResponse[]): PeriodSummary {
@@ -32,7 +33,9 @@ export function computePeriodSummary(periodo: Periodo, responses: SurveyResponse
     return { key: dim.key, pct: dc === 0 ? 0 : Math.round((ds / dc / 5) * 100) };
   });
 
-  return { periodo, globalPct, dimScores, responseCount: responses.length };
+  const total = periodo.total_colaboradores;
+  const responsePct = total && total > 0 ? Math.round((responses.length / total) * 100) : null;
+  return { periodo, globalPct, dimScores, responseCount: responses.length, responsePct };
 }
 
 function GlobalTrendChart({ summaries }: { summaries: PeriodSummary[] }) {
@@ -82,7 +85,9 @@ function GlobalTrendChart({ summaries }: { summaries: PeriodSummary[] }) {
             )}
             <text x={cx} y={y - 5} textAnchor="middle" fontSize="10" fontWeight="800" fill={color}>{s.globalPct}%</text>
             <text x={cx} y={PAD.t + chartH + 14} textAnchor="middle" fontSize="9" fontWeight="700" fill="rgba(255,255,255,0.75)">{s.periodo.etiqueta}</text>
-            <text x={cx} y={PAD.t + chartH + 27} textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.3)">{s.responseCount} resp.</text>
+            <text x={cx} y={PAD.t + chartH + 27} textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.3)">
+              {s.responseCount} resp.{s.responsePct !== null ? ` (${s.responsePct}%)` : ""}
+            </text>
           </g>
         );
       })}
@@ -260,6 +265,11 @@ export function HistoricalComparison({ summaries, plans }: { summaries: PeriodSu
                     {s.periodo.etiqueta}
                     <div style={{ fontSize: "0.65rem", color: "var(--muted)", fontWeight: 400, textTransform: "none", letterSpacing: 0, marginTop: 2 }}>
                       {s.responseCount} resp.
+                      {s.responsePct !== null && (
+                        <span style={{ color: s.responsePct >= 70 ? "#22c55e" : s.responsePct >= 40 ? "#d4af37" : "#f87171", fontWeight: 700 }}>
+                          {" "}({s.responsePct}%)
+                        </span>
+                      )}
                     </div>
                   </th>
                 ))}

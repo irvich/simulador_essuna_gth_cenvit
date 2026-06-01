@@ -124,6 +124,7 @@ export function PeriodDashboard({
   responses,
   periodoLabel,
   empresaNombre,
+  totalColaboradores,
   savedPlan,
   onSavePlan,
   onBack,
@@ -131,6 +132,7 @@ export function PeriodDashboard({
   responses: SurveyResponse[];
   periodoLabel: string;
   empresaNombre?: string;
+  totalColaboradores?: number | null;
   savedPlan?: ActionRow[] | null;
   onSavePlan?: (rows: ActionRow[]) => Promise<void>;
   onBack?: () => void;
@@ -185,6 +187,16 @@ export function PeriodDashboard({
               <div className="stat-num" style={{ color: "#38bdf8" }}>{responses.length}</div>
               <div className="stat-label">Respuestas</div>
             </div>
+            {totalColaboradores != null && totalColaboradores > 0 && (() => {
+              const pct = Math.round((responses.length / totalColaboradores) * 100);
+              const col = pct >= 70 ? "#22c55e" : pct >= 40 ? "#d4af37" : "#f87171";
+              return (
+                <div className="stat-card">
+                  <div className="stat-num" style={{ color: col, fontSize: "1.1rem" }}>{pct}%</div>
+                  <div className="stat-label">Tasa respuesta ({responses.length}/{totalColaboradores})</div>
+                </div>
+              );
+            })()}
             <div className="stat-card">
               <div className="stat-num" style={{ color: scoreLevelColor(globalPct) }}>{globalPct}%</div>
               <div className="stat-label">Índice global</div>

@@ -209,6 +209,7 @@ export function Admin({ onExit }: { onExit: () => void }) {
         responses={periodoResponses}
         periodoLabel={selectedPeriodo.etiqueta}
         empresaNombre={selectedEmpresa.nombre}
+        totalColaboradores={selectedPeriodo.total_colaboradores}
         savedPlan={periodoPlan}
         onSavePlan={async (rows) => {
           await savePlanAccion(selectedPeriodo.id, rows);

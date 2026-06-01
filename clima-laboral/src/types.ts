@@ -78,4 +78,5 @@ export interface Periodo {
   estado: "activo" | "cerrado";
   created_at: string;
   cerrado_at: string | null;
+  total_colaboradores?: number | null;
 }
