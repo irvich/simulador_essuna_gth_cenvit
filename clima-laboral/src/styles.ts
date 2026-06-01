@@ -266,6 +266,27 @@ export const css = `
   .dept-table td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
   .dept-table tr:last-child td { border-bottom: none; }
 
+  .dept-row-clickable { cursor: pointer; transition: background 0.15s; }
+  .dept-row-clickable:hover { background: rgba(56,189,248,0.06); }
+  .dept-expand-icon { display: inline-block; width: 16px; color: var(--muted); font-size: 0.65rem; user-select: none; }
+
+  .dept-drill-tr td { border-bottom: 1px solid rgba(255,255,255,0.06) !important; }
+  .dept-drill-panel { padding: 14px 16px 16px; background: rgba(56,189,248,0.04); border-top: 1px solid rgba(56,189,248,0.12); }
+  .dept-drill-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .dept-drill-grid { display: flex; flex-direction: column; gap: 8px; }
+  .dept-drill-row { display: grid; grid-template-columns: 90px 1fr 46px 48px; align-items: center; gap: 10px; }
+  .dept-drill-dim-name { font-size: 0.78rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dept-drill-bar-track { position: relative; height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: visible; }
+  .dept-drill-avg-line { position: absolute; top: -3px; bottom: -3px; width: 2px; background: rgba(255,255,255,0.35); border-radius: 1px; pointer-events: none; }
+  .dept-drill-pct { font-size: 0.82rem; font-weight: 700; text-align: right; }
+  .dept-drill-delta { font-size: 0.76rem; font-weight: 700; text-align: right; }
+  .delta-up { color: #22c55e; }
+  .delta-down { color: #f87171; }
+  .delta-same { color: var(--muted); }
+  .dept-drill-legend { display: flex; align-items: center; gap: 8px; font-size: 0.72rem; color: var(--muted); margin-top: 12px; }
+  .dept-drill-legend-bar { display: inline-block; width: 20px; height: 5px; border-radius: 3px; background: var(--sky); }
+  .dept-drill-legend-line { display: inline-block; width: 18px; height: 2px; background: rgba(255,255,255,0.35); margin-bottom: 1px; }
+
   .mode-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.7rem; font-weight: 800; }
   .mode-local { background: rgba(251,146,60,0.15); color: #fdba74; border: 1px solid rgba(251,146,60,0.35); }
   .mode-supabase { background: rgba(34,197,94,0.15); color: #86efac; border: 1px solid rgba(34,197,94,0.35); }

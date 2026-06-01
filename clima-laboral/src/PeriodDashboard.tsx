@@ -97,6 +97,54 @@ function QuestionAnalysis({ responses }: { responses: SurveyResponse[] }) {
   );
 }
 
+function DeptDrillDown({ deptName, deptResponses, globalScores }: {
+  deptName: string;
+  deptResponses: SurveyResponse[];
+  globalScores: DimScore[];
+}) {
+  const deptScores: DimScore[] = useMemo(
+    () => DIMENSIONS.map((dim) => ({ dim, pct: dimensionAverage(deptResponses, dim.key) })),
+    [deptResponses]
+  );
+  return (
+    <div className="dept-drill-panel">
+      <div className="dept-drill-header">
+        <span style={{ fontWeight: 700, color: "var(--sky)" }}>{deptName}</span>
+        <span style={{ color: "var(--muted)", fontSize: "0.78rem" }}>
+          vs. promedio empresa — {deptResponses.length} respuesta(s)
+        </span>
+      </div>
+      <div className="dept-drill-grid">
+        {deptScores.map(({ dim, pct }) => {
+          const global = globalScores.find((s) => s.dim.key === dim.key)?.pct ?? 0;
+          const delta = pct - global;
+          return (
+            <div key={dim.key} className="dept-drill-row">
+              <div className="dept-drill-dim-name" style={{ color: dim.color }}>{dim.shortLabel}</div>
+              <div className="dept-drill-bar-track">
+                <div style={{ width: `${pct}%`, height: "100%", background: dim.color, borderRadius: 3, transition: "width 0.4s" }} />
+                <div
+                  className="dept-drill-avg-line"
+                  style={{ left: `${global}%` }}
+                  title={`Empresa: ${global}%`}
+                />
+              </div>
+              <div className="dept-drill-pct" style={{ color: dim.color }}>{pct}%</div>
+              <div className={`dept-drill-delta ${delta > 2 ? "delta-up" : delta < -2 ? "delta-down" : "delta-same"}`}>
+                {delta > 0 ? `+${delta}` : delta === 0 ? "=" : delta}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="dept-drill-legend">
+        <span className="dept-drill-legend-bar" /> Dpto. &nbsp;
+        <span className="dept-drill-legend-line" /> Empresa
+      </p>
+    </div>
+  );
+}
+
 function dimensionAverage(responses: SurveyResponse[], dimKey: string): number {
   const ids = QUESTIONS.filter((q) => q.dimension === dimKey).map((q) => q.id);
   let sum = 0, count = 0;
@@ -137,11 +185,30 @@ export function PeriodDashboard({
   onSavePlan?: (rows: ActionRow[]) => Promise<void>;
   onBack?: () => void;
 }) {
+  const [expandedDept, setExpandedDept] = useState<string | null>(null);
+
   const scores: DimScore[] = useMemo(
     () => DIMENSIONS.map((dim) => ({ dim, pct: dimensionAverage(responses, dim.key) })),
     [responses]
   );
   const globalPct = useMemo(() => globalAverage(responses), [responses]);
+
+  const deptResponsesMap = useMemo(() => {
+    const map = new Map<string, SurveyResponse[]>();
+    for (const r of responses) {
+      const key = r.department || "Sin especificar";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    return map;
+  }, [responses]);
+
+  const overlayScores: DimScore[] | undefined = useMemo(() => {
+    if (!expandedDept) return undefined;
+    const deptResps = deptResponsesMap.get(expandedDept) ?? [];
+    return DIMENSIONS.map((dim) => ({ dim, pct: dimensionAverage(deptResps, dim.key) }));
+  }, [expandedDept, deptResponsesMap]);
+
   const departments = useMemo(() => {
     const map = new Map<string, SurveyResponse[]>();
     for (const r of responses) {
@@ -240,8 +307,11 @@ export function PeriodDashboard({
 
           <div className="chart-grid">
             <div className="radar-card">
-              <h2>Perfil por Dimensión (promedio)</h2>
-              <div className="radar-wrap"><RadarChart scores={scores} /></div>
+              <h2>
+                Perfil por Dimensión
+                {expandedDept && <span style={{ color: "#d4af37", fontSize: "0.8rem", fontWeight: 600, marginLeft: 10 }}>+ {expandedDept}</span>}
+              </h2>
+              <div className="radar-wrap"><RadarChart scores={scores} overlay={overlayScores} /></div>
             </div>
             <div className="breakdown-card">
               <h2>Promedio por Dimensión</h2>
@@ -263,7 +333,12 @@ export function PeriodDashboard({
 
           {departments.length > 0 && (
             <div className="breakdown-card">
-              <h2>Resultados por Departamento</h2>
+              <h2>
+                Resultados por Departamento
+                <span style={{ color: "var(--muted)", fontSize: "0.75rem", fontWeight: 400, marginLeft: 10 }}>
+                  Haz clic en una fila para ver el detalle por dimensión
+                </span>
+              </h2>
               <div className="matrix-scroll">
                 <table className="dept-table">
                   <thead>
@@ -275,14 +350,36 @@ export function PeriodDashboard({
                     </tr>
                   </thead>
                   <tbody>
-                    {departments.map((d) => (
-                      <tr key={d.name}>
-                        <td style={{ fontWeight: 700 }}>{d.name}</td>
-                        <td>{d.count}</td>
-                        <td style={{ color: scoreLevelColor(d.pct), fontWeight: 700 }}>{d.pct}%</td>
-                        <td>{scoreLevelLabel(d.pct)}</td>
-                      </tr>
-                    ))}
+                    {departments.map((d) => {
+                      const isExpanded = expandedDept === d.name;
+                      return (
+                        <React.Fragment key={d.name}>
+                          <tr
+                            className="dept-row-clickable"
+                            onClick={() => setExpandedDept(isExpanded ? null : d.name)}
+                          >
+                            <td style={{ fontWeight: 700 }}>
+                              <span className="dept-expand-icon">{isExpanded ? "▼" : "▶"}</span>
+                              {d.name}
+                            </td>
+                            <td>{d.count}</td>
+                            <td style={{ color: scoreLevelColor(d.pct), fontWeight: 700 }}>{d.pct}%</td>
+                            <td>{scoreLevelLabel(d.pct)}</td>
+                          </tr>
+                          {isExpanded && (
+                            <tr className="dept-drill-tr">
+                              <td colSpan={4} style={{ padding: 0 }}>
+                                <DeptDrillDown
+                                  deptName={d.name}
+                                  deptResponses={deptResponsesMap.get(d.name) ?? []}
+                                  globalScores={scores}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
