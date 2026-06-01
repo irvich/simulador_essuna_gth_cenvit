@@ -443,6 +443,34 @@ export const css = `
   .form-field { display: flex; flex-direction: column; gap: 5px; }
   .form-field label { font-size: 0.78rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
 
+  /* ── HISTORICAL COMPARISON ───────────────────────────── */
+  .comparison-trigger { margin-top: 24px; text-align: center; }
+  .historical-wrap { display: flex; flex-direction: column; gap: 20px; margin-top: 16px; text-align: left; }
+  .historical-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .historical-title { font-size: 1.05rem; font-weight: 800; color: var(--gold); }
+
+  .dim-evo-table { display: flex; flex-direction: column; }
+  .dim-evo-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .dim-evo-header-row { padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+  .dim-evo-name { flex: 0 0 100px; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dim-evo-cell { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .dim-evo-bar-track { width: 85%; height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+  .dim-evo-delta { flex: 0 0 52px; text-align: right; }
+
+  .compliance-pair { border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; }
+  .compliance-pair:last-child { margin-bottom: 0; }
+  .compliance-pair-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .compliance-period { font-weight: 800; font-size: 0.9rem; color: var(--white); }
+  .compliance-arrow { color: var(--muted); }
+  .compliance-items { display: flex; flex-direction: column; gap: 14px; }
+  .compliance-item-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .compliance-scores { display: flex; align-items: center; gap: 7px; }
+  .compliance-delta { padding: 2px 8px; border-radius: 999px; font-size: 0.74rem; font-weight: 800; white-space: nowrap; }
+  .cdelta-up { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+  .cdelta-down { background: rgba(248,113,113,0.15); color: #fca5a5; border: 1px solid rgba(248,113,113,0.3); }
+  .cdelta-same { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+  .compliance-verdict { font-size: 0.73rem; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+
   /* ── RESPONSIVE ───────────────────────────────────────── */
   @media (max-width: 860px) {
     .info-grid, .admin-statbar { grid-template-columns: repeat(2, 1fr); }

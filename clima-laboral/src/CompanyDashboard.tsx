@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { computePeriodSummary, HistoricalComparison, type PeriodSummary } from "./HistoricalComparison";
 import { PeriodDashboard } from "./PeriodDashboard";
 import {
   closePeriod,
@@ -49,6 +50,10 @@ export function CompanyDashboard({
 
   const [copyOk, setCopyOk] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
+
+  const [showComparison, setShowComparison] = useState(false);
+  const [comparisonSummaries, setComparisonSummaries] = useState<PeriodSummary[]>([]);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
 
   const activePeriodo = periodos.find((p) => p.estado === "activo") ?? null;
   const closedPeriodos = periodos.filter((p) => p.estado === "cerrado");
@@ -114,6 +119,24 @@ export function CompanyDashboard({
       setError("No se pudieron cargar los resultados.");
     } finally {
       setViewingLoading(false);
+    }
+  }
+
+  async function loadComparison() {
+    setComparisonLoading(true);
+    try {
+      const summaries = await Promise.all(
+        closedPeriodos.map(async (p) => {
+          const responses = await getResponsesForPeriod(p.id);
+          return computePeriodSummary(p, responses);
+        })
+      );
+      setComparisonSummaries(summaries);
+      setShowComparison(true);
+    } catch {
+      setError("No se pudo cargar la comparación histórica.");
+    } finally {
+      setComparisonLoading(false);
     }
   }
 
@@ -284,6 +307,32 @@ export function CompanyDashboard({
             <p className="period-history-empty">
               El historial de mediciones anteriores aparecerá aquí.
             </p>
+          )}
+
+          {closedPeriodos.length >= 2 && (
+            <div className="comparison-trigger">
+              {!showComparison ? (
+                <button
+                  className="btn-primary"
+                  onClick={loadComparison}
+                  disabled={comparisonLoading}
+                  style={{ marginTop: 4 }}
+                >
+                  {comparisonLoading ? "Cargando comparación…" : "Ver comparación histórica"}
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => setShowComparison(false)}
+                    style={{ marginBottom: 4 }}
+                  >
+                    Ocultar comparación
+                  </button>
+                  <HistoricalComparison summaries={comparisonSummaries} />
+                </>
+              )}
+            </div>
           )}
 
           <p style={{ color: "var(--muted)", fontSize: "0.82rem", textAlign: "center", marginTop: 32 }}>
