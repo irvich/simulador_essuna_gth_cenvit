@@ -19,7 +19,7 @@ import {
 import { ActionMatrix } from "./ActionMatrix";
 import { Admin } from "./Admin";
 import { CompanyDashboard } from "./CompanyDashboard";
-import { loginEmpresa, submitResponse } from "./storage";
+import { getEmpresaById, loginEmpresa, submitResponse } from "./storage";
 import { css } from "./styles";
 import type { Answers, Empresa, LikertValue } from "./types";
 
@@ -124,6 +124,8 @@ export default function App() {
   // Employee survey context (from URL params)
   const [surveyPeriodoId, setSurveyPeriodoId] = useState<string | null>(null);
   const [surveyEmpresaId, setSurveyEmpresaId] = useState<string | null>(null);
+  const [surveyEmpresaNombre, setSurveyEmpresaNombre] = useState<string>("");
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
   // Survey state
   const [department, setDepartment] = useState("");
@@ -132,15 +134,24 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  // Read URL params on mount
+  // Read URL params on mount and fetch employee survey context
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const pId = params.get("periodo");
     const eId = params.get("empresa");
-    if (IS_SUPABASE_ENABLED && pId && eId) {
-      setSurveyPeriodoId(pId);
-      setSurveyEmpresaId(eId);
-    }
+    if (!IS_SUPABASE_ENABLED || !pId || !eId) return;
+    setSurveyPeriodoId(pId);
+    setSurveyEmpresaId(eId);
+    // Check if this device already submitted for this period
+    try {
+      if (localStorage.getItem(`clima_submitted_${pId}_${eId}`) === "1") {
+        setAlreadySubmitted(true);
+      }
+    } catch {}
+    // Fetch the company name to show on the survey start screen
+    getEmpresaById(eId)
+      .then((emp) => { if (emp) setSurveyEmpresaNombre(emp.nombre); })
+      .catch(() => {});
   }, []);
 
   const currentDimension = DIMENSIONS[dimensionIndex];
@@ -183,6 +194,10 @@ export default function App() {
         surveyPeriodoId ?? undefined,
         surveyEmpresaId ?? undefined
       );
+      if (surveyPeriodoId && surveyEmpresaId) {
+        try { localStorage.setItem(`clima_submitted_${surveyPeriodoId}_${surveyEmpresaId}`, "1"); } catch {}
+        setAlreadySubmitted(true);
+      }
       setScreen("thanks");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
@@ -319,33 +334,60 @@ export default function App() {
           <>
             {surveyPeriodoId ? (
               /* Employee mode: simplified survey start */
-              <header className="hero">
-                <div className="hero-badge">Encuesta de Clima Laboral</div>
-                <h1>Tu opinión importa</h1>
-                <p className="hero-sub">
-                  Responde las <strong>{QUESTIONS.length} preguntas</strong> de forma confidencial.
-                  Tus respuestas se suman al diagnóstico global de la organización.
-                </p>
-                <div className="org-input-wrap">
-                  <label className="org-label">Tu área o departamento</label>
-                  <select
-                    className="org-select"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
+              alreadySubmitted ? (
+                <div className="thanks-wrap">
+                  <div className="thanks-check">✓</div>
+                  <h1>Ya has respondido</h1>
+                  <p>
+                    Tu respuesta ya fue registrada{surveyEmpresaNombre ? ` para ${surveyEmpresaNombre}` : ""}.
+                    Gracias por participar en la medición de clima laboral.
+                  </p>
+                  <p>Si eres otra persona usando este mismo dispositivo, puedes responder a continuación.</p>
+                  <button
+                    className="btn-secondary"
+                    style={{ marginTop: 20 }}
+                    onClick={() => {
+                      try { localStorage.removeItem(`clima_submitted_${surveyPeriodoId}_${surveyEmpresaId}`); } catch {}
+                      setAlreadySubmitted(false);
+                    }}
                   >
-                    <option value="">Selecciona tu departamento…</option>
-                    {DEPARTMENTS.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
+                    Soy otra persona — responder
+                  </button>
                 </div>
-                <button className="btn-primary" onClick={startSurvey} disabled={!department}>
-                  Comenzar encuesta →
-                </button>
-                {!department && (
-                  <p className="warning-msg">Selecciona tu departamento para comenzar.</p>
-                )}
-              </header>
+              ) : (
+                <header className="hero">
+                  <div className="hero-badge">Encuesta de Clima Laboral</div>
+                  {surveyEmpresaNombre && (
+                    <p className="eyebrow gold" style={{ marginBottom: 10, fontSize: "0.85rem" }}>
+                      {surveyEmpresaNombre}
+                    </p>
+                  )}
+                  <h1>Tu opinión importa</h1>
+                  <p className="hero-sub">
+                    Responde las <strong>{QUESTIONS.length} preguntas</strong> de forma confidencial.
+                    Tus respuestas se suman al diagnóstico global de la organización.
+                  </p>
+                  <div className="org-input-wrap">
+                    <label className="org-label">Tu área o departamento</label>
+                    <select
+                      className="org-select"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                    >
+                      <option value="">Selecciona tu departamento…</option>
+                      {DEPARTMENTS.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button className="btn-primary" onClick={startSurvey} disabled={!department}>
+                    Comenzar encuesta →
+                  </button>
+                  {!department && (
+                    <p className="warning-msg">Selecciona tu departamento para comenzar.</p>
+                  )}
+                </header>
+              )
             ) : (
               /* Demo mode: full landing */
               <>

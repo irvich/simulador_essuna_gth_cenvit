@@ -339,6 +339,16 @@ export const css = `
     .recs-grid { grid-template-columns: 1fr 1fr !important; }
     .rec-card { border: 1px solid #e2e8f0 !important; background: #f8fafc !important; break-inside: avoid; }
     .matrix-section { break-before: page; }
+    .historical-wrap { gap: 14px !important; }
+    .historical-title { color: #d4af37 !important; }
+    .breakdown-card { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; backdrop-filter: none !important; break-inside: avoid; }
+    .compliance-pair { border-color: #e2e8f0 !important; break-inside: avoid; }
+    .compliance-period { color: #071b33 !important; }
+    .compliance-verdict { color: #64748b !important; }
+    .cdelta-up { color: #15803d !important; }
+    .cdelta-down { color: #dc2626 !important; }
+    .cdelta-same { color: #64748b !important; }
+    .dim-evo-bar-track { background: #e2e8f0 !important; }
     table.matrix td { color: #1e293b !important; }
     .matrix-input, .matrix-textarea, .matrix-select { color: #1e293b !important; background: white !important; border: 1px solid #e2e8f0 !important; }
     table.matrix th { background: #fdf6e3 !important; color: #92722a !important; }

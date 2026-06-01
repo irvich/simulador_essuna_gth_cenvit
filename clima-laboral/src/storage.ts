@@ -65,6 +65,12 @@ export async function getAllEmpresas(): Promise<Empresa[]> {
   return res.json();
 }
 
+export async function getEmpresaById(empresaId: string): Promise<Empresa | null> {
+  const res = await sbFetch(`/empresas?id=eq.${empresaId}&select=id,nombre,usuario,created_at`);
+  const data = (await res.json()) as Empresa[];
+  return data.length > 0 ? data[0] : null;
+}
+
 export async function createEmpresa(nombre: string, usuario: string, password: string): Promise<Empresa> {
   const password_hash = await sha256(password);
   const res = await sbFetch("/empresas", {
