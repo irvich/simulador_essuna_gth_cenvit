@@ -287,6 +287,14 @@ export const css = `
   .dept-drill-legend-bar { display: inline-block; width: 20px; height: 5px; border-radius: 3px; background: var(--sky); }
   .dept-drill-legend-line { display: inline-block; width: 18px; height: 2px; background: rgba(255,255,255,0.35); margin-bottom: 1px; }
 
+  /* ── Executive summary ────────────────────────────────────── */
+  .exec-kpi-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0 16px; }
+  .exec-kpi { flex: 1; min-width: 110px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; text-align: center; }
+  .exec-kpi-num { font-size: 1.5rem; font-weight: 900; line-height: 1; }
+  .exec-kpi-label { font-size: 0.7rem; color: var(--muted); margin-top: 5px; line-height: 1.3; }
+  .exec-summary-box { background: rgba(56,189,248,0.04); border: 1px solid rgba(56,189,248,0.14); border-radius: 10px; padding: 18px 20px; font-size: 0.87rem; line-height: 1.75; color: rgba(248,250,252,0.88); margin-bottom: 14px; }
+  .exec-summary-box p:last-child { margin-bottom: 0; }
+
   /* ── Heatmap dept × dimension ─────────────────────────────── */
   .heatmap-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
   .heatmap-table th { padding: 7px 8px; border-bottom: 1px solid var(--border); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; }

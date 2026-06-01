@@ -145,6 +145,109 @@ function DeptDrillDown({ deptName, deptResponses, globalScores }: {
   );
 }
 
+function ExecutiveSummary({ responses, periodoLabel, empresaNombre, scores, globalPct, departments }: {
+  responses: SurveyResponse[];
+  periodoLabel: string;
+  empresaNombre?: string;
+  scores: DimScore[];
+  globalPct: number;
+  departments: Array<{ name: string; count: number; pct: number }>;
+}) {
+  const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const sorted = useMemo(() => [...scores].sort((a, b) => b.pct - a.pct), [scores]);
+  const top = sorted[0];
+  const bottom = sorted[sorted.length - 1];
+  const bestDept = useMemo(() => departments.length > 0 ? [...departments].sort((a, b) => b.pct - a.pct)[0] : null, [departments]);
+  const worstDept = useMemo(() => departments.length > 1 ? [...departments].sort((a, b) => a.pct - b.pct)[0] : null, [departments]);
+
+  const narrative = useMemo(() => {
+    const empresa = empresaNombre || "la organización";
+    const level = scoreLevelLabel(globalPct);
+    let text = `En el período ${periodoLabel}, ${empresa} registró un Índice Global de Clima Laboral de ${globalPct}%, calificado como "${level}" según la escala del diagnóstico. La medición contó con la participación de ${responses.length} colaborador(es).`;
+    text += `\n\nLa dimensión con mayor fortaleza fue ${top.dim.label} (${top.pct}%), mientras que ${bottom.dim.label} (${bottom.pct}%) representa el área de mayor oportunidad de mejora.`;
+    if (bestDept) {
+      text += `\n\nA nivel departamental, ${bestDept.name} obtuvo el mejor desempeño (${bestDept.pct}%)`;
+      if (worstDept && worstDept.name !== bestDept.name) {
+        text += `, en contraste con ${worstDept.name} (${worstDept.pct}%), que requiere atención prioritaria`;
+      }
+      text += `.`;
+    }
+    const critical = sorted.filter((s) => s.pct < 60);
+    if (critical.length > 0) {
+      text += `\n\nSe recomienda priorizar acciones de mejora en ${critical.map((s) => s.dim.label).join(" y ")}, dado que estas dimensiones se encuentran en nivel Crítico.`;
+    } else {
+      const medium = sorted.filter((s) => s.pct < 80);
+      if (medium.length > 0) {
+        text += `\n\nSe recomienda fortalecer ${medium[medium.length - 1].dim.label} como el área con mayor potencial de crecimiento para el próximo período.`;
+      }
+    }
+    return text;
+  }, [scores, globalPct, departments, responses.length, periodoLabel, empresaNombre, top, bottom, bestDept, worstDept, sorted]);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(narrative);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {}
+  }
+
+  return (
+    <div className="breakdown-card">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", color: "inherit", padding: 0, cursor: "pointer", width: "100%" }}
+      >
+        <h2 style={{ margin: 0 }}>Resumen Ejecutivo</h2>
+        <span style={{ color: "var(--muted)", fontSize: "0.82rem", marginLeft: "auto" }}>{open ? "Ocultar ▲" : "Ver resumen ▼"}</span>
+      </button>
+
+      {!open && (
+        <p style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 10 }}>
+          Párrafo listo para copiar y compartir con directivos, con índice global, fortalezas, áreas de mejora y recomendación principal.
+        </p>
+      )}
+
+      {open && (
+        <>
+          <div className="exec-kpi-row">
+            <div className="exec-kpi">
+              <div className="exec-kpi-num" style={{ color: scoreLevelColor(globalPct) }}>{globalPct}%</div>
+              <div className="exec-kpi-label">Índice global · {scoreLevelLabel(globalPct)}</div>
+            </div>
+            <div className="exec-kpi">
+              <div className="exec-kpi-num" style={{ color: "#38bdf8" }}>{responses.length}</div>
+              <div className="exec-kpi-label">Participantes</div>
+            </div>
+            <div className="exec-kpi">
+              <div className="exec-kpi-num" style={{ color: top.dim.color, fontSize: "1rem", paddingTop: 6 }}>{top.dim.shortLabel}</div>
+              <div className="exec-kpi-label">Fortaleza · {top.pct}%</div>
+            </div>
+            <div className="exec-kpi">
+              <div className="exec-kpi-num" style={{ color: bottom.dim.color, fontSize: "1rem", paddingTop: 6 }}>{bottom.dim.shortLabel}</div>
+              <div className="exec-kpi-label">Oportunidad · {bottom.pct}%</div>
+            </div>
+          </div>
+          <div className="exec-summary-box">
+            {narrative.split("\n\n").map((para, i) => (
+              <p key={i} style={{ marginBottom: 12, lineHeight: 1.75 }}>{para}</p>
+            ))}
+          </div>
+          <button
+            className="btn-secondary"
+            style={{ fontSize: "0.8rem", padding: "7px 18px" }}
+            onClick={handleCopy}
+          >
+            {copied ? "¡Copiado al portapapeles!" : "Copiar texto"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function heatBg(pct: number): string {
   if (pct >= 80) return "rgba(34,197,94,0.22)";
   if (pct >= 60) return "rgba(212,175,55,0.22)";
@@ -387,6 +490,15 @@ export function PeriodDashboard({
               <span style={{ color: "#22c55e" }}>80–100% Bueno</span>
             </div>
           </div>
+
+          <ExecutiveSummary
+            responses={responses}
+            periodoLabel={periodoLabel}
+            empresaNombre={empresaNombre}
+            scores={scores}
+            globalPct={globalPct}
+            departments={departments}
+          />
 
           <div className="chart-grid">
             <div className="radar-card">
