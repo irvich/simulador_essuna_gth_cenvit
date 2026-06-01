@@ -8,7 +8,7 @@ import {
   type DimScore,
 } from "./shared";
 import { ActionMatrix } from "./ActionMatrix";
-import type { SurveyResponse } from "./types";
+import type { ActionRow, SurveyResponse } from "./types";
 
 function dimensionAverage(responses: SurveyResponse[], dimKey: string): number {
   const ids = QUESTIONS.filter((q) => q.dimension === dimKey).map((q) => q.id);
@@ -37,11 +37,15 @@ export function PeriodDashboard({
   responses,
   periodoLabel,
   empresaNombre,
+  savedPlan,
+  onSavePlan,
   onBack,
 }: {
   responses: SurveyResponse[];
   periodoLabel: string;
   empresaNombre?: string;
+  savedPlan?: ActionRow[] | null;
+  onSavePlan?: (rows: ActionRow[]) => Promise<void>;
   onBack?: () => void;
 }) {
   const scores: DimScore[] = useMemo(
@@ -186,7 +190,7 @@ export function PeriodDashboard({
             </div>
           )}
 
-          <ActionMatrix scores={scores} />
+          <ActionMatrix scores={scores} initialRows={savedPlan} onSave={onSavePlan} />
 
           <div className="results-actions no-print">
             <button className="btn-export" onClick={() => window.print()}>

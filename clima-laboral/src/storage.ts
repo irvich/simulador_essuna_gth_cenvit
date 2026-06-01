@@ -1,5 +1,5 @@
 import { IS_SUPABASE_ENABLED, SUPABASE_ANON_KEY, SUPABASE_URL } from "./config";
-import type { Answers, Empresa, Periodo, SurveyResponse } from "./types";
+import type { ActionRow, Answers, Empresa, Periodo, SurveyResponse } from "./types";
 
 export const storageMode: "supabase" | "local" = IS_SUPABASE_ENABLED ? "supabase" : "local";
 
@@ -109,6 +109,22 @@ export async function closePeriod(periodoId: string): Promise<void> {
     headers: { Prefer: "return=minimal" },
     body: JSON.stringify({ estado: "cerrado", cerrado_at: new Date().toISOString() }),
   });
+}
+
+// ── Plan de acción (persistido en periodos.plan_accion) ───────────────────────
+
+export async function savePlanAccion(periodoId: string, plan: ActionRow[]): Promise<void> {
+  await sbFetch(`/periodos?id=eq.${periodoId}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ plan_accion: plan }),
+  });
+}
+
+export async function getPlanAccion(periodoId: string): Promise<ActionRow[] | null> {
+  const res = await sbFetch(`/periodos?id=eq.${periodoId}&select=plan_accion`);
+  const data = (await res.json()) as Array<{ plan_accion: ActionRow[] | null }>;
+  return data[0]?.plan_accion ?? null;
 }
 
 // ── Responses ─────────────────────────────────────────────────────────────────

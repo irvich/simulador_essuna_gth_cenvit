@@ -1,7 +1,7 @@
 import React from "react";
 import { DIMENSIONS, QUESTIONS } from "./questions";
 import { scoreLevelColor } from "./shared";
-import type { Periodo, SurveyResponse } from "./types";
+import type { ActionRow, Periodo, SurveyResponse } from "./types";
 
 export interface PeriodSummary {
   periodo: Periodo;
@@ -90,61 +90,94 @@ function GlobalTrendChart({ summaries }: { summaries: PeriodSummary[] }) {
   );
 }
 
-function ComplianceTracker({ sorted }: { sorted: PeriodSummary[] }) {
+const STATUS_LABELS: Record<string, string> = {
+  pendiente: "Pendiente",
+  en_progreso: "En progreso",
+  completada: "Completada",
+};
+const STATUS_CLASS: Record<string, string> = {
+  pendiente: "status-pendiente",
+  en_progreso: "status-en-progreso",
+  completada: "status-completada",
+};
+
+function ComplianceTracker({ sorted, plans }: { sorted: PeriodSummary[]; plans?: Map<string, ActionRow[]> }) {
   const pairs = sorted.slice(0, -1).map((s, i) => ({ prev: s, curr: sorted[i + 1] }));
 
   return (
     <div className="breakdown-card">
       <h2>Cumplimiento del Plan de Acción</h2>
       <p className="matrix-sub" style={{ marginBottom: 20 }}>
-        Seguimiento por dimensión entre períodos consecutivos. Una mejora indica que las acciones implementadas tuvieron impacto positivo.
+        Seguimiento por dimensión entre períodos consecutivos. Si hay un plan guardado para el período anterior, se muestra la acción comprometida y su estado.
       </p>
-      {pairs.map(({ prev, curr }) => (
-        <div key={`${prev.periodo.id}-${curr.periodo.id}`} className="compliance-pair">
-          <div className="compliance-pair-header">
-            <span className="compliance-period">{prev.periodo.etiqueta}</span>
-            <span className="compliance-arrow">→</span>
-            <span className="compliance-period">{curr.periodo.etiqueta}</span>
-          </div>
-          <div className="compliance-items">
-            {DIMENSIONS
-              .map(dim => {
-                const prevPct = prev.dimScores.find(d => d.key === dim.key)?.pct ?? 0;
-                const currPct = curr.dimScores.find(d => d.key === dim.key)?.pct ?? 0;
-                return { dim, prevPct, currPct, delta: currPct - prevPct };
-              })
-              .sort((a, b) => a.prevPct - b.prevPct)
-              .map(({ dim, prevPct, currPct, delta }) => (
-                <div key={dim.key} className="compliance-item">
-                  <div className="compliance-item-header">
-                    <span style={{ color: dim.color, fontWeight: 700, fontSize: "0.85rem" }}>{dim.label}</span>
-                    <div className="compliance-scores">
-                      <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{prevPct}% →</span>
-                      <span style={{ color: scoreLevelColor(currPct), fontWeight: 800 }}>{currPct}%</span>
-                      <span className={`compliance-delta ${delta > 0 ? "cdelta-up" : delta < 0 ? "cdelta-down" : "cdelta-same"}`}>
-                        {delta > 0 ? `▲ +${delta}%` : delta < 0 ? `▼ ${delta}%` : "= 0%"}
-                      </span>
+      {pairs.map(({ prev, curr }) => {
+        const prevPlan = plans?.get(prev.periodo.id);
+        return (
+          <div key={`${prev.periodo.id}-${curr.periodo.id}`} className="compliance-pair">
+            <div className="compliance-pair-header">
+              <span className="compliance-period">{prev.periodo.etiqueta}</span>
+              <span className="compliance-arrow">→</span>
+              <span className="compliance-period">{curr.periodo.etiqueta}</span>
+              {prevPlan && (() => {
+                const completadas = prevPlan.filter((r) => r.status === "completada").length;
+                return (
+                  <span style={{ fontSize: "0.75rem", color: "#22c55e", fontWeight: 700, marginLeft: "auto" }}>
+                    {completadas}/{prevPlan.length} acciones completadas
+                  </span>
+                );
+              })()}
+            </div>
+            <div className="compliance-items">
+              {DIMENSIONS
+                .map(dim => {
+                  const prevPct = prev.dimScores.find(d => d.key === dim.key)?.pct ?? 0;
+                  const currPct = curr.dimScores.find(d => d.key === dim.key)?.pct ?? 0;
+                  const planRow = prevPlan?.find((r) => r.dimension === dim.label);
+                  return { dim, prevPct, currPct, delta: currPct - prevPct, planRow };
+                })
+                .sort((a, b) => a.prevPct - b.prevPct)
+                .map(({ dim, prevPct, currPct, delta, planRow }) => (
+                  <div key={dim.key} className="compliance-item">
+                    <div className="compliance-item-header">
+                      <span style={{ color: dim.color, fontWeight: 700, fontSize: "0.85rem" }}>{dim.label}</span>
+                      <div className="compliance-scores">
+                        <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>{prevPct}% →</span>
+                        <span style={{ color: scoreLevelColor(currPct), fontWeight: 800 }}>{currPct}%</span>
+                        <span className={`compliance-delta ${delta > 0 ? "cdelta-up" : delta < 0 ? "cdelta-down" : "cdelta-same"}`}>
+                          {delta > 0 ? `▲ +${delta}%` : delta < 0 ? `▼ ${delta}%` : "= 0%"}
+                        </span>
+                        {planRow && (
+                          <span className={`status-badge ${STATUS_CLASS[planRow.status] ?? "status-pendiente"}`}>
+                            {STATUS_LABELS[planRow.status] ?? planRow.status}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {planRow && (
+                      <div className="compliance-action-text">
+                        <strong>Acción comprometida:</strong> {planRow.action}
+                      </div>
+                    )}
+                    <div className="score-bar-track" style={{ margin: "6px 0 4px" }}>
+                      <div className="score-bar-fill" style={{ width: `${currPct}%`, background: scoreLevelColor(currPct) }} />
+                    </div>
+                    <div className="compliance-verdict">
+                      {delta > 5 ? "Mejora significativa — acciones implementadas con éxito." :
+                       delta > 0 ? "Mejora leve — continuar y reforzar el plan." :
+                       delta === 0 ? "Sin variación — revisar y ajustar la estrategia." :
+                       "Retroceso — priorizar esta dimensión como acción urgente."}
                     </div>
                   </div>
-                  <div className="score-bar-track" style={{ margin: "6px 0 4px" }}>
-                    <div className="score-bar-fill" style={{ width: `${currPct}%`, background: scoreLevelColor(currPct) }} />
-                  </div>
-                  <div className="compliance-verdict">
-                    {delta > 5 ? "Mejora significativa — acciones implementadas con éxito." :
-                     delta > 0 ? "Mejora leve — continuar y reforzar el plan." :
-                     delta === 0 ? "Sin variación — revisar y ajustar la estrategia." :
-                     "Retroceso — priorizar esta dimensión como acción urgente."}
-                  </div>
-                </div>
-              ))}
+                ))}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-export function HistoricalComparison({ summaries }: { summaries: PeriodSummary[] }) {
+export function HistoricalComparison({ summaries, plans }: { summaries: PeriodSummary[]; plans?: Map<string, ActionRow[]> }) {
   const sorted = [...summaries].sort((a, b) =>
     new Date(a.periodo.created_at).getTime() - new Date(b.periodo.created_at).getTime()
   );
@@ -262,7 +295,7 @@ export function HistoricalComparison({ summaries }: { summaries: PeriodSummary[]
       </div>
 
       {/* 4. Cumplimiento del plan */}
-      <ComplianceTracker sorted={sorted} />
+      <ComplianceTracker sorted={sorted} plans={plans} />
 
       <div className="results-actions no-print">
         <button className="btn-export" onClick={() => window.print()}>

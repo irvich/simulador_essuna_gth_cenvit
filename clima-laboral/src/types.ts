@@ -61,6 +61,7 @@ export interface ActionRow {
   deadline: string;
   indicator: string;
   priority: "Alta" | "Media" | "Baja";
+  status: "pendiente" | "en_progreso" | "completada";
 }
 
 export interface Empresa {

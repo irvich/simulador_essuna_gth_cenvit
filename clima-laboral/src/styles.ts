@@ -453,6 +453,18 @@ export const css = `
   .form-field { display: flex; flex-direction: column; gap: 5px; }
   .form-field label { font-size: 0.78rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
 
+  /* ── PLAN DE MEJORA ──────────────────────────────────── */
+  .plan-progress-inline { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .plan-save-area { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+  .plan-saved-label { font-size: 0.78rem; color: #22c55e; font-weight: 700; white-space: nowrap; }
+
+  .status-badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
+  .status-pendiente { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.25); }
+  .status-en-progreso { background: rgba(212,175,55,0.14); color: #fcd34d; border: 1px solid rgba(212,175,55,0.3); }
+  .status-completada { background: rgba(34,197,94,0.14); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+
+  .compliance-action-text { font-size: 0.78rem; color: var(--muted); margin: 4px 0 2px; line-height: 1.5; font-style: italic; }
+
   /* ── HISTORICAL COMPARISON ───────────────────────────── */
   .comparison-trigger { margin-top: 24px; text-align: center; }
   .historical-wrap { display: flex; flex-direction: column; gap: 20px; margin-top: 16px; text-align: left; }

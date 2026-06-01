@@ -61,6 +61,9 @@
 //   CREATE POLICY "anon_read"   ON respuestas FOR SELECT USING (true);
 //   CREATE POLICY "anon_insert" ON respuestas FOR INSERT WITH CHECK (true);
 //
+//   -- Plan de mejora persistente (agregar después de crear las tablas)
+//   ALTER TABLE periodos ADD COLUMN IF NOT EXISTS plan_accion JSONB;
+//
 // PASO 3: En Project Settings → API, copia "Project URL" y "anon public key".
 //         Pégalos a continuación y vuelve a desplegar.
 //

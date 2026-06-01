@@ -4,10 +4,12 @@ import { PeriodDashboard } from "./PeriodDashboard";
 import {
   closePeriod,
   createPeriod,
+  getPlanAccion,
   getPeriodsForCompany,
   getResponsesForPeriod,
+  savePlanAccion,
 } from "./storage";
-import type { Empresa, Periodo, SurveyResponse } from "./types";
+import type { ActionRow, Empresa, Periodo, SurveyResponse } from "./types";
 
 function suggestLabel(): string {
   const now = new Date();
@@ -23,6 +25,18 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es-ES", {
     day: "2-digit", month: "short", year: "numeric",
   });
+}
+
+function PlanBadge({ plan }: { plan: ActionRow[] }) {
+  const completadas = plan.filter((r) => r.status === "completada").length;
+  const total = plan.length;
+  const pct = Math.round((completadas / total) * 100);
+  const color = pct === 100 ? "#22c55e" : pct >= 50 ? "#d4af37" : "#94a3b8";
+  return (
+    <span style={{ fontSize: "0.75rem", fontWeight: 700, color, whiteSpace: "nowrap" }}>
+      Plan: {completadas}/{total} ✓
+    </span>
+  );
 }
 
 export function CompanyDashboard({
@@ -43,6 +57,7 @@ export function CompanyDashboard({
 
   const [viewingPeriodo, setViewingPeriodo] = useState<Periodo | null>(null);
   const [viewingResponses, setViewingResponses] = useState<SurveyResponse[]>([]);
+  const [viewingPlan, setViewingPlan] = useState<ActionRow[] | null>(null);
   const [viewingLoading, setViewingLoading] = useState(false);
 
   const [activeResponses, setActiveResponses] = useState<SurveyResponse[]>([]);
@@ -53,7 +68,11 @@ export function CompanyDashboard({
 
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonSummaries, setComparisonSummaries] = useState<PeriodSummary[]>([]);
+  const [comparisonPlans, setComparisonPlans] = useState<Map<string, ActionRow[]>>(new Map());
   const [comparisonLoading, setComparisonLoading] = useState(false);
+
+  // Cache loaded plans keyed by periodoId to avoid re-fetching
+  const [planCache, setPlanCache] = useState<Map<string, ActionRow[] | null>>(new Map());
 
   const activePeriodo = periodos.find((p) => p.estado === "activo") ?? null;
   const closedPeriodos = periodos.filter((p) => p.estado === "cerrado");
@@ -80,6 +99,17 @@ export function CompanyDashboard({
       .catch(() => {})
       .finally(() => setActiveLoading(false));
   }, [activePeriodo?.id]);
+
+  // Pre-fetch plans for closed periods in the background to show badges
+  useEffect(() => {
+    if (closedPeriodos.length === 0) return;
+    closedPeriodos.forEach((p) => {
+      if (planCache.has(p.id)) return;
+      getPlanAccion(p.id)
+        .then((plan) => setPlanCache((prev) => new Map(prev).set(p.id, plan)))
+        .catch(() => setPlanCache((prev) => new Map(prev).set(p.id, null)));
+    });
+  }, [periodos]);
 
   async function handleCreate() {
     if (!newLabel.trim()) { setCreateError("Ingresa una etiqueta para el período."); return; }
@@ -113,8 +143,16 @@ export function CompanyDashboard({
   async function handleView(periodo: Periodo) {
     setViewingLoading(true);
     try {
-      setViewingResponses(await getResponsesForPeriod(periodo.id));
+      const [responses, plan] = await Promise.all([
+        getResponsesForPeriod(periodo.id),
+        planCache.has(periodo.id) ? Promise.resolve(planCache.get(periodo.id) ?? null) : getPlanAccion(periodo.id),
+      ]);
+      setViewingResponses(responses);
+      setViewingPlan(plan);
       setViewingPeriodo(periodo);
+      if (!planCache.has(periodo.id)) {
+        setPlanCache((prev) => new Map(prev).set(periodo.id, plan));
+      }
     } catch {
       setError("No se pudieron cargar los resultados.");
     } finally {
@@ -122,16 +160,34 @@ export function CompanyDashboard({
     }
   }
 
+  async function handleSavePlan(rows: ActionRow[]) {
+    if (!viewingPeriodo) return;
+    await savePlanAccion(viewingPeriodo.id, rows);
+    setPlanCache((prev) => new Map(prev).set(viewingPeriodo.id, rows));
+    setViewingPlan(rows);
+  }
+
   async function loadComparison() {
     setComparisonLoading(true);
     try {
-      const summaries = await Promise.all(
+      const results = await Promise.all(
         closedPeriodos.map(async (p) => {
-          const responses = await getResponsesForPeriod(p.id);
-          return computePeriodSummary(p, responses);
+          const [responses, plan] = await Promise.all([
+            getResponsesForPeriod(p.id),
+            planCache.has(p.id) ? Promise.resolve(planCache.get(p.id) ?? null) : getPlanAccion(p.id),
+          ]);
+          if (plan && !planCache.has(p.id)) {
+            setPlanCache((prev) => new Map(prev).set(p.id, plan));
+          }
+          return { summary: computePeriodSummary(p, responses), plan, periodoId: p.id };
         })
       );
-      setComparisonSummaries(summaries);
+      setComparisonSummaries(results.map((r) => r.summary));
+      const plans = new Map<string, ActionRow[]>();
+      results.forEach(({ periodoId, plan }) => {
+        if (plan) plans.set(periodoId, plan);
+      });
+      setComparisonPlans(plans);
       setShowComparison(true);
     } catch {
       setError("No se pudo cargar la comparación histórica.");
@@ -153,6 +209,8 @@ export function CompanyDashboard({
         responses={viewingResponses}
         periodoLabel={viewingPeriodo.etiqueta}
         empresaNombre={empresa.nombre}
+        savedPlan={viewingPlan}
+        onSavePlan={handleSavePlan}
         onBack={() => setViewingPeriodo(null)}
       />
     );
@@ -273,30 +331,35 @@ export function CompanyDashboard({
                       <th>Período</th>
                       <th>Inicio</th>
                       <th>Cierre</th>
-                      <th>Estado</th>
+                      <th>Plan de mejora</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {closedPeriodos.map((p) => (
-                      <tr key={p.id}>
-                        <td style={{ fontWeight: 700 }}>{p.etiqueta}</td>
-                        <td>{fmtDate(p.created_at)}</td>
-                        <td>{p.cerrado_at ? fmtDate(p.cerrado_at) : "—"}</td>
-                        <td>
-                          <span className="estado-badge estado-cerrado">Cerrado</span>
-                        </td>
-                        <td>
-                          <button
-                            className="btn-secondary"
-                            style={{ padding: "5px 14px", fontSize: "0.8rem" }}
-                            onClick={() => handleView(p)}
-                          >
-                            Ver resultados
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {closedPeriodos.map((p) => {
+                      const plan = planCache.get(p.id);
+                      return (
+                        <tr key={p.id}>
+                          <td style={{ fontWeight: 700 }}>{p.etiqueta}</td>
+                          <td>{fmtDate(p.created_at)}</td>
+                          <td>{p.cerrado_at ? fmtDate(p.cerrado_at) : "—"}</td>
+                          <td>
+                            {plan ? <PlanBadge plan={plan} /> : (
+                              <span style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Sin guardar</span>
+                            )}
+                          </td>
+                          <td>
+                            <button
+                              className="btn-secondary"
+                              style={{ padding: "5px 14px", fontSize: "0.8rem" }}
+                              onClick={() => handleView(p)}
+                            >
+                              Ver / editar plan
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -329,7 +392,7 @@ export function CompanyDashboard({
                   >
                     Ocultar comparación
                   </button>
-                  <HistoricalComparison summaries={comparisonSummaries} />
+                  <HistoricalComparison summaries={comparisonSummaries} plans={comparisonPlans} />
                 </>
               )}
             </div>
