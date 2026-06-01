@@ -287,6 +287,19 @@ export const css = `
   .dept-drill-legend-bar { display: inline-block; width: 20px; height: 5px; border-radius: 3px; background: var(--sky); }
   .dept-drill-legend-line { display: inline-block; width: 18px; height: 2px; background: rgba(255,255,255,0.35); margin-bottom: 1px; }
 
+  /* ── Survey comment field ─────────────────────────────────── */
+  .survey-comment-block { margin: 8px 0 20px; padding: 16px 18px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; }
+  .survey-comment-label { display: block; font-size: 0.88rem; font-weight: 700; margin-bottom: 10px; }
+  .survey-comment-input { width: 100%; background: rgba(4,20,38,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--white); padding: 10px 12px; font-size: 0.9rem; resize: vertical; font-family: inherit; }
+  .survey-comment-input:focus { outline: none; border-color: rgba(56,189,248,0.5); }
+  .survey-comment-hint { font-size: 0.72rem; color: var(--muted); margin-top: 6px; }
+
+  /* ── Comments list (dashboard) ────────────────────────────── */
+  .comments-list { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; max-height: 480px; overflow-y: auto; }
+  .comment-item { background: rgba(56,189,248,0.04); border-left: 3px solid rgba(56,189,248,0.4); border-radius: 0 8px 8px 0; padding: 12px 16px; }
+  .comment-text { font-size: 0.88rem; line-height: 1.6; color: rgba(248,250,252,0.9); font-style: italic; }
+  .comment-meta { font-size: 0.75rem; color: var(--muted); margin-top: 6px; font-weight: 600; }
+
   /* ── Executive summary ────────────────────────────────────── */
   .exec-kpi-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0 16px; }
   .exec-kpi { flex: 1; min-width: 110px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; text-align: center; }

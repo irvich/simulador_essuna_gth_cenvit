@@ -49,6 +49,7 @@ export interface SurveyResponse {
   createdAt: string;
   department: string;
   answers: Answers;
+  comment?: string;
 }
 
 /** Fila editable de la matriz del plan de acción. */

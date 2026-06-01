@@ -132,6 +132,7 @@ export default function App() {
   const [department, setDepartment] = useState("");
   const [dimensionIndex, setDimensionIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
+  const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
@@ -183,6 +184,7 @@ export default function App() {
 
   function startSurvey() {
     setAnswers({});
+    setComment("");
     setDimensionIndex(0);
     setSubmitError("");
     setScreen("survey");
@@ -196,7 +198,8 @@ export default function App() {
         department || "Sin especificar",
         answers,
         surveyPeriodoId ?? undefined,
-        surveyEmpresaId ?? undefined
+        surveyEmpresaId ?? undefined,
+        comment
       );
       if (surveyPeriodoId && surveyEmpresaId) {
         try { localStorage.setItem(`clima_submitted_${surveyPeriodoId}_${surveyEmpresaId}`, "1"); } catch {}
@@ -229,6 +232,7 @@ export default function App() {
 
   function restart() {
     setAnswers({});
+    setComment("");
     setDimensionIndex(0);
     setDepartment("");
     setSubmitError("");
@@ -537,6 +541,23 @@ export default function App() {
                 );
               })}
             </div>
+
+            {dimensionIndex === DIMENSIONS.length - 1 && (
+              <div className="survey-comment-block">
+                <label className="survey-comment-label">
+                  Comentario o sugerencia <span style={{ color: "var(--muted)", fontWeight: 400 }}>(opcional, confidencial)</span>
+                </label>
+                <textarea
+                  className="survey-comment-input"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="¿Hay algo más que quieras compartir sobre tu experiencia en la organización?"
+                  rows={4}
+                  maxLength={1000}
+                />
+                <p className="survey-comment-hint">{comment.length}/1000 · Tu comentario es anónimo y se muestra sin identificarte.</p>
+              </div>
+            )}
 
             <div className="survey-nav">
               <button className="btn-secondary" onClick={goPrev} disabled={dimensionIndex === 0 || submitting}>

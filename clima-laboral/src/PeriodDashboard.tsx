@@ -13,12 +13,13 @@ import type { ActionRow, SurveyResponse } from "./types";
 
 function exportCSV(responses: SurveyResponse[], label: string) {
   const qHeaders = QUESTIONS.map((q) => `"P${q.id}: ${q.text.replace(/"/g, '""')}"`);
-  const header = ["Fecha", "Departamento", ...qHeaders].join(",");
+  const header = ["Fecha", "Departamento", ...qHeaders, "Comentario"].join(",");
   const rows = responses.map((r) => {
     const fecha = new Date(r.createdAt).toLocaleDateString("es-ES");
     const dept = `"${r.department.replace(/"/g, '""')}"`;
     const scores = QUESTIONS.map((q) => r.answers[q.id] ?? "");
-    return [fecha, dept, ...scores].join(",");
+    const comment = `"${(r.comment ?? "").replace(/"/g, '""')}"`;
+    return [fecha, dept, ...scores, comment].join(",");
   });
   const csv = [header, ...rows].join("\n");
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
@@ -141,6 +142,47 @@ function DeptDrillDown({ deptName, deptResponses, globalScores }: {
         <span className="dept-drill-legend-bar" /> Dpto. &nbsp;
         <span className="dept-drill-legend-line" /> Empresa
       </p>
+    </div>
+  );
+}
+
+function CommentsSection({ responses }: { responses: SurveyResponse[] }) {
+  const [open, setOpen] = useState(false);
+  const comments = useMemo(
+    () => responses
+      .filter((r) => r.comment && r.comment.trim())
+      .map((r) => ({ text: r.comment!.trim(), department: r.department, createdAt: r.createdAt })),
+    [responses]
+  );
+
+  if (comments.length === 0) return null;
+
+  return (
+    <div className="breakdown-card">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", color: "inherit", padding: 0, cursor: "pointer", width: "100%" }}
+      >
+        <h2 style={{ margin: 0 }}>Comentarios de Colaboradores</h2>
+        <span style={{ color: "var(--muted)", fontSize: "0.82rem", marginLeft: "auto" }}>
+          {comments.length} comentario(s) · {open ? "Ocultar ▲" : "Ver ▼"}
+        </span>
+      </button>
+      {!open && (
+        <p style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 10 }}>
+          Respuestas abiertas y anónimas dejadas por los participantes. Útiles para entender el "por qué" detrás de los números.
+        </p>
+      )}
+      {open && (
+        <div className="comments-list">
+          {comments.map((c, i) => (
+            <div key={i} className="comment-item">
+              <p className="comment-text">"{c.text}"</p>
+              <p className="comment-meta">— {c.department}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -612,6 +654,8 @@ export function PeriodDashboard({
           </div>
 
           <QuestionAnalysis responses={responses} />
+
+          <CommentsSection responses={responses} />
 
           <ActionMatrix scores={scores} initialRows={savedPlan} onSave={onSavePlan} />
 

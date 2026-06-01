@@ -152,12 +152,14 @@ export async function getResponsesForPeriod(periodoId: string): Promise<SurveyRe
     created_at: string;
     departamento: string;
     respuestas: Answers;
+    comentario?: string | null;
   }>;
   return rows.map((r) => ({
     id: r.id,
     createdAt: r.created_at,
     department: r.departamento,
     answers: r.respuestas,
+    comment: r.comentario ?? undefined,
   }));
 }
 
@@ -165,9 +167,17 @@ export async function submitResponse(
   department: string,
   answers: Answers,
   periodoId?: string,
-  empresaId?: string
+  empresaId?: string,
+  comment?: string
 ): Promise<void> {
   if (IS_SUPABASE_ENABLED && periodoId && empresaId) {
+    const body: Record<string, unknown> = {
+      periodo_id: periodoId,
+      empresa_id: empresaId,
+      departamento: department,
+      respuestas: answers,
+    };
+    if (comment && comment.trim()) body.comentario = comment.trim();
     const res = await fetch(`${SUPABASE_URL}/rest/v1/respuestas`, {
       method: "POST",
       headers: {
@@ -176,16 +186,11 @@ export async function submitResponse(
         "Content-Type": "application/json",
         Prefer: "return=minimal",
       },
-      body: JSON.stringify({
-        periodo_id: periodoId,
-        empresa_id: empresaId,
-        departamento: department,
-        respuestas: answers,
-      }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`Supabase insert error: ${res.status}`);
   } else {
-    localSave({ id: uuid(), createdAt: new Date().toISOString(), department, answers });
+    localSave({ id: uuid(), createdAt: new Date().toISOString(), department, answers, comment: comment?.trim() || undefined });
   }
 }
 
