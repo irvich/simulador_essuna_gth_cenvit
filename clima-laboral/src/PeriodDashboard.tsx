@@ -145,6 +145,89 @@ function DeptDrillDown({ deptName, deptResponses, globalScores }: {
   );
 }
 
+function heatBg(pct: number): string {
+  if (pct >= 80) return "rgba(34,197,94,0.22)";
+  if (pct >= 60) return "rgba(212,175,55,0.22)";
+  return "rgba(248,113,113,0.22)";
+}
+function heatText(pct: number): string {
+  if (pct >= 80) return "#86efac";
+  if (pct >= 60) return "#fde68a";
+  return "#fca5a5";
+}
+
+function DeptHeatmap({ departments, deptResponsesMap, scores, globalPct }: {
+  departments: Array<{ name: string; count: number; pct: number }>;
+  deptResponsesMap: Map<string, SurveyResponse[]>;
+  scores: DimScore[];
+  globalPct: number;
+}) {
+  const matrix = useMemo(() =>
+    departments.map((d) => ({
+      name: d.name,
+      count: d.count,
+      globalPct: d.pct,
+      dimScores: DIMENSIONS.map((dim) => dimensionAverage(deptResponsesMap.get(d.name) ?? [], dim.key)),
+    })),
+    [departments, deptResponsesMap]
+  );
+
+  return (
+    <div className="breakdown-card">
+      <h2>Mapa de Calor: Departamento × Dimensión</h2>
+      <div className="matrix-scroll">
+        <table className="heatmap-table">
+          <thead>
+            <tr>
+              <th className="heatmap-dept-col">Departamento</th>
+              {DIMENSIONS.map((dim) => (
+                <th key={dim.key} style={{ color: dim.color, textAlign: "center" }}>{dim.shortLabel}</th>
+              ))}
+              <th style={{ textAlign: "center", color: "var(--muted)" }}>Global</th>
+            </tr>
+          </thead>
+          <tbody>
+            {matrix.map((row) => (
+              <tr key={row.name}>
+                <td className="heatmap-dept-name">
+                  {row.name}
+                  <span className="heatmap-count">({row.count})</span>
+                </td>
+                {row.dimScores.map((pct, i) => (
+                  <td key={i} className="heatmap-cell" style={{ background: heatBg(pct) }}>
+                    <span style={{ color: heatText(pct) }}>{pct}%</span>
+                  </td>
+                ))}
+                <td className="heatmap-cell heatmap-global" style={{ background: heatBg(row.globalPct) }}>
+                  <span style={{ color: heatText(row.globalPct), fontWeight: 800 }}>{row.globalPct}%</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="heatmap-avg-row">
+              <td className="heatmap-dept-name" style={{ color: "var(--muted)", fontStyle: "italic" }}>Empresa</td>
+              {scores.map(({ dim, pct }) => (
+                <td key={dim.key} className="heatmap-cell" style={{ background: heatBg(pct) }}>
+                  <span style={{ color: heatText(pct), fontWeight: 800 }}>{pct}%</span>
+                </td>
+              ))}
+              <td className="heatmap-cell heatmap-global" style={{ background: heatBg(globalPct) }}>
+                <span style={{ color: heatText(globalPct), fontWeight: 800 }}>{globalPct}%</span>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div className="heatmap-legend">
+        <span className="heatmap-legend-item heat-low">0–59% Crítico</span>
+        <span className="heatmap-legend-item heat-mid">60–79% Regular</span>
+        <span className="heatmap-legend-item heat-high">80–100% Bueno</span>
+      </div>
+    </div>
+  );
+}
+
 function dimensionAverage(responses: SurveyResponse[], dimKey: string): number {
   const ids = QUESTIONS.filter((q) => q.dimension === dimKey).map((q) => q.id);
   let sum = 0, count = 0;
@@ -384,6 +467,15 @@ export function PeriodDashboard({
                 </table>
               </div>
             </div>
+          )}
+
+          {departments.length >= 2 && (
+            <DeptHeatmap
+              departments={departments}
+              deptResponsesMap={deptResponsesMap}
+              scores={scores}
+              globalPct={globalPct}
+            />
           )}
 
           {/* ── Recomendaciones por dimensión ─────────────── */}

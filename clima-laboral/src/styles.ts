@@ -287,6 +287,22 @@ export const css = `
   .dept-drill-legend-bar { display: inline-block; width: 20px; height: 5px; border-radius: 3px; background: var(--sky); }
   .dept-drill-legend-line { display: inline-block; width: 18px; height: 2px; background: rgba(255,255,255,0.35); margin-bottom: 1px; }
 
+  /* ── Heatmap dept × dimension ─────────────────────────────── */
+  .heatmap-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  .heatmap-table th { padding: 7px 8px; border-bottom: 1px solid var(--border); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; }
+  .heatmap-dept-col { text-align: left; color: var(--muted); min-width: 130px; }
+  .heatmap-table td { border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .heatmap-dept-name { padding: 9px 10px; font-weight: 700; text-align: left; white-space: nowrap; }
+  .heatmap-count { margin-left: 5px; font-weight: 400; color: var(--muted); font-size: 0.73rem; }
+  .heatmap-cell { text-align: center; padding: 8px 6px; font-size: 0.82rem; font-weight: 700; min-width: 56px; }
+  .heatmap-global { border-left: 1px solid rgba(255,255,255,0.08); }
+  .heatmap-avg-row td { border-top: 1px solid rgba(255,255,255,0.12); border-bottom: none !important; }
+  .heatmap-legend { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+  .heatmap-legend-item { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 4px; }
+  .heat-low  { background: rgba(248,113,113,0.18); color: #fca5a5; border: 1px solid rgba(248,113,113,0.3); }
+  .heat-mid  { background: rgba(212,175,55,0.18);  color: #fde68a; border: 1px solid rgba(212,175,55,0.3);  }
+  .heat-high { background: rgba(34,197,94,0.18);   color: #86efac; border: 1px solid rgba(34,197,94,0.3);   }
+
   .mode-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.7rem; font-weight: 800; }
   .mode-local { background: rgba(251,146,60,0.15); color: #fdba74; border: 1px solid rgba(251,146,60,0.35); }
   .mode-supabase { background: rgba(34,197,94,0.15); color: #86efac; border: 1px solid rgba(34,197,94,0.35); }
