@@ -287,6 +287,11 @@ export const css = `
   .dept-drill-legend-bar { display: inline-block; width: 20px; height: 5px; border-radius: 3px; background: var(--sky); }
   .dept-drill-legend-line { display: inline-block; width: 18px; height: 2px; background: rgba(255,255,255,0.35); margin-bottom: 1px; }
 
+  /* ── Portfolio badge (admin company list) ─────────────────── */
+  .portfolio-badge { display: flex; align-items: center; justify-content: center; min-width: 54px; height: 54px; border-radius: 12px; font-size: 1.05rem; font-weight: 900; border: 1px solid var(--border); flex-shrink: 0; }
+  .portfolio-loading { color: var(--muted); background: rgba(255,255,255,0.03); }
+  .portfolio-empty { color: var(--muted); background: rgba(255,255,255,0.03); }
+
   /* ── Department filter bar ───────────────────────────────── */
   .dept-filter-bar { margin-bottom: 16px; }
   .dept-filter-label { display: block; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 8px; }

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ADMIN_PASSWORD, IS_SUPABASE_ENABLED } from "./config";
+import { QUESTIONS } from "./questions";
+import { scoreLevelColor, scoreLevelLabel } from "./shared";
 import { PeriodDashboard } from "./PeriodDashboard";
 import {
   clearLocalResponses,
@@ -15,6 +17,24 @@ import {
 import type { ActionRow, Empresa, Periodo, SurveyResponse } from "./types";
 
 type AdminView = "companies" | "periods" | "results";
+
+interface PortfolioStat {
+  globalPct: number;
+  periodLabel: string;
+  estado: "activo" | "cerrado";
+  responseCount: number;
+}
+
+function globalIndex(responses: SurveyResponse[]): number {
+  let sum = 0, count = 0;
+  for (const r of responses) {
+    for (const q of QUESTIONS) {
+      const v = r.answers[q.id];
+      if (v !== undefined) { sum += v; count++; }
+    }
+  }
+  return count === 0 ? 0 : Math.round((sum / count / 5) * 100);
+}
 
 export function Admin({ onExit }: { onExit: () => void }) {
   const [authed, setAuthed] = useState(false);
@@ -50,6 +70,9 @@ export function Admin({ onExit }: { onExit: () => void }) {
   const [creating, setCreating] = useState(false);
   const [formError, setFormError] = useState("");
 
+  // Portfolio overview: latest climate index per company
+  const [portfolio, setPortfolio] = useState<Map<string, PortfolioStat | null>>(new Map());
+
   function tryLogin() {
     if (pw === ADMIN_PASSWORD) { setAuthed(true); setLoginError(""); }
     else setLoginError("Contraseña incorrecta.");
@@ -78,6 +101,35 @@ export function Admin({ onExit }: { onExit: () => void }) {
     catch { setDataError("No se pudieron cargar las empresas. Verifica la configuración de Supabase."); }
     finally { setDataLoading(false); }
   }
+
+  // Background: compute the latest climate index for each company (portfolio overview)
+  useEffect(() => {
+    if (empresas.length === 0) return;
+    let cancelled = false;
+    empresas.forEach(async (emp) => {
+      if (portfolio.has(emp.id)) return;
+      try {
+        const periodos = await getPeriodsForCompany(emp.id);
+        if (periodos.length === 0) {
+          if (!cancelled) setPortfolio((prev) => new Map(prev).set(emp.id, null));
+          return;
+        }
+        // Prefer the active period; otherwise the most recent (list is created_at desc)
+        const target = periodos.find((p) => p.estado === "activo") ?? periodos[0];
+        const responses = await getResponsesForPeriod(target.id);
+        const stat: PortfolioStat = {
+          globalPct: globalIndex(responses),
+          periodLabel: target.etiqueta,
+          estado: target.estado,
+          responseCount: responses.length,
+        };
+        if (!cancelled) setPortfolio((prev) => new Map(prev).set(emp.id, stat));
+      } catch {
+        if (!cancelled) setPortfolio((prev) => new Map(prev).set(emp.id, null));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [empresas]);
 
   async function handleSelectEmpresa(emp: Empresa) {
     setSelectedEmpresa(emp);
@@ -360,6 +412,36 @@ export function Admin({ onExit }: { onExit: () => void }) {
         </div>
       )}
 
+      {!dataLoading && empresas.length > 0 && (() => {
+        const stats = empresas.map((e) => portfolio.get(e.id)).filter((s): s is PortfolioStat => s != null && s.responseCount > 0);
+        const measured = stats.length;
+        const avg = measured > 0 ? Math.round(stats.reduce((sum, s) => sum + s.globalPct, 0) / measured) : 0;
+        const critical = stats.filter((s) => s.globalPct < 60).length;
+        const active = empresas.map((e) => portfolio.get(e.id)).filter((s) => s?.estado === "activo").length;
+        return (
+          <div className="admin-statbar" style={{ marginBottom: 22 }}>
+            <div className="stat-card">
+              <div className="stat-num" style={{ color: "#38bdf8" }}>{empresas.length}</div>
+              <div className="stat-label">Empresas</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-num" style={{ color: measured > 0 ? scoreLevelColor(avg) : "var(--muted)" }}>
+                {measured > 0 ? `${avg}%` : "—"}
+              </div>
+              <div className="stat-label">Clima promedio</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-num" style={{ color: critical > 0 ? "#f87171" : "#22c55e" }}>{critical}</div>
+              <div className="stat-label">En nivel crítico</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-num" style={{ color: "#d4af37" }}>{active}</div>
+              <div className="stat-label">Medición activa</div>
+            </div>
+          </div>
+        );
+      })()}
+
       {dataLoading && (
         <p style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>Cargando empresas…</p>
       )}
@@ -377,9 +459,27 @@ export function Admin({ onExit }: { onExit: () => void }) {
           {empresas.map((emp) => (
             <div key={emp.id} className="empresa-card" style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                <div>
-                  <div className="empresa-name">{emp.nombre}</div>
-                  <div className="empresa-usuario">@{emp.usuario}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  {(() => {
+                    const stat = portfolio.get(emp.id);
+                    if (stat === undefined) return <div className="portfolio-badge portfolio-loading" title="Cargando…">…</div>;
+                    if (stat === null || stat.responseCount === 0) {
+                      return <div className="portfolio-badge portfolio-empty" title="Sin respuestas aún">—</div>;
+                    }
+                    return (
+                      <div
+                        className="portfolio-badge"
+                        style={{ background: scoreLevelColor(stat.globalPct) + "1f", borderColor: scoreLevelColor(stat.globalPct) + "55", color: scoreLevelColor(stat.globalPct) }}
+                        title={`${stat.periodLabel} · ${scoreLevelLabel(stat.globalPct)} · ${stat.responseCount} resp.`}
+                      >
+                        {stat.globalPct}%
+                      </div>
+                    );
+                  })()}
+                  <div>
+                    <div className="empresa-name">{emp.nombre}</div>
+                    <div className="empresa-usuario">@{emp.usuario}</div>
+                  </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                   {resetOkId === emp.id && <span style={{ fontSize: "0.76rem", color: "#22c55e", fontWeight: 700 }}>✓ Contraseña actualizada</span>}
