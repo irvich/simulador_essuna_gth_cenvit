@@ -33,8 +33,9 @@ function exportCSV(responses: SurveyResponse[], label: string) {
   URL.revokeObjectURL(url);
 }
 
-function QuestionAnalysis({ responses }: { responses: SurveyResponse[] }) {
-  const [open, setOpen] = useState(false);
+function QuestionAnalysis({ responses, forceOpen }: { responses: SurveyResponse[]; forceOpen?: boolean }) {
+  const [openState, setOpen] = useState(false);
+  const open = openState || !!forceOpen;
 
   const byDim = useMemo(() => {
     const qAvgs = QUESTIONS.map((q) => {
@@ -55,7 +56,7 @@ function QuestionAnalysis({ responses }: { responses: SurveyResponse[] }) {
   return (
     <div className="breakdown-card">
       <button
-        className="q-analysis-toggle"
+        className="q-analysis-toggle no-print"
         onClick={() => setOpen((o) => !o)}
         style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", color: "inherit", padding: 0, cursor: "pointer", width: "100%" }}
       >
@@ -64,8 +65,9 @@ function QuestionAnalysis({ responses }: { responses: SurveyResponse[] }) {
           {open ? "Ocultar ▲" : "Ver preguntas ▼"}
         </span>
       </button>
+      <h2 className="print-only" style={{ margin: 0 }}>Análisis Detallado por Pregunta</h2>
       {!open && (
-        <p style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 10 }}>
+        <p className="no-print" style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 10 }}>
           Muestra el promedio de cada una de las {QUESTIONS.length} preguntas, ordenadas de más crítica a más sólida dentro de cada dimensión.
         </p>
       )}
@@ -146,8 +148,9 @@ function DeptDrillDown({ deptName, deptResponses, globalScores }: {
   );
 }
 
-function CommentsSection({ responses }: { responses: SurveyResponse[] }) {
-  const [open, setOpen] = useState(false);
+function CommentsSection({ responses, forceOpen }: { responses: SurveyResponse[]; forceOpen?: boolean }) {
+  const [openState, setOpen] = useState(false);
+  const open = openState || !!forceOpen;
   const comments = useMemo(
     () => responses
       .filter((r) => r.comment && r.comment.trim())
@@ -160,6 +163,7 @@ function CommentsSection({ responses }: { responses: SurveyResponse[] }) {
   return (
     <div className="breakdown-card">
       <button
+        className="no-print"
         onClick={() => setOpen((o) => !o)}
         style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", color: "inherit", padding: 0, cursor: "pointer", width: "100%" }}
       >
@@ -168,8 +172,9 @@ function CommentsSection({ responses }: { responses: SurveyResponse[] }) {
           {comments.length} comentario(s) · {open ? "Ocultar ▲" : "Ver ▼"}
         </span>
       </button>
+      <h2 className="print-only" style={{ margin: 0 }}>Comentarios de Colaboradores ({comments.length})</h2>
       {!open && (
-        <p style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 10 }}>
+        <p className="no-print" style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 10 }}>
           Respuestas abiertas y anónimas dejadas por los participantes. Útiles para entender el "por qué" detrás de los números.
         </p>
       )}
@@ -187,16 +192,18 @@ function CommentsSection({ responses }: { responses: SurveyResponse[] }) {
   );
 }
 
-function ExecutiveSummary({ responses, periodoLabel, empresaNombre, scores, globalPct, departments }: {
+function ExecutiveSummary({ responses, periodoLabel, empresaNombre, scores, globalPct, departments, forceOpen }: {
   responses: SurveyResponse[];
   periodoLabel: string;
   empresaNombre?: string;
   scores: DimScore[];
   globalPct: number;
   departments: Array<{ name: string; count: number; pct: number }>;
+  forceOpen?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [openState, setOpen] = useState(false);
+  const open = openState || !!forceOpen;
 
   const sorted = useMemo(() => [...scores].sort((a, b) => b.pct - a.pct), [scores]);
   const top = sorted[0];
@@ -239,15 +246,17 @@ function ExecutiveSummary({ responses, periodoLabel, empresaNombre, scores, glob
   return (
     <div className="breakdown-card">
       <button
+        className="no-print"
         onClick={() => setOpen((o) => !o)}
         style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", color: "inherit", padding: 0, cursor: "pointer", width: "100%" }}
       >
         <h2 style={{ margin: 0 }}>Resumen Ejecutivo</h2>
         <span style={{ color: "var(--muted)", fontSize: "0.82rem", marginLeft: "auto" }}>{open ? "Ocultar ▲" : "Ver resumen ▼"}</span>
       </button>
+      <h2 className="print-only" style={{ margin: 0 }}>Resumen Ejecutivo</h2>
 
       {!open && (
-        <p style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 10 }}>
+        <p className="no-print" style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 10 }}>
           Párrafo listo para copiar y compartir con directivos, con índice global, fortalezas, áreas de mejora y recomendación principal.
         </p>
       )}
@@ -278,7 +287,7 @@ function ExecutiveSummary({ responses, periodoLabel, empresaNombre, scores, glob
             ))}
           </div>
           <button
-            className="btn-secondary"
+            className="btn-secondary no-print"
             style={{ fontSize: "0.8rem", padding: "7px 18px" }}
             onClick={handleCopy}
           >
@@ -415,6 +424,16 @@ export function PeriodDashboard({
 }) {
   const [expandedDept, setExpandedDept] = useState<string | null>(null);
   const [filterDept, setFilterDept] = useState<string>("");
+  const [printMode, setPrintMode] = useState(false);
+
+  // Expand all collapsible sections, print, then restore the previous state
+  function exportPDF() {
+    setPrintMode(true);
+    setTimeout(() => {
+      window.print();
+      setPrintMode(false);
+    }, 120);
+  }
 
   // All analytics recompute when the department filter changes
   const effectiveResponses = useMemo(
@@ -580,6 +599,7 @@ export function PeriodDashboard({
             scores={scores}
             globalPct={globalPct}
             departments={filterDept ? [] : departments}
+            forceOpen={printMode}
           />
 
           <div className="chart-grid">
@@ -693,14 +713,14 @@ export function PeriodDashboard({
             </div>
           </div>
 
-          <QuestionAnalysis responses={effectiveResponses} />
+          <QuestionAnalysis responses={effectiveResponses} forceOpen={printMode} />
 
-          <CommentsSection responses={effectiveResponses} />
+          <CommentsSection responses={effectiveResponses} forceOpen={printMode} />
 
           <ActionMatrix scores={scores} initialRows={savedPlan} onSave={onSavePlan} />
 
           <div className="results-actions no-print">
-            <button className="btn-export" onClick={() => window.print()}>
+            <button className="btn-export" onClick={exportPDF}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <polyline points="6 9 6 2 18 2 18 9" />
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />

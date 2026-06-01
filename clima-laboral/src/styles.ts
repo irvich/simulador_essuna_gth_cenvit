@@ -399,11 +399,21 @@ export const css = `
   .footer-logo-sub { display: block; font-size: 0.7rem; color: var(--muted); line-height: 1.4; max-width: 200px; text-align: left; margin-top: 2px; }
   .footer-sep { width: 1px; height: 48px; background: rgba(255,255,255,0.12); flex-shrink: 0; }
 
+  .print-only { display: none; }
+
   /* ── PRINT / PDF ──────────────────────────────────────── */
   @media print {
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     body { background: #ffffff !important; color: #071b33 !important; font-size: 11pt; }
     .topbar, .no-print { display: none !important; }
+    .print-only { display: block !important; }
+    .comment-item { break-inside: avoid; border-left-color: #94a3b8 !important; background: #f8fafc !important; }
+    .comment-text { color: #334155 !important; }
+    .comments-list { max-height: none !important; overflow: visible !important; }
+    .exec-summary-box { background: #f8fafc !important; border-color: #e2e8f0 !important; color: #334155 !important; }
+    .exec-kpi { background: #f8fafc !important; border-color: #e2e8f0 !important; }
+    .q-analysis-body { break-inside: auto; }
+    .q-row { break-inside: avoid; }
     .shell { background: white !important; }
     .container { width: 100% !important; padding: 10mm 12mm !important; margin: 0 !important; }
     .results-header, .global-card, .radar-card, .breakdown-card, .recs-section, .matrix-section, .stat-card, .results-footer {
