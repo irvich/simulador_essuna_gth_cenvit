@@ -414,13 +414,21 @@ export function PeriodDashboard({
   onBack?: () => void;
 }) {
   const [expandedDept, setExpandedDept] = useState<string | null>(null);
+  const [filterDept, setFilterDept] = useState<string>("");
+
+  // All analytics recompute when the department filter changes
+  const effectiveResponses = useMemo(
+    () => filterDept ? responses.filter((r) => (r.department || "Sin especificar") === filterDept) : responses,
+    [responses, filterDept]
+  );
 
   const scores: DimScore[] = useMemo(
-    () => DIMENSIONS.map((dim) => ({ dim, pct: dimensionAverage(responses, dim.key) })),
-    [responses]
+    () => DIMENSIONS.map((dim) => ({ dim, pct: dimensionAverage(effectiveResponses, dim.key) })),
+    [effectiveResponses]
   );
-  const globalPct = useMemo(() => globalAverage(responses), [responses]);
+  const globalPct = useMemo(() => globalAverage(effectiveResponses), [effectiveResponses]);
 
+  // Full dept map (always from all responses — used for filter pills, heatmap, overlay)
   const deptResponsesMap = useMemo(() => {
     const map = new Map<string, SurveyResponse[]>();
     for (const r of responses) {
@@ -475,14 +483,46 @@ export function PeriodDashboard({
         </div>
       )}
 
+      {responses.length > 0 && departments.length > 1 && (
+        <div className="dept-filter-bar no-print">
+          <span className="dept-filter-label">Filtrar por departamento:</span>
+          <div className="dept-filter-pills">
+            <button
+              className={`dept-filter-pill${!filterDept ? " active" : ""}`}
+              onClick={() => { setFilterDept(""); setExpandedDept(null); }}
+            >
+              Toda la empresa
+            </button>
+            {departments.map((d) => (
+              <button
+                key={d.name}
+                className={`dept-filter-pill${filterDept === d.name ? " active" : ""}`}
+                onClick={() => { setFilterDept(filterDept === d.name ? "" : d.name); setExpandedDept(null); }}
+                title={`${d.count} respuesta(s)`}
+              >
+                {d.name}
+                {filterDept === d.name && " ×"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {responses.length > 0 && (
         <>
+          {filterDept && (
+            <div className="dept-filter-banner">
+              <span>Viendo: <strong>{filterDept}</strong></span>
+              <span style={{ color: "var(--muted)" }}>{effectiveResponses.length} respuesta(s)</span>
+              <button className="dept-filter-clear" onClick={() => setFilterDept("")}>← Volver a empresa</button>
+            </div>
+          )}
           <div className="admin-statbar">
             <div className="stat-card">
-              <div className="stat-num" style={{ color: "#38bdf8" }}>{responses.length}</div>
-              <div className="stat-label">Respuestas</div>
+              <div className="stat-num" style={{ color: "#38bdf8" }}>{effectiveResponses.length}</div>
+              <div className="stat-label">Respuestas{filterDept ? ` · ${filterDept}` : ""}</div>
             </div>
-            {totalColaboradores != null && totalColaboradores > 0 && (() => {
+            {!filterDept && totalColaboradores != null && totalColaboradores > 0 && (() => {
               const pct = Math.round((responses.length / totalColaboradores) * 100);
               const col = pct >= 70 ? "#22c55e" : pct >= 40 ? "#d4af37" : "#f87171";
               return (
@@ -534,12 +574,12 @@ export function PeriodDashboard({
           </div>
 
           <ExecutiveSummary
-            responses={responses}
-            periodoLabel={periodoLabel}
+            responses={effectiveResponses}
+            periodoLabel={filterDept ? `${periodoLabel} · ${filterDept}` : periodoLabel}
             empresaNombre={empresaNombre}
             scores={scores}
             globalPct={globalPct}
-            departments={departments}
+            departments={filterDept ? [] : departments}
           />
 
           <div className="chart-grid">
@@ -568,7 +608,7 @@ export function PeriodDashboard({
             </div>
           </div>
 
-          {departments.length > 0 && (
+          {!filterDept && departments.length > 0 && (
             <div className="breakdown-card">
               <h2>
                 Resultados por Departamento
@@ -623,7 +663,7 @@ export function PeriodDashboard({
             </div>
           )}
 
-          {departments.length >= 2 && (
+          {!filterDept && departments.length >= 2 && (
             <DeptHeatmap
               departments={departments}
               deptResponsesMap={deptResponsesMap}
@@ -653,9 +693,9 @@ export function PeriodDashboard({
             </div>
           </div>
 
-          <QuestionAnalysis responses={responses} />
+          <QuestionAnalysis responses={effectiveResponses} />
 
-          <CommentsSection responses={responses} />
+          <CommentsSection responses={effectiveResponses} />
 
           <ActionMatrix scores={scores} initialRows={savedPlan} onSave={onSavePlan} />
 

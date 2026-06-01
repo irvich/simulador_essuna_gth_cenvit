@@ -287,6 +287,17 @@ export const css = `
   .dept-drill-legend-bar { display: inline-block; width: 20px; height: 5px; border-radius: 3px; background: var(--sky); }
   .dept-drill-legend-line { display: inline-block; width: 18px; height: 2px; background: rgba(255,255,255,0.35); margin-bottom: 1px; }
 
+  /* ── Department filter bar ───────────────────────────────── */
+  .dept-filter-bar { margin-bottom: 16px; }
+  .dept-filter-label { display: block; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; margin-bottom: 8px; }
+  .dept-filter-pills { display: flex; flex-wrap: wrap; gap: 7px; }
+  .dept-filter-pill { padding: 5px 14px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .dept-filter-pill:hover { border-color: rgba(56,189,248,0.4); color: var(--white); }
+  .dept-filter-pill.active { background: rgba(56,189,248,0.15); border-color: rgba(56,189,248,0.5); color: var(--sky); }
+  .dept-filter-banner { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: rgba(56,189,248,0.07); border: 1px solid rgba(56,189,248,0.2); border-radius: 8px; font-size: 0.84rem; margin-bottom: 16px; flex-wrap: wrap; }
+  .dept-filter-clear { background: none; border: none; color: var(--sky); font-size: 0.8rem; cursor: pointer; padding: 0; margin-left: auto; }
+  .dept-filter-clear:hover { text-decoration: underline; }
+
   /* ── Survey comment field ─────────────────────────────────── */
   .survey-comment-block { margin: 8px 0 20px; padding: 16px 18px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 12px; }
   .survey-comment-label { display: block; font-size: 0.88rem; font-weight: 700; margin-bottom: 10px; }
