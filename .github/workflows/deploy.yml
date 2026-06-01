@@ -1,4 +1,4 @@
-name: Deploy React Vite App to GitHub Pages
+name: Deploy a GitHub Pages
 
 on:
   push:
@@ -27,13 +27,23 @@ jobs:
         with:
           node-version: 20
 
-      - name: Instalar dependencias
-        run: npm install
+      - name: Compilar simulador de examen (raíz)
+        run: |
+          npm install
+          npm run build
 
-      - name: Compilar proyecto
-        run: npm run build
+      - name: Compilar medidor de clima laboral
+        run: |
+          cd clima-laboral
+          npm install
+          npm run build
 
-      - name: Subir carpeta dist
+      - name: Unir carpetas dist
+        run: |
+          mkdir -p dist/clima-laboral
+          cp -r clima-laboral/dist/. dist/clima-laboral/
+
+      - name: Subir carpeta dist combinada
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
