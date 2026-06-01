@@ -64,6 +64,7 @@
 //   -- Columnas opcionales (agregar después de crear las tablas base)
 //   ALTER TABLE periodos ADD COLUMN IF NOT EXISTS plan_accion JSONB;
 //   ALTER TABLE periodos ADD COLUMN IF NOT EXISTS total_colaboradores INTEGER;
+//   ALTER TABLE periodos ADD COLUMN IF NOT EXISTS departamentos JSONB;
 //
 // PASO 3: En Project Settings → API, copia "Project URL" y "anon public key".
 //         Pégalos a continuación y vuelve a desplegar.

@@ -303,6 +303,10 @@ export const css = `
   .heat-mid  { background: rgba(212,175,55,0.18);  color: #fde68a; border: 1px solid rgba(212,175,55,0.3);  }
   .heat-high { background: rgba(34,197,94,0.18);   color: #86efac; border: 1px solid rgba(34,197,94,0.3);   }
 
+  .dept-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px 3px 12px; border-radius: 999px; background: rgba(56,189,248,0.12); border: 1px solid rgba(56,189,248,0.3); font-size: 0.78rem; color: var(--sky); }
+  .dept-tag button { background: none; border: none; color: var(--muted); font-size: 1rem; line-height: 1; padding: 0; cursor: pointer; transition: color 0.15s; }
+  .dept-tag button:hover { color: #f87171; }
+
   .mode-pill { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.7rem; font-weight: 800; }
   .mode-local { background: rgba(251,146,60,0.15); color: #fdba74; border: 1px solid rgba(251,146,60,0.35); }
   .mode-supabase { background: rgba(34,197,94,0.15); color: #86efac; border: 1px solid rgba(34,197,94,0.35); }

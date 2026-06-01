@@ -19,7 +19,7 @@ import {
 import { ActionMatrix } from "./ActionMatrix";
 import { Admin } from "./Admin";
 import { CompanyDashboard } from "./CompanyDashboard";
-import { getEmpresaById, loginEmpresa, submitResponse } from "./storage";
+import { getEmpresaById, getPeriodById, loginEmpresa, submitResponse } from "./storage";
 import { css } from "./styles";
 import type { Answers, Empresa, LikertValue } from "./types";
 
@@ -125,6 +125,7 @@ export default function App() {
   const [surveyPeriodoId, setSurveyPeriodoId] = useState<string | null>(null);
   const [surveyEmpresaId, setSurveyEmpresaId] = useState<string | null>(null);
   const [surveyEmpresaNombre, setSurveyEmpresaNombre] = useState<string>("");
+  const [surveyDepartamentos, setSurveyDepartamentos] = useState<string[]>([]);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
 
   // Survey state
@@ -148,9 +149,12 @@ export default function App() {
         setAlreadySubmitted(true);
       }
     } catch {}
-    // Fetch the company name to show on the survey start screen
+    // Fetch the company name and department list for this period
     getEmpresaById(eId)
       .then((emp) => { if (emp) setSurveyEmpresaNombre(emp.nombre); })
+      .catch(() => {});
+    getPeriodById(pId)
+      .then((p) => { if (p?.departamentos?.length) setSurveyDepartamentos(p.departamentos); })
       .catch(() => {});
   }, []);
 
@@ -375,7 +379,7 @@ export default function App() {
                       onChange={(e) => setDepartment(e.target.value)}
                     >
                       <option value="">Selecciona tu departamento…</option>
-                      {DEPARTMENTS.map((d) => (
+                      {(surveyDepartamentos.length > 0 ? surveyDepartamentos : DEPARTMENTS).map((d) => (
                         <option key={d} value={d}>{d}</option>
                       ))}
                     </select>
@@ -414,7 +418,7 @@ export default function App() {
                       onChange={(e) => setDepartment(e.target.value)}
                     >
                       <option value="">Selecciona tu departamento…</option>
-                      {DEPARTMENTS.map((d) => (
+                      {(surveyDepartamentos.length > 0 ? surveyDepartamentos : DEPARTMENTS).map((d) => (
                         <option key={d} value={d}>{d}</option>
                       ))}
                     </select>

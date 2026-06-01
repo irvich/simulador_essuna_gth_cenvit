@@ -79,4 +79,5 @@ export interface Periodo {
   created_at: string;
   cerrado_at: string | null;
   total_colaboradores?: number | null;
+  departamentos?: string[] | null;
 }

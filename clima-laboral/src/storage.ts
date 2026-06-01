@@ -111,6 +111,14 @@ export async function createPeriod(empresaId: string, etiqueta: string, totalCol
   return data[0];
 }
 
+export async function saveDepartamentos(periodoId: string, departamentos: string[]): Promise<void> {
+  await sbFetch(`/periodos?id=eq.${periodoId}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ departamentos }),
+  });
+}
+
 export async function closePeriod(periodoId: string): Promise<void> {
   await sbFetch(`/periodos?id=eq.${periodoId}`, {
     method: "PATCH",

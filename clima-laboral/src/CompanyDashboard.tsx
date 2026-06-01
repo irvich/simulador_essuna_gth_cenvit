@@ -7,6 +7,7 @@ import {
   getPlanAccion,
   getPeriodsForCompany,
   getResponsesForPeriod,
+  saveDepartamentos,
   savePlanAccion,
   updateEmpresaPassword,
 } from "./storage";
@@ -74,6 +75,13 @@ export function CompanyDashboard({
   const [pwChanging, setPwChanging] = useState(false);
   const [pwError, setPwError] = useState("");
   const [pwOk, setPwOk] = useState(false);
+
+  const [showDeptManager, setShowDeptManager] = useState(false);
+  const [deptManagerList, setDeptManagerList] = useState<string[]>([]);
+  const [deptManagerInput, setDeptManagerInput] = useState("");
+  const [deptManagerSaving, setDeptManagerSaving] = useState(false);
+  const [deptManagerError, setDeptManagerError] = useState("");
+  const [deptManagerOk, setDeptManagerOk] = useState(false);
 
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonSummaries, setComparisonSummaries] = useState<PeriodSummary[]>([]);
@@ -176,6 +184,31 @@ export function CompanyDashboard({
     await savePlanAccion(viewingPeriodo.id, rows);
     setPlanCache((prev) => new Map(prev).set(viewingPeriodo.id, rows));
     setViewingPlan(rows);
+  }
+
+  function openDeptManager(periodo: typeof activePeriodo) {
+    if (!periodo) return;
+    setDeptManagerList(periodo.departamentos ?? []);
+    setDeptManagerInput("");
+    setDeptManagerError("");
+    setDeptManagerOk(false);
+    setShowDeptManager(true);
+  }
+
+  async function saveDeptManager() {
+    if (!activePeriodo) return;
+    setDeptManagerSaving(true);
+    setDeptManagerError("");
+    try {
+      await saveDepartamentos(activePeriodo.id, deptManagerList);
+      setDeptManagerOk(true);
+      await loadPeriodos();
+      setTimeout(() => { setShowDeptManager(false); setDeptManagerOk(false); }, 1200);
+    } catch {
+      setDeptManagerError("No se pudo guardar. Intenta de nuevo.");
+    } finally {
+      setDeptManagerSaving(false);
+    }
   }
 
   async function loadComparison() {
@@ -368,6 +401,63 @@ export function CompanyDashboard({
                 </div>
               </div>
 
+              {showDeptManager && (
+                <div className="create-period-form" style={{ marginBottom: 20 }}>
+                  <label style={{ fontWeight: 700, marginBottom: 8, display: "block" }}>
+                    Departamentos disponibles en la encuesta
+                  </label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                    {deptManagerList.length === 0 && (
+                      <span style={{ color: "var(--muted)", fontSize: "0.82rem" }}>
+                        Sin departamentos definidos — se usará la lista por defecto.
+                      </span>
+                    )}
+                    {deptManagerList.map((d, i) => (
+                      <span key={i} className="dept-tag">
+                        {d}
+                        <button
+                          onClick={() => setDeptManagerList((prev) => prev.filter((_, j) => j !== i))}
+                          title="Eliminar"
+                        >×</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="create-period-form-row" style={{ flexWrap: "wrap" }}>
+                    <input
+                      className="org-input"
+                      value={deptManagerInput}
+                      onChange={(e) => setDeptManagerInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && deptManagerInput.trim()) {
+                          setDeptManagerList((prev) => [...prev, deptManagerInput.trim()]);
+                          setDeptManagerInput("");
+                        }
+                      }}
+                      placeholder="Nombre del departamento…"
+                      style={{ flex: 1, minWidth: 200 }}
+                    />
+                    <button
+                      className="btn-secondary"
+                      disabled={!deptManagerInput.trim()}
+                      onClick={() => {
+                        if (deptManagerInput.trim()) {
+                          setDeptManagerList((prev) => [...prev, deptManagerInput.trim()]);
+                          setDeptManagerInput("");
+                        }
+                      }}
+                    >+ Agregar</button>
+                    <button className="btn-primary" onClick={saveDeptManager} disabled={deptManagerSaving}>
+                      {deptManagerSaving ? "Guardando…" : deptManagerOk ? "¡Guardado!" : "Guardar"}
+                    </button>
+                    <button className="btn-secondary" onClick={() => setShowDeptManager(false)}>Cancelar</button>
+                  </div>
+                  {deptManagerError && <p className="admin-error" style={{ marginTop: 8 }}>{deptManagerError}</p>}
+                  <p style={{ color: "var(--muted)", fontSize: "0.75rem", marginTop: 8 }}>
+                    Los empleados verán estos departamentos al abrir la encuesta. Presiona Enter o "+ Agregar" para añadir uno.
+                  </p>
+                </div>
+              )}
+
               <div className="active-period-actions">
                 <button
                   className="btn-secondary"
@@ -375,6 +465,13 @@ export function CompanyDashboard({
                   disabled={viewingLoading}
                 >
                   {viewingLoading ? "Cargando…" : "Ver resultados en tiempo real"}
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => openDeptManager(activePeriodo)}
+                  style={{ fontSize: "0.82rem" }}
+                >
+                  🏢 Departamentos
                 </button>
                 <button
                   className="btn-danger"
