@@ -453,6 +453,16 @@ export const css = `
   .form-field { display: flex; flex-direction: column; gap: 5px; }
   .form-field label { font-size: 0.78rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
 
+  /* ── QUESTION ANALYSIS ───────────────────────────────── */
+  .q-analysis-body { margin-top: 20px; display: flex; flex-direction: column; gap: 22px; }
+  .q-dim-section { }
+  .q-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .q-row:last-child { border-bottom: none; }
+  .q-row-num { flex: 0 0 28px; font-size: 0.72rem; font-weight: 900; text-align: right; }
+  .q-row-text { flex: 1; font-size: 0.82rem; color: var(--muted); line-height: 1.4; }
+  .q-row-bar { flex: 0 0 120px; }
+  .q-row-score { flex: 0 0 44px; text-align: right; font-size: 0.82rem; font-weight: 800; white-space: nowrap; }
+
   /* ── PLAN DE MEJORA ──────────────────────────────────── */
   .plan-progress-inline { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
   .plan-save-area { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }

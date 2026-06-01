@@ -6,10 +6,12 @@ import {
   createEmpresa,
   getAllEmpresas,
   getAllResponses,
+  getPlanAccion,
   getPeriodsForCompany,
   getResponsesForPeriod,
+  savePlanAccion,
 } from "./storage";
-import type { Empresa, Periodo, SurveyResponse } from "./types";
+import type { ActionRow, Empresa, Periodo, SurveyResponse } from "./types";
 
 type AdminView = "companies" | "periods" | "results";
 
@@ -29,6 +31,7 @@ export function Admin({ onExit }: { onExit: () => void }) {
   const [empresaPeriodos, setEmpresaPeriodos] = useState<Periodo[]>([]);
   const [selectedPeriodo, setSelectedPeriodo] = useState<Periodo | null>(null);
   const [periodoResponses, setPeriodoResponses] = useState<SurveyResponse[]>([]);
+  const [periodoPlan, setPeriodoPlan] = useState<ActionRow[] | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState("");
 
@@ -84,8 +87,14 @@ export function Admin({ onExit }: { onExit: () => void }) {
     setAdminView("results");
     setDataLoading(true);
     setDataError("");
-    try { setPeriodoResponses(await getResponsesForPeriod(p.id)); }
-    catch { setDataError("No se pudieron cargar las respuestas."); }
+    try {
+      const [responses, plan] = await Promise.all([
+        getResponsesForPeriod(p.id),
+        getPlanAccion(p.id),
+      ]);
+      setPeriodoResponses(responses);
+      setPeriodoPlan(plan);
+    } catch { setDataError("No se pudieron cargar las respuestas."); }
     finally { setDataLoading(false); }
   }
 
@@ -179,7 +188,12 @@ export function Admin({ onExit }: { onExit: () => void }) {
         responses={periodoResponses}
         periodoLabel={selectedPeriodo.etiqueta}
         empresaNombre={selectedEmpresa.nombre}
-        onBack={() => { setAdminView("periods"); setSelectedPeriodo(null); }}
+        savedPlan={periodoPlan}
+        onSavePlan={async (rows) => {
+          await savePlanAccion(selectedPeriodo.id, rows);
+          setPeriodoPlan(rows);
+        }}
+        onBack={() => { setAdminView("periods"); setSelectedPeriodo(null); setPeriodoPlan(null); }}
       />
     );
   }
