@@ -898,11 +898,33 @@ export function PeriodDashboard({
         </button>
       )}
 
-      <div className="results-header">
+      <div className="results-header" id="sec-resumen">
         {empresaNombre && <p className="eyebrow gold">{empresaNombre}</p>}
         <h1 className="results-title">Resultados · {periodoLabel}</h1>
         <p className="results-meta">{responses.length} participante(s)</p>
       </div>
+
+      {responses.length > 0 && (
+        <nav className="section-nav no-print" aria-label="Secciones">
+          {[
+            ["sec-resumen", "Resumen"],
+            ...(showDateFilter ? [["sec-tendencia", "Tendencia"]] : []),
+            ["sec-dimensiones", "Dimensiones"],
+            ["sec-riesgo", "Riesgo"],
+            ...(departments.length > 0 ? [["sec-departamentos", "Departamentos"]] : []),
+            ["sec-preguntas", "Preguntas"],
+            ["sec-plan", "Plan"],
+          ].map(([id, label]) => (
+            <button
+              key={id}
+              className="section-nav-pill"
+              onClick={() => document.getElementById(id as string)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+      )}
 
       {responses.length === 0 && (
         <div className="empty-state">
@@ -1092,7 +1114,7 @@ export function PeriodDashboard({
             })()}
           </div>
 
-          {!filterDept && <ParticipationTrend responses={responses} />}
+          {!filterDept && <div id="sec-tendencia"><ParticipationTrend responses={responses} /></div>}
 
           <ExecutiveSummary
             responses={effectiveResponses}
@@ -1104,7 +1126,7 @@ export function PeriodDashboard({
             forceOpen={printMode}
           />
 
-          <div className="chart-grid">
+          <div className="chart-grid" id="sec-dimensiones">
             <div className="radar-card">
               <h2>
                 Perfil por Dimensión
@@ -1175,10 +1197,10 @@ export function PeriodDashboard({
             </div>
           </div>
 
-          <RiskMatrix responses={effectiveResponses} />
+          <div id="sec-riesgo"><RiskMatrix responses={effectiveResponses} /></div>
 
           {!filterDept && departments.length > 0 && (
-            <div className="breakdown-card">
+            <div className="breakdown-card" id="sec-departamentos">
               <h2>
                 Resultados por Departamento
                 <span style={{ color: "var(--muted)", fontSize: "0.75rem", fontWeight: 400, marginLeft: 10 }}>
@@ -1262,13 +1284,13 @@ export function PeriodDashboard({
             </div>
           </div>
 
-          <TopQuestions responses={effectiveResponses} />
+          <div id="sec-preguntas"><TopQuestions responses={effectiveResponses} /></div>
 
           <QuestionAnalysis responses={effectiveResponses} forceOpen={printMode} />
 
           <CommentsSection responses={effectiveResponses} forceOpen={printMode} />
 
-          <ActionMatrix scores={scores} initialRows={savedPlan} onSave={onSavePlan} />
+          <div id="sec-plan"><ActionMatrix scores={scores} initialRows={savedPlan} onSave={onSavePlan} /></div>
 
           <div className="results-actions no-print">
             <button className="btn-export" onClick={exportPDF}>

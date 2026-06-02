@@ -606,6 +606,21 @@ export const css = `
   .enps-bar > div { height: 100%; transition: width 0.6s ease; }
   .enps-legend { display: flex; justify-content: space-between; font-size: 0.67rem; font-weight: 700; margin-top: 5px; }
 
+  /* ── Section jump navigation ────────────────────────────── */
+  .section-nav {
+    display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 4px;
+    position: sticky; top: 72px; z-index: 50;
+    background: rgba(4,20,38,0.88); backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin: 0 -4px 4px;
+  }
+  .section-nav-pill {
+    padding: 5px 14px; border-radius: 999px; font-size: 0.74rem; font-weight: 700;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .section-nav-pill:hover { background: rgba(56,189,248,0.12); border-color: rgba(56,189,248,0.4); color: var(--sky); }
+
   /* ── Date range filter ───────────────────────────────────── */
   .date-filter-bar { margin-bottom: 12px; }
   .date-filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
