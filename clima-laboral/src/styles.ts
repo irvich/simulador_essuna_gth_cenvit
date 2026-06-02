@@ -597,6 +597,15 @@ export const css = `
   .cdelta-same { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
   .compliance-verdict { font-size: 0.73rem; color: var(--muted); line-height: 1.4; margin-top: 2px; }
 
+  /* ── eNPS block ──────────────────────────────────────────── */
+  .enps-block { max-width: 460px; margin: 18px auto 0; }
+  .enps-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .enps-label { font-size: 0.7rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .enps-score { font-size: 1.4rem; font-weight: 900; line-height: 1; }
+  .enps-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,0.06); }
+  .enps-bar > div { height: 100%; transition: width 0.6s ease; }
+  .enps-legend { display: flex; justify-content: space-between; font-size: 0.67rem; font-weight: 700; margin-top: 5px; }
+
   /* ── Date range filter ───────────────────────────────────── */
   .date-filter-bar { margin-bottom: 12px; }
   .date-filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

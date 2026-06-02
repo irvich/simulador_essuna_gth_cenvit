@@ -513,6 +513,27 @@ function DeptHeatmap({ departments, deptResponsesMap, scores, globalPct }: {
   );
 }
 
+function computeENPS(responses: SurveyResponse[]) {
+  if (responses.length === 0) return null;
+  let promoters = 0, neutrals = 0, detractors = 0;
+  for (const r of responses) {
+    const vals = Object.values(r.answers);
+    if (vals.length === 0) continue;
+    const avg = vals.reduce((s, v) => s + v, 0) / vals.length;
+    if (avg >= 4.0) promoters++;
+    else if (avg >= 3.0) neutrals++;
+    else detractors++;
+  }
+  const total = promoters + neutrals + detractors;
+  if (total === 0) return null;
+  return {
+    score: Math.round(((promoters - detractors) / total) * 100),
+    pctPromoters: Math.round((promoters / total) * 100),
+    pctNeutral: Math.round((neutrals / total) * 100),
+    pctDetractors: Math.round((detractors / total) * 100),
+  };
+}
+
 function dimensionAverage(responses: SurveyResponse[], dimKey: string): number {
   const ids = QUESTIONS.filter((q) => q.dimension === dimKey).map((q) => q.id);
   let sum = 0, count = 0;
@@ -1023,6 +1044,30 @@ export function PeriodDashboard({
               <span style={{ color: "#d4af37" }}>60–79% Regular</span>
               <span style={{ color: "#22c55e" }}>80–100% Bueno</span>
             </div>
+            {(() => {
+              const enps = computeENPS(effectiveResponses);
+              if (!enps) return null;
+              return (
+                <div className="enps-block">
+                  <div className="enps-header">
+                    <span className="enps-label">eNPS Adaptado</span>
+                    <span className="enps-score" style={{ color: enps.score >= 20 ? "#22c55e" : enps.score >= 0 ? "#d4af37" : "#f87171" }}>
+                      {enps.score >= 0 ? "+" : ""}{enps.score}
+                    </span>
+                  </div>
+                  <div className="enps-bar">
+                    <div style={{ width: `${enps.pctDetractors}%`, background: "#f87171" }} title={`Detractores: ${enps.pctDetractors}%`} />
+                    <div style={{ width: `${enps.pctNeutral}%`, background: "#94a3b8" }} title={`Neutros: ${enps.pctNeutral}%`} />
+                    <div style={{ width: `${enps.pctPromoters}%`, background: "#22c55e" }} title={`Promotores: ${enps.pctPromoters}%`} />
+                  </div>
+                  <div className="enps-legend">
+                    <span style={{ color: "#f87171" }}>Det. {enps.pctDetractors}%</span>
+                    <span style={{ color: "var(--muted)" }}>Neutros {enps.pctNeutral}%</span>
+                    <span style={{ color: "#22c55e" }}>Prom. {enps.pctPromoters}%</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {!filterDept && <ParticipationTrend responses={responses} />}
