@@ -39,13 +39,28 @@ function fmtDate(iso: string): string {
 
 function PlanBadge({ plan }: { plan: ActionRow[] }) {
   const completadas = plan.filter((r) => r.status === "completada").length;
+  const enProgreso = plan.filter((r) => r.status === "en_progreso").length;
   const total = plan.length;
-  const pct = Math.round((completadas / total) * 100);
+  const pct = total === 0 ? 0 : Math.round((completadas / total) * 100);
+  const pctProgress = total === 0 ? 0 : Math.round(((completadas + enProgreso * 0.5) / total) * 100);
   const color = pct === 100 ? "#22c55e" : pct >= 50 ? "#d4af37" : "#94a3b8";
+  const altasIncompletas = plan.filter((r) => r.priority === "alta" && r.status !== "completada").length;
   return (
-    <span style={{ fontSize: "0.75rem", fontWeight: 700, color, whiteSpace: "nowrap" }}>
-      Plan: {completadas}/{total} ✓
-    </span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 120 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: "0.75rem", fontWeight: 700, color, whiteSpace: "nowrap" }}>
+          {completadas}/{total} completadas
+        </span>
+        {altasIncompletas > 0 && (
+          <span style={{ fontSize: "0.67rem", fontWeight: 700, padding: "1px 6px", borderRadius: 999, background: "rgba(248,113,113,0.15)", color: "#fca5a5", border: "1px solid rgba(248,113,113,0.3)", whiteSpace: "nowrap" }}>
+            {altasIncompletas} alta
+          </span>
+        )}
+      </div>
+      <div style={{ width: 110, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+        <div style={{ width: `${pctProgress}%`, height: "100%", background: color, borderRadius: 3, transition: "width 0.4s" }} />
+      </div>
+    </div>
   );
 }
 
