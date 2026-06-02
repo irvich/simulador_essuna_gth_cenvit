@@ -534,6 +534,55 @@ function computeENPS(responses: SurveyResponse[]) {
   };
 }
 
+function RespondentHistogram({ responses }: { responses: SurveyResponse[] }) {
+  const buckets = useMemo(() => {
+    if (responses.length < 3) return null;
+    // 10 buckets: 0-9%, 10-19%, …, 90-100%
+    const counts = new Array(10).fill(0);
+    for (const r of responses) {
+      const vals = Object.values(r.answers);
+      if (vals.length === 0) continue;
+      const avg = vals.reduce((s, v) => s + v, 0) / vals.length;
+      const pct = (avg / 5) * 100;
+      const bucket = Math.min(9, Math.floor(pct / 10));
+      counts[bucket]++;
+    }
+    const max = Math.max(...counts, 1);
+    return counts.map((c, i) => ({
+      label: `${i * 10}–${i * 10 + 9}%`,
+      count: c,
+      pct: Math.round((c / responses.length) * 100),
+      barH: Math.round((c / max) * 100),
+      color: i < 6 ? "#f87171" : i < 8 ? "#d4af37" : "#22c55e",
+    }));
+  }, [responses]);
+
+  if (!buckets) return null;
+  const hasData = buckets.some((b) => b.count > 0);
+  if (!hasData) return null;
+
+  return (
+    <div style={{ maxWidth: 460, margin: "18px auto 0" }}>
+      <p style={{ fontSize: "0.7rem", fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 8, textAlign: "left" }}>
+        Distribución de puntaje por colaborador
+      </p>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 48 }}>
+        {buckets.map((b, i) => (
+          <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+            <div
+              style={{ width: "100%", height: `${b.barH}%`, minHeight: b.count > 0 ? 3 : 0, background: b.color, borderRadius: "2px 2px 0 0", opacity: 0.8, transition: "height 0.4s" }}
+              title={`${b.label}: ${b.count} persona(s) (${b.pct}%)`}
+            />
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.62rem", color: "rgba(148,163,184,0.45)", marginTop: 3 }}>
+        <span>0%</span><span>50%</span><span>100%</span>
+      </div>
+    </div>
+  );
+}
+
 function dimensionAverage(responses: SurveyResponse[], dimKey: string): number {
   const ids = QUESTIONS.filter((q) => q.dimension === dimKey).map((q) => q.id);
   let sum = 0, count = 0;
@@ -1117,6 +1166,7 @@ export function PeriodDashboard({
               <span style={{ color: "#d4af37" }}>60–79% Regular</span>
               <span style={{ color: "#22c55e" }}>80–100% Bueno</span>
             </div>
+            <RespondentHistogram responses={effectiveResponses} />
             {(() => {
               const enps = computeENPS(effectiveResponses);
               if (!enps) return null;
