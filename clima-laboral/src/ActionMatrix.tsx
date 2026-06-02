@@ -68,6 +68,23 @@ export function ActionMatrix({
     }
   }, [scores, initialRows]);
 
+  function exportPlanCSV() {
+    const headers = ["Dimensión", "Hallazgo", "Acción de mejora", "Responsable", "Plazo", "Indicador", "Prioridad", "Estado"];
+    const dataRows = rows.map((r) => [
+      r.dimension, r.finding, r.action, r.responsible, r.deadline, r.indicator, r.priority, STATUS_LABELS[r.status],
+    ].map((v) => `"${String(v).replace(/"/g, '""')}"`));
+    const csv = [headers.join(","), ...dataRows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `plan_accion_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   function update(index: number, field: keyof ActionRow, value: string) {
     setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)));
     setDirty(true);
@@ -105,23 +122,33 @@ export function ActionMatrix({
             </div>
           )}
         </div>
-        {onSave && (
-          <div className="plan-save-area">
-            {savedAt && !dirty && (
-              <span className="plan-saved-label">
-                ✓ Guardado {savedAt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-            <button
-              className={dirty ? "btn-primary" : "btn-secondary"}
-              onClick={handleSave}
-              disabled={saving}
-              style={{ padding: "9px 18px", fontSize: "0.85rem" }}
-            >
-              {saving ? "Guardando…" : dirty ? "Guardar cambios" : "Guardar plan"}
-            </button>
-          </div>
-        )}
+        <div className="plan-save-area">
+          <button
+            className="btn-export no-print"
+            onClick={exportPlanCSV}
+            style={{ padding: "8px 14px", fontSize: "0.8rem" }}
+            title="Exportar plan como CSV"
+          >
+            ↓ CSV
+          </button>
+          {onSave && (
+            <>
+              {savedAt && !dirty && (
+                <span className="plan-saved-label">
+                  ✓ Guardado {savedAt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+              <button
+                className={dirty ? "btn-primary" : "btn-secondary"}
+                onClick={handleSave}
+                disabled={saving}
+                style={{ padding: "9px 18px", fontSize: "0.85rem" }}
+              >
+                {saving ? "Guardando…" : dirty ? "Guardar cambios" : "Guardar plan"}
+              </button>
+            </>
+          )}
+        </div>
       </div>
       <p className="matrix-sub">
         Matriz técnica de mejora ordenada por prioridad.
