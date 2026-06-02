@@ -606,6 +606,15 @@ export const css = `
   .enps-bar > div { height: 100%; transition: width 0.6s ease; }
   .enps-legend { display: flex; justify-content: space-between; font-size: 0.67rem; font-weight: 700; margin-top: 5px; }
 
+  /* ── Demo mode banner ────────────────────────────────────── */
+  .demo-banner {
+    display: flex; align-items: center; gap: 10px; padding: 10px 16px; margin-bottom: 18px;
+    background: rgba(251,146,60,0.08); border: 1px solid rgba(251,146,60,0.3); border-radius: 10px;
+    font-size: 0.8rem; color: rgba(248,250,252,0.7); line-height: 1.45; flex-wrap: wrap;
+  }
+  .demo-banner-icon { font-size: 1rem; flex-shrink: 0; }
+  .demo-banner strong { color: #fdba74; }
+
   /* ── Section jump navigation ────────────────────────────── */
   .section-nav {
     display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 4px;

@@ -399,6 +399,11 @@ export default function App() {
             ) : (
               /* Demo mode: full landing */
               <>
+                <div className="demo-banner">
+                  <span className="demo-banner-icon">⚠</span>
+                  <span><strong>Modo demostración</strong> — Los datos se guardan solo en este dispositivo y se perderán al limpiar el navegador. Para uso productivo con múltiples empresas, configura Supabase.</span>
+                  <span className="mode-pill mode-local">Local</span>
+                </div>
                 <header className="hero">
                   <div className="hero-badge">Diagnóstico Organizacional</div>
                   <h1>Medidor de Clima Laboral</h1>
