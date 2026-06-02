@@ -453,11 +453,24 @@ function DimDistribution({ responses, dimKey }: { responses: SurveyResponse[]; d
   );
 }
 
+function ScoreBarWithTarget({ pct, color, target }: { pct: number; color: string; target?: number }) {
+  if (target == null) return <ScoreBar pct={pct} color={color} />;
+  return (
+    <div style={{ position: "relative" }}>
+      <div className="score-bar-track">
+        <div className="score-bar-fill" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <div className="target-line" style={{ left: `${target}%` }} title={`Meta: ${target}%`} />
+    </div>
+  );
+}
+
 export function PeriodDashboard({
   responses,
   periodoLabel,
   empresaNombre,
   totalColaboradores,
+  targets,
   savedPlan,
   onSavePlan,
   onBack,
@@ -466,6 +479,7 @@ export function PeriodDashboard({
   periodoLabel: string;
   empresaNombre?: string;
   totalColaboradores?: number | null;
+  targets?: Partial<Record<string, number>>;
   savedPlan?: ActionRow[] | null;
   onSavePlan?: (rows: ActionRow[]) => Promise<void>;
   onBack?: () => void;
@@ -661,18 +675,36 @@ export function PeriodDashboard({
             <div className="breakdown-card">
               <h2>Promedio por Dimensión</h2>
               <div className="breakdown-list">
-                {scores.map(({ dim, pct }) => (
-                  <div key={dim.key} className="breakdown-item">
-                    <div className="breakdown-header">
-                      <span className="breakdown-name" style={{ color: dim.color }}>{dim.label}</span>
-                      <span className="breakdown-pct" style={{ color: scoreLevelColor(pct) }}>
-                        {pct}% — {scoreLevelLabel(pct)}
-                      </span>
+                {scores.map(({ dim, pct }) => {
+                  const target = targets?.[dim.key];
+                  const gap = target != null ? pct - target : null;
+                  return (
+                    <div key={dim.key} className="breakdown-item">
+                      <div className="breakdown-header">
+                        <span className="breakdown-name" style={{ color: dim.color }}>{dim.label}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          {gap != null && (
+                            <span
+                              className="target-gap"
+                              style={{
+                                color: gap >= 0 ? "#22c55e" : "#f87171",
+                                borderColor: (gap >= 0 ? "#22c55e" : "#f87171") + "44",
+                                background: (gap >= 0 ? "rgba(34,197,94," : "rgba(248,113,113,") + "0.08)",
+                              }}
+                            >
+                              Meta {target}% · {gap > 0 ? "+" : ""}{gap} pts
+                            </span>
+                          )}
+                          <span className="breakdown-pct" style={{ color: scoreLevelColor(pct) }}>
+                            {pct}% — {scoreLevelLabel(pct)}
+                          </span>
+                        </div>
+                      </div>
+                      <ScoreBarWithTarget pct={pct} color={dim.color} target={target} />
+                      <DimDistribution responses={effectiveResponses} dimKey={dim.key} />
                     </div>
-                    <ScoreBar pct={pct} color={dim.color} />
-                    <DimDistribution responses={effectiveResponses} dimKey={dim.key} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

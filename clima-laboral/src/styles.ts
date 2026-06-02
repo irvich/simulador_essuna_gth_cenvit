@@ -597,6 +597,20 @@ export const css = `
   .cdelta-same { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
   .compliance-verdict { font-size: 0.73rem; color: var(--muted); line-height: 1.4; margin-top: 2px; }
 
+  /* ── Dimension targets ────────────────────────────────────── */
+  .target-line {
+    position: absolute; top: -2px; bottom: -2px; width: 2px;
+    border-left: 2px dashed rgba(212,175,55,0.9);
+    pointer-events: none; z-index: 2;
+  }
+  .target-gap {
+    font-size: 0.72rem; font-weight: 700; padding: 2px 8px;
+    border-radius: 999px; border: 1px solid; white-space: nowrap;
+  }
+  .metas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 4px; }
+  .meta-row { display: flex; align-items: center; gap: 8px; }
+  .meta-dim-name { flex: 1; font-size: 0.82rem; font-weight: 700; }
+
   /* ── RESPONSIVE ───────────────────────────────────────── */
   @media (max-width: 860px) {
     .info-grid, .admin-statbar { grid-template-columns: repeat(2, 1fr); }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { computePeriodSummary, HistoricalComparison, type PeriodSummary } from "./HistoricalComparison";
 import { PeriodDashboard } from "./PeriodDashboard";
+import { DIMENSIONS } from "./questions";
 import {
   closePeriod,
   createPeriod,
@@ -12,6 +13,13 @@ import {
   updateEmpresaPassword,
 } from "./storage";
 import type { ActionRow, Empresa, Periodo, SurveyResponse } from "./types";
+
+function loadMetas(empresaId: string): Partial<Record<string, number>> {
+  try { return JSON.parse(localStorage.getItem(`metas_${empresaId}`) || "{}"); } catch { return {}; }
+}
+function persistMetas(empresaId: string, metas: Partial<Record<string, number>>): void {
+  localStorage.setItem(`metas_${empresaId}`, JSON.stringify(metas));
+}
 
 function suggestLabel(): string {
   const now = new Date();
@@ -83,6 +91,10 @@ export function CompanyDashboard({
   const [deptManagerError, setDeptManagerError] = useState("");
   const [deptManagerOk, setDeptManagerOk] = useState(false);
 
+  const [showMetas, setShowMetas] = useState(false);
+  const [dimTargets, setDimTargets] = useState<Partial<Record<string, number>>>({});
+  const [metasDraft, setMetasDraft] = useState<Record<string, string>>({});
+
   const [showComparison, setShowComparison] = useState(false);
   const [comparisonSummaries, setComparisonSummaries] = useState<PeriodSummary[]>([]);
   const [comparisonPlans, setComparisonPlans] = useState<Map<string, ActionRow[]>>(new Map());
@@ -107,6 +119,10 @@ export function CompanyDashboard({
   }
 
   useEffect(() => { loadPeriodos(); }, [empresa.id]);
+
+  useEffect(() => {
+    setDimTargets(loadMetas(empresa.id));
+  }, [empresa.id]);
 
   useEffect(() => {
     if (!activePeriodo) { setActiveResponses([]); return; }
@@ -211,6 +227,25 @@ export function CompanyDashboard({
     }
   }
 
+  function openMetas() {
+    const loaded = loadMetas(empresa.id);
+    setMetasDraft(
+      Object.fromEntries(DIMENSIONS.map((d) => [d.key, loaded[d.key] != null ? String(loaded[d.key]) : ""]))
+    );
+    setShowMetas(true);
+  }
+
+  function handleSaveMetas() {
+    const metas: Partial<Record<string, number>> = {};
+    for (const [k, v] of Object.entries(metasDraft)) {
+      const n = parseInt(v, 10);
+      if (!isNaN(n) && n >= 0 && n <= 100) metas[k] = n;
+    }
+    persistMetas(empresa.id, metas);
+    setDimTargets(metas);
+    setShowMetas(false);
+  }
+
   async function loadComparison() {
     setComparisonLoading(true);
     try {
@@ -283,6 +318,7 @@ export function CompanyDashboard({
         periodoLabel={viewingPeriodo.etiqueta}
         empresaNombre={empresa.nombre}
         totalColaboradores={viewingPeriodo.total_colaboradores}
+        targets={dimTargets}
         savedPlan={viewingPlan}
         onSavePlan={handleSavePlan}
         onBack={() => setViewingPeriodo(null)}
@@ -458,6 +494,48 @@ export function CompanyDashboard({
                 </div>
               )}
 
+              {showMetas && (
+                <div className="create-period-form" style={{ marginBottom: 20 }}>
+                  <label style={{ fontWeight: 700, marginBottom: 8, display: "block" }}>
+                    Metas por dimensión (0–100%)
+                  </label>
+                  <p style={{ color: "var(--muted)", fontSize: "0.76rem", marginBottom: 14, lineHeight: 1.55 }}>
+                    Define el porcentaje objetivo para cada dimensión. El dashboard mostrará el gap entre el resultado actual y la meta con una línea punteada dorada.
+                  </p>
+                  <div className="metas-grid">
+                    {DIMENSIONS.map((dim) => (
+                      <div key={dim.key} className="meta-row">
+                        <span className="meta-dim-name" style={{ color: dim.color }}>{dim.shortLabel}</span>
+                        <input
+                          className="org-input"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={metasDraft[dim.key] ?? ""}
+                          onChange={(e) => setMetasDraft((prev) => ({ ...prev, [dim.key]: e.target.value }))}
+                          placeholder="Sin meta"
+                          style={{ width: 80, textAlign: "center", padding: "8px 10px" }}
+                        />
+                        <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>%</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="create-period-form-row" style={{ marginTop: 14, flexWrap: "wrap" }}>
+                    <button className="btn-primary" onClick={handleSaveMetas}>Guardar metas</button>
+                    <button className="btn-secondary" onClick={() => setShowMetas(false)}>Cancelar</button>
+                    {Object.keys(dimTargets).length > 0 && (
+                      <button
+                        className="btn-secondary"
+                        style={{ color: "#f87171", borderColor: "rgba(248,113,113,0.35)" }}
+                        onClick={() => { persistMetas(empresa.id, {}); setDimTargets({}); setShowMetas(false); }}
+                      >
+                        Eliminar todas
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="active-period-actions">
                 <button
                   className="btn-secondary"
@@ -472,6 +550,18 @@ export function CompanyDashboard({
                   style={{ fontSize: "0.82rem" }}
                 >
                   🏢 Departamentos
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={() => { setShowDeptManager(false); openMetas(); }}
+                  style={{ fontSize: "0.82rem" }}
+                >
+                  🎯 Metas
+                  {Object.keys(dimTargets).length > 0 && (
+                    <span style={{ marginLeft: 6, background: "rgba(212,175,55,0.25)", color: "#d4af37", borderRadius: 999, padding: "1px 7px", fontSize: "0.7rem", fontWeight: 800 }}>
+                      {Object.keys(dimTargets).length}
+                    </span>
+                  )}
                 </button>
                 <button
                   className="btn-danger"
