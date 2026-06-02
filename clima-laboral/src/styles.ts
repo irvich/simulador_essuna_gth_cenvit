@@ -673,6 +673,63 @@ export const css = `
   .meta-row { display: flex; align-items: center; gap: 8px; }
   .meta-dim-name { flex: 1; font-size: 0.82rem; font-weight: 700; }
 
+  /* ── Health index badge (company header) ────────────────── */
+  .health-index-row {
+    display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;
+  }
+  .health-index-label {
+    font-size: 0.7rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  .health-index-pill {
+    display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid; font-weight: 800; line-height: 1;
+  }
+  .health-index-pct { font-size: 0.85rem; }
+  .health-index-verdict { font-size: 0.72rem; opacity: 0.85; }
+  .health-index-period { font-size: 0.7rem; color: var(--muted); }
+
+  /* ── Welcome onboarding panel ────────────────────────────── */
+  .welcome-guide {
+    background: rgba(7,27,51,0.72); border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 24px; padding: 32px 28px; margin-bottom: 24px; backdrop-filter: blur(10px);
+  }
+  .welcome-guide-top {
+    display: flex; align-items: flex-start; gap: 18px; margin-bottom: 28px; flex-wrap: wrap;
+  }
+  .welcome-guide-icon {
+    font-size: 2.6rem; flex-shrink: 0; width: 60px; height: 60px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(212,175,55,0.1); border: 1px solid rgba(212,175,55,0.25); border-radius: 16px;
+  }
+  .welcome-guide-title {
+    font-size: 1.35rem; font-weight: 900; color: var(--white); margin-bottom: 6px;
+  }
+  .welcome-guide-sub {
+    color: var(--muted); font-size: 0.88rem; line-height: 1.65; max-width: 520px;
+  }
+  .welcome-steps-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 4px;
+  }
+  .welcome-step {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px; padding: 18px 16px;
+  }
+  .welcome-step-num {
+    flex: 0 0 auto; width: 32px; height: 32px; border-radius: 999px;
+    background: rgba(212,175,55,0.15); border: 1px solid rgba(212,175,55,0.4);
+    color: var(--gold); font-weight: 900; font-size: 0.9rem;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .welcome-step-body h4 { font-size: 0.9rem; font-weight: 800; color: var(--white); margin-bottom: 6px; }
+  .welcome-step-body p { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+  .welcome-step-body em { color: var(--sky); font-style: normal; font-weight: 700; }
+
+  @media (max-width: 680px) {
+    .welcome-steps-grid { grid-template-columns: 1fr; }
+    .welcome-guide-top { flex-direction: row; }
+  }
+
   /* ── RESPONSIVE ───────────────────────────────────────── */
   @media (max-width: 860px) {
     .info-grid, .admin-statbar { grid-template-columns: repeat(2, 1fr); }

@@ -26,6 +26,25 @@ function suggestLabel(): string {
   return `${now.getFullYear()}-${now.getMonth() < 6 ? "S1" : "S2"}`;
 }
 
+function computeGlobalPct(responses: SurveyResponse[]): number | null {
+  if (!responses.length) return null;
+  let total = 0, count = 0;
+  for (const r of responses) {
+    for (const v of Object.values(r.answers)) {
+      if (typeof v === "number") { total += v; count++; }
+    }
+  }
+  return count > 0 ? Math.round(((total / count - 1) / 4) * 100) : null;
+}
+
+function healthColor(pct: number): string {
+  return pct >= 80 ? "#22c55e" : pct >= 60 ? "#d4af37" : "#f87171";
+}
+
+function healthLabel(pct: number): string {
+  return pct >= 80 ? "Favorable" : pct >= 60 ? "Moderado" : "Crítico";
+}
+
 function surveyUrl(periodoId: string, empresaId: string): string {
   const base = window.location.origin + window.location.pathname;
   return `${base}?periodo=${periodoId}&empresa=${empresaId}`;
@@ -117,6 +136,9 @@ export function CompanyDashboard({
   const [comparisonPlans, setComparisonPlans] = useState<Map<string, ActionRow[]>>(new Map());
   const [comparisonLoading, setComparisonLoading] = useState(false);
 
+  const [latestScore, setLatestScore] = useState<number | null>(null);
+  const [latestScoreLabel, setLatestScoreLabel] = useState("");
+
   // Cache loaded plans keyed by periodoId to avoid re-fetching
   const [planCache, setPlanCache] = useState<Map<string, ActionRow[] | null>>(new Map());
 
@@ -149,6 +171,21 @@ export function CompanyDashboard({
       .catch(() => {})
       .finally(() => setActiveLoading(false));
   }, [activePeriodo?.id]);
+
+  // Compute health index from the most recently closed period
+  useEffect(() => {
+    const sorted = [...closedPeriodos].sort(
+      (a, b) => new Date(b.cerrado_at ?? b.created_at).getTime() - new Date(a.cerrado_at ?? a.created_at).getTime()
+    );
+    const last = sorted[0];
+    if (!last) { setLatestScore(null); return; }
+    getResponsesForPeriod(last.id)
+      .then((resps) => {
+        setLatestScore(computeGlobalPct(resps));
+        setLatestScoreLabel(last.etiqueta);
+      })
+      .catch(() => {});
+  }, [closedPeriodos.length]);
 
   // Pre-fetch plans for closed periods in the background to show badges
   useEffect(() => {
@@ -361,6 +398,16 @@ export function CompanyDashboard({
         <div>
           <p className="eyebrow gold">Panel de Empresa</p>
           <h1 className="company-name">{empresa.nombre}</h1>
+          {latestScore !== null && (
+            <div className="health-index-row">
+              <span className="health-index-label">Último resultado:</span>
+              <span className="health-index-pill" style={{ background: `${healthColor(latestScore)}22`, color: healthColor(latestScore), borderColor: `${healthColor(latestScore)}55` }}>
+                <span className="health-index-pct">{latestScore}%</span>
+                <span className="health-index-verdict">{healthLabel(latestScore)}</span>
+              </span>
+              <span className="health-index-period">{latestScoreLabel}</span>
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           {pwOk && <span style={{ fontSize: "0.78rem", color: "#22c55e", fontWeight: 700 }}>✓ Contraseña actualizada</span>}
@@ -414,6 +461,83 @@ export function CompanyDashboard({
       {!loading && (
         <>
           {/* ── Active period ──────────────────────────────────── */}
+          {/* ── Welcome onboarding (first-time, zero periods) ──── */}
+          {periodos.length === 0 && (
+            <div className="welcome-guide">
+              <div className="welcome-guide-top">
+                <div className="welcome-guide-icon">📊</div>
+                <div>
+                  <h2 className="welcome-guide-title">Bienvenido, {empresa.nombre}</h2>
+                  <p className="welcome-guide-sub">
+                    Comienza tu primera medición de clima laboral en tres pasos. El proceso es rápido, anónimo y produce un informe con plan de mejora automático.
+                  </p>
+                </div>
+              </div>
+              <div className="welcome-steps-grid">
+                <div className="welcome-step">
+                  <div className="welcome-step-num">1</div>
+                  <div className="welcome-step-body">
+                    <h4>Crea un período</h4>
+                    <p>Define un nombre (ej: <em>2026-S1</em>) e ingresa el número estimado de colaboradores para monitorear la tasa de respuesta en tiempo real.</p>
+                  </div>
+                </div>
+                <div className="welcome-step">
+                  <div className="welcome-step-num">2</div>
+                  <div className="welcome-step-body">
+                    <h4>Comparte el enlace</h4>
+                    <p>El sistema genera un enlace único para tu empresa. Distribúyelo por correo, WhatsApp o el canal que uses. La encuesta tarda ~5 minutos.</p>
+                  </div>
+                </div>
+                <div className="welcome-step">
+                  <div className="welcome-step-num">3</div>
+                  <div className="welcome-step-body">
+                    <h4>Analiza y actúa</h4>
+                    <p>Cierra el período cuando tengas respuestas suficientes. Obtendrás un dashboard completo con radar, tendencias y un plan de acción editable.</p>
+                  </div>
+                </div>
+              </div>
+              {!showCreate ? (
+                <div style={{ textAlign: "center", marginTop: 28 }}>
+                  <button className="btn-primary" style={{ fontSize: "1rem", padding: "14px 36px" }} onClick={() => setShowCreate(true)}>
+                    + Iniciar primera medición
+                  </button>
+                </div>
+              ) : (
+                <div className="create-period-form" style={{ marginTop: 20 }}>
+                  <label>Etiqueta del período (ej: 2026-S1, Primer semestre 2026)</label>
+                  <div className="create-period-form-row" style={{ flexWrap: "wrap" }}>
+                    <input
+                      className="org-input"
+                      value={newLabel}
+                      onChange={(e) => setNewLabel(e.target.value)}
+                      placeholder="ej: 2026-S1"
+                      style={{ flex: 2, minWidth: 140 }}
+                    />
+                    <input
+                      className="org-input"
+                      type="number"
+                      min="1"
+                      value={newTotal}
+                      onChange={(e) => setNewTotal(e.target.value)}
+                      placeholder="Nº colaboradores (opcional)"
+                      style={{ flex: 1, minWidth: 140 }}
+                    />
+                    <button className="btn-primary" onClick={handleCreate} disabled={creating}>
+                      {creating ? "Creando…" : "Crear"}
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => { setShowCreate(false); setCreateError(""); setNewTotal(""); }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                  {createError && <p className="admin-error" style={{ marginTop: 8 }}>{createError}</p>}
+                </div>
+              )}
+            </div>
+          )}
+
           {activePeriodo ? (
             <div className="active-period-card">
               <h3>⚡ Período activo</h3>
@@ -602,7 +726,7 @@ export function CompanyDashboard({
                 </button>
               </div>
             </div>
-          ) : (
+          ) : periodos.length > 0 && (
             <div className="no-active-period">
               <p>No hay ningún período de medición activo.</p>
               {!showCreate ? (
@@ -689,12 +813,6 @@ export function CompanyDashboard({
                 </table>
               </div>
             </div>
-          )}
-
-          {closedPeriodos.length === 0 && !activePeriodo && (
-            <p className="period-history-empty">
-              El historial de mediciones anteriores aparecerá aquí.
-            </p>
           )}
 
           {closedPeriodos.length >= 2 && (
