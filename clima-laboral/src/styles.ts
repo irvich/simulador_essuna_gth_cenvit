@@ -597,6 +597,22 @@ export const css = `
   .cdelta-same { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
   .compliance-verdict { font-size: 0.73rem; color: var(--muted); line-height: 1.4; margin-top: 2px; }
 
+  /* ── Top questions panel ─────────────────────────────────── */
+  .top-q-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .top-q-section-label { font-size: 0.75rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
+  .top-q-list { display: flex; flex-direction: column; gap: 8px; }
+  .top-q-card {
+    padding: 12px 14px; border: 1px solid rgba(255,255,255,0.07); border-left-width: 3px;
+    border-radius: 10px; background: rgba(255,255,255,0.02);
+  }
+  .top-q-header { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+  .top-q-badge { font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+  .top-q-num { font-size: 0.72rem; font-weight: 700; }
+  .top-q-score { font-size: 0.9rem; font-weight: 900; }
+  .top-q-text { font-size: 0.8rem; color: var(--muted); line-height: 1.45; }
+
+  @media (max-width: 640px) { .top-q-grid { grid-template-columns: 1fr; } }
+
   /* ── Dimension targets & benchmark ───────────────────────── */
   .target-line {
     position: absolute; top: -2px; bottom: -2px; width: 2px;

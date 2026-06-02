@@ -581,6 +581,71 @@ function DimDistribution({ responses, dimKey }: { responses: SurveyResponse[]; d
   );
 }
 
+function TopQuestions({ responses }: { responses: SurveyResponse[] }) {
+  const qData = useMemo(() => {
+    if (responses.length === 0) return [];
+    return QUESTIONS.map((q) => {
+      let sum = 0, count = 0;
+      for (const r of responses) {
+        const v = r.answers[q.id];
+        if (v !== undefined) { sum += v; count++; }
+      }
+      const avg = count === 0 ? 0 : sum / count;
+      const pct = count === 0 ? 0 : Math.round((avg / 5) * 100);
+      const dim = DIMENSIONS.find((d) => d.key === q.dimension)!;
+      return { q, avg: Math.round(avg * 10) / 10, pct, dim };
+    });
+  }, [responses]);
+
+  if (qData.length === 0) return null;
+
+  const sorted = [...qData].sort((a, b) => a.pct - b.pct);
+  const critical = sorted.slice(0, 3);
+  const strong = sorted.slice(-3).reverse();
+
+  function QCard({ item, type }: { item: typeof critical[0]; type: "critical" | "strong" }) {
+    const accent = type === "critical" ? "#f87171" : "#22c55e";
+    return (
+      <div className="top-q-card" style={{ borderLeftColor: accent }}>
+        <div className="top-q-header">
+          <span className="top-q-badge" style={{ background: item.dim.color + "22", color: item.dim.color, border: `1px solid ${item.dim.color}44` }}>
+            {item.dim.shortLabel}
+          </span>
+          <span className="top-q-num" style={{ color: "var(--muted)" }}>P{item.q.id}</span>
+          <span className="top-q-score" style={{ color: accent, marginLeft: "auto" }}>{item.avg}/5</span>
+        </div>
+        <p className="top-q-text">{item.q.text}</p>
+        <div className="score-bar-track" style={{ marginTop: 6 }}>
+          <div className="score-bar-fill" style={{ width: `${item.pct}%`, background: accent }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="breakdown-card">
+      <h2>Preguntas Críticas y Fortalezas</h2>
+      <p style={{ color: "var(--muted)", fontSize: "0.78rem", marginBottom: 16 }}>
+        Las 3 preguntas con mayor oportunidad de mejora y las 3 más consolidadas, sobre {QUESTIONS.length} preguntas totales.
+      </p>
+      <div className="top-q-grid">
+        <div>
+          <p className="top-q-section-label" style={{ color: "#f87171" }}>🚨 Atención prioritaria</p>
+          <div className="top-q-list">
+            {critical.map((item) => <QCard key={item.q.id} item={item} type="critical" />)}
+          </div>
+        </div>
+        <div>
+          <p className="top-q-section-label" style={{ color: "#22c55e" }}>⭐ Fortalezas confirmadas</p>
+          <div className="top-q-list">
+            {strong.map((item) => <QCard key={item.q.id} item={item} type="strong" />)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Valores de referencia aproximados para empresas latinoamericanas (promedio sectorial)
 const SECTOR_BENCHMARK: Record<string, number> = {
   liderazgo: 67,
@@ -971,6 +1036,8 @@ export function PeriodDashboard({
               })}
             </div>
           </div>
+
+          <TopQuestions responses={effectiveResponses} />
 
           <QuestionAnalysis responses={effectiveResponses} forceOpen={printMode} />
 
