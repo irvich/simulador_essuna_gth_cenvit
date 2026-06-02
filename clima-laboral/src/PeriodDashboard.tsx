@@ -581,6 +581,107 @@ function DimDistribution({ responses, dimKey }: { responses: SurveyResponse[]; d
   );
 }
 
+function RiskMatrix({ responses }: { responses: SurveyResponse[] }) {
+  const points = useMemo(() => {
+    if (responses.length < 5) return null;
+    return DIMENSIONS.map((dim) => {
+      const ids = QUESTIONS.filter((q) => q.dimension === dim.key).map((q) => q.id);
+      const counts = [0, 0, 0, 0, 0];
+      let total = 0;
+      for (const r of responses) {
+        for (const qid of ids) {
+          const v = r.answers[qid];
+          if (v !== undefined) { counts[v - 1]++; total++; }
+        }
+      }
+      if (total === 0) return null;
+      const mean = counts.reduce((s, c, i) => s + c * (i + 1), 0) / total;
+      const variance = counts.reduce((s, c, i) => s + c * (i + 1 - mean) ** 2, 0) / total;
+      const sd = Math.sqrt(variance);
+      return { dim, pct: Math.round((mean / 5) * 100), sd: Math.round(sd * 100) / 100 };
+    }).filter(Boolean) as Array<{ dim: { key: string; label: string; shortLabel: string; color: string }; pct: number; sd: number }>;
+  }, [responses]);
+
+  if (!points || points.length === 0) return null;
+
+  const W = 420, H = 310;
+  const padL = 36, padR = 18, padT = 28, padB = 38;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const maxSD = 2.0;
+
+  const xPos = (pct: number) => padL + (pct / 100) * chartW;
+  const yPos = (sd: number) => padT + (1 - Math.min(sd, maxSD) / maxSD) * chartH;
+  const xMid = xPos(70);
+  const yMid = yPos(1.0);
+
+  return (
+    <div className="breakdown-card">
+      <h2>Mapa de Riesgo: Puntaje vs Polarización</h2>
+      <p style={{ color: "var(--muted)", fontSize: "0.76rem", marginBottom: 12 }}>
+        Eje X = puntaje promedio · Eje Y = dispersión (σ). Dimensiones abajo-izquierda requieren atención urgente.
+      </p>
+      <div style={{ overflowX: "auto" }}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: "block", width: "100%", maxWidth: W }}>
+          {/* Quadrant fills */}
+          <rect x={padL} y={padT} width={xMid - padL} height={yMid - padT} fill="rgba(251,146,60,0.07)" />
+          <rect x={xMid} y={padT} width={W - padR - xMid} height={yMid - padT} fill="rgba(212,175,55,0.05)" />
+          <rect x={padL} y={yMid} width={xMid - padL} height={H - padB - yMid} fill="rgba(248,113,113,0.10)" />
+          <rect x={xMid} y={yMid} width={W - padR - xMid} height={H - padB - yMid} fill="rgba(34,197,94,0.06)" />
+          {/* Quadrant labels */}
+          <text x={padL + 5} y={padT + 13} fontSize="8" fill="rgba(251,146,60,0.55)" style={{ fontFamily: "Inter,sans-serif" }}>Percepción mixta</text>
+          <text x={xMid + 5} y={padT + 13} fontSize="8" fill="rgba(212,175,55,0.55)" style={{ fontFamily: "Inter,sans-serif" }}>Dividida positiva</text>
+          <text x={padL + 5} y={H - padB - 5} fontSize="8" fill="rgba(248,113,113,0.65)" style={{ fontFamily: "Inter,sans-serif" }}>⚠ Zona de riesgo</text>
+          <text x={xMid + 5} y={H - padB - 5} fontSize="8" fill="rgba(34,197,94,0.55)" style={{ fontFamily: "Inter,sans-serif" }}>✓ Fortaleza</text>
+          {/* Threshold lines */}
+          <line x1={xMid} y1={padT} x2={xMid} y2={H - padB} stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4,3" />
+          <line x1={padL} y1={yMid} x2={W - padR} y2={yMid} stroke="rgba(255,255,255,0.1)" strokeWidth="1" strokeDasharray="4,3" />
+          {/* Axes */}
+          <line x1={padL} y1={H - padB} x2={W - padR} y2={H - padB} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+          <line x1={padL} y1={padT} x2={padL} y2={H - padB} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+          {/* X ticks */}
+          {[0, 25, 50, 75, 100].map((v) => (
+            <React.Fragment key={v}>
+              <line x1={xPos(v)} y1={H - padB} x2={xPos(v)} y2={H - padB + 3} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+              <text x={xPos(v)} y={H - padB + 13} textAnchor="middle" fontSize="8" fill="rgba(148,163,184,0.55)" style={{ fontFamily: "Inter,sans-serif" }}>{v}%</text>
+            </React.Fragment>
+          ))}
+          {/* Y ticks */}
+          {[0, 0.5, 1.0, 1.5, 2.0].map((v) => (
+            <text key={v} x={padL - 4} y={yPos(v) + 3} textAnchor="end" fontSize="8" fill="rgba(148,163,184,0.55)" style={{ fontFamily: "Inter,sans-serif" }}>{v.toFixed(1)}</text>
+          ))}
+          {/* Axis labels */}
+          <text x={padL + chartW / 2} y={H - 2} textAnchor="middle" fontSize="8" fill="rgba(148,163,184,0.4)" style={{ fontFamily: "Inter,sans-serif" }}>Puntaje (%) →</text>
+          <text x={9} y={padT + chartH / 2} textAnchor="middle" fontSize="8" fill="rgba(148,163,184,0.4)" transform={`rotate(-90,9,${padT + chartH / 2})`} style={{ fontFamily: "Inter,sans-serif" }}>σ →</text>
+          {/* Points */}
+          {points.map(({ dim, pct, sd }) => {
+            const x = xPos(pct);
+            const y = yPos(sd);
+            return (
+              <g key={dim.key}>
+                <circle cx={x} cy={y} r={8} fill={dim.color} opacity={0.85} stroke="rgba(7,27,51,0.8)" strokeWidth="1.5">
+                  <title>{dim.label}: {pct}% · σ {sd.toFixed(2)}</title>
+                </circle>
+                <text x={x} y={y - 11} textAnchor="middle" fontSize="8.5" fill={dim.color} fontWeight="700" style={{ fontFamily: "Inter,sans-serif" }}>
+                  {dim.shortLabel.split(" ")[0]}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <div style={{ display: "flex", gap: 18, flexWrap: "wrap", fontSize: "0.7rem", color: "var(--muted)", marginTop: 8 }}>
+        {[["rgba(248,113,113,0.18)", "Riesgo (bajo puntaje + alta polarización)"], ["rgba(34,197,94,0.14)", "Fortaleza (alto puntaje + baja polarización)"]].map(([bg, label]) => (
+          <span key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 3, background: bg }} />
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TopQuestions({ responses }: { responses: SurveyResponse[] }) {
   const qData = useMemo(() => {
     if (responses.length === 0) return [];
@@ -951,6 +1052,8 @@ export function PeriodDashboard({
               </div>
             </div>
           </div>
+
+          <RiskMatrix responses={effectiveResponses} />
 
           {!filterDept && departments.length > 0 && (
             <div className="breakdown-card">
