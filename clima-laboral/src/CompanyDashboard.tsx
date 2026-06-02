@@ -84,6 +84,8 @@ export function CompanyDashboard({
   const [viewingPeriodo, setViewingPeriodo] = useState<Periodo | null>(null);
   const [viewingResponses, setViewingResponses] = useState<SurveyResponse[]>([]);
   const [viewingPlan, setViewingPlan] = useState<ActionRow[] | null>(null);
+  const [viewingPrevResponses, setViewingPrevResponses] = useState<SurveyResponse[]>([]);
+  const [viewingPrevLabel, setViewingPrevLabel] = useState("");
   const [viewingLoading, setViewingLoading] = useState(false);
 
   const [activeResponses, setActiveResponses] = useState<SurveyResponse[]>([]);
@@ -193,12 +195,22 @@ export function CompanyDashboard({
   async function handleView(periodo: Periodo) {
     setViewingLoading(true);
     try {
-      const [responses, plan] = await Promise.all([
+      // Find the immediately preceding closed period (by creation date)
+      const allSorted = [...periodos].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      const idx = allSorted.findIndex((p) => p.id === periodo.id);
+      const prevPeriodo = idx > 0 ? allSorted[idx - 1] : null;
+
+      const [responses, plan, prevResps] = await Promise.all([
         getResponsesForPeriod(periodo.id),
         planCache.has(periodo.id) ? Promise.resolve(planCache.get(periodo.id) ?? null) : getPlanAccion(periodo.id),
+        prevPeriodo ? getResponsesForPeriod(prevPeriodo.id) : Promise.resolve([]),
       ]);
       setViewingResponses(responses);
       setViewingPlan(plan);
+      setViewingPrevResponses(prevResps);
+      setViewingPrevLabel(prevPeriodo?.etiqueta ?? "");
       setViewingPeriodo(periodo);
       if (!planCache.has(periodo.id)) {
         setPlanCache((prev) => new Map(prev).set(periodo.id, plan));
@@ -334,6 +346,8 @@ export function CompanyDashboard({
         empresaNombre={empresa.nombre}
         totalColaboradores={viewingPeriodo.total_colaboradores}
         targets={dimTargets}
+        prevResponses={viewingPrevResponses.length > 0 ? viewingPrevResponses : undefined}
+        prevLabel={viewingPrevLabel || undefined}
         savedPlan={viewingPlan}
         onSavePlan={handleSavePlan}
         onBack={() => setViewingPeriodo(null)}

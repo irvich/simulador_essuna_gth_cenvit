@@ -803,6 +803,8 @@ export function PeriodDashboard({
   empresaNombre,
   totalColaboradores,
   targets,
+  prevResponses,
+  prevLabel,
   savedPlan,
   onSavePlan,
   onBack,
@@ -812,6 +814,8 @@ export function PeriodDashboard({
   empresaNombre?: string;
   totalColaboradores?: number | null;
   targets?: Partial<Record<string, number>>;
+  prevResponses?: SurveyResponse[];
+  prevLabel?: string;
   savedPlan?: ActionRow[] | null;
   onSavePlan?: (rows: ActionRow[]) => Promise<void>;
   onBack?: () => void;
@@ -876,6 +880,16 @@ export function PeriodDashboard({
     []
   );
 
+  const prevScores: Map<string, number> | undefined = useMemo(() => {
+    if (!prevResponses || prevResponses.length === 0) return undefined;
+    return new Map(DIMENSIONS.map((dim) => [dim.key, dimensionAverage(prevResponses, dim.key)]));
+  }, [prevResponses]);
+
+  const prevGlobalPct: number | undefined = useMemo(
+    () => prevResponses && prevResponses.length > 0 ? globalAverage(prevResponses) : undefined,
+    [prevResponses]
+  );
+
   const departments = useMemo(() => {
     const map = new Map<string, SurveyResponse[]>();
     for (const r of responses) {
@@ -901,7 +915,14 @@ export function PeriodDashboard({
       <div className="results-header" id="sec-resumen">
         {empresaNombre && <p className="eyebrow gold">{empresaNombre}</p>}
         <h1 className="results-title">Resultados · {periodoLabel}</h1>
-        <p className="results-meta">{responses.length} participante(s)</p>
+        <p className="results-meta">
+          {responses.length} participante(s)
+          {prevLabel && (
+            <span style={{ marginLeft: 10, fontSize: "0.75rem", color: "var(--muted)", fontWeight: 600 }}>
+              · comparando con {prevLabel}
+            </span>
+          )}
+        </p>
       </div>
 
       {responses.length > 0 && (
@@ -1052,6 +1073,14 @@ export function PeriodDashboard({
             <div className="stat-card">
               <div className="stat-num" style={{ color: scoreLevelColor(globalPct) }}>{globalPct}%</div>
               <div className="stat-label">Índice global</div>
+              {prevGlobalPct != null && !filterDept && (() => {
+                const d = globalPct - prevGlobalPct;
+                return (
+                  <div style={{ fontSize: "0.68rem", fontWeight: 700, marginTop: 4, color: d > 0 ? "#22c55e" : d < 0 ? "#f87171" : "var(--muted)" }}>
+                    {d > 0 ? "▲" : d < 0 ? "▼" : "="} {d > 0 ? "+" : ""}{d} pts vs {prevLabel}
+                  </div>
+                );
+              })()}
             </div>
             <div className="stat-card">
               <div className="stat-num" style={{ color: strongest?.dim.color, fontSize: "1.05rem", paddingTop: 6 }}>
@@ -1149,11 +1178,24 @@ export function PeriodDashboard({
                   const target = targets?.[dim.key];
                   const bm = SECTOR_BENCHMARK[dim.key];
                   const gap = target != null ? pct - target : null;
+                  const prev = !filterDept ? prevScores?.get(dim.key) : undefined;
+                  const prevDelta = prev != null ? pct - prev : null;
                   return (
                     <div key={dim.key} className="breakdown-item">
                       <div className="breakdown-header">
                         <span className="breakdown-name" style={{ color: dim.color }}>{dim.label}</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          {prevDelta != null && (
+                            <span style={{
+                              fontSize: "0.69rem", fontWeight: 800, padding: "1px 6px", borderRadius: 999,
+                              background: prevDelta > 0 ? "rgba(34,197,94,0.12)" : prevDelta < 0 ? "rgba(248,113,113,0.12)" : "rgba(148,163,184,0.1)",
+                              color: prevDelta > 0 ? "#22c55e" : prevDelta < 0 ? "#f87171" : "var(--muted)",
+                              border: `1px solid ${prevDelta > 0 ? "rgba(34,197,94,0.3)" : prevDelta < 0 ? "rgba(248,113,113,0.3)" : "rgba(148,163,184,0.2)"}`,
+                              whiteSpace: "nowrap",
+                            }}>
+                              {prevDelta > 0 ? "▲ +" : prevDelta < 0 ? "▼ " : "= "}{prevDelta} pts
+                            </span>
+                          )}
                           {bm != null && (
                             <span style={{ fontSize: "0.69rem", fontWeight: 700, color: pct >= bm ? "rgba(134,239,172,0.75)" : "rgba(252,165,165,0.75)" }}>
                               Ref.{bm}%{pct >= bm ? " ↑" : " ↓"}
