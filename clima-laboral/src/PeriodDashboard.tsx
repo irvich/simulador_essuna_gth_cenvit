@@ -943,6 +943,28 @@ export function PeriodDashboard({
         <div className="date-filter-bar no-print">
           <span className="dept-filter-label">Filtrar por fecha:</span>
           <div className="date-filter-row">
+            {(() => {
+              const allDates = [...responses].map((r) => r.createdAt.slice(0, 10)).sort();
+              const mid = allDates[Math.floor(allDates.length / 2)];
+              const midPrev = allDates[Math.floor(allDates.length / 2) - 1];
+              return (
+                <>
+                  <button
+                    className={`dept-filter-pill${dateFrom === dateRange.min && dateTo === midPrev ? " active" : ""}`}
+                    style={{ fontSize: "0.72rem", padding: "4px 10px" }}
+                    onClick={() => { setDateFrom(dateRange.min); setDateTo(midPrev); }}
+                    title={`${dateRange.min} → ${midPrev}`}
+                  >1ª mitad</button>
+                  <button
+                    className={`dept-filter-pill${dateFrom === mid && dateTo === dateRange.max ? " active" : ""}`}
+                    style={{ fontSize: "0.72rem", padding: "4px 10px" }}
+                    onClick={() => { setDateFrom(mid); setDateTo(dateRange.max); }}
+                    title={`${mid} → ${dateRange.max}`}
+                  >2ª mitad</button>
+                  <span style={{ color: "rgba(255,255,255,0.15)", margin: "0 2px" }}>|</span>
+                </>
+              );
+            })()}
             <input
               className="org-input date-filter-input"
               type="date"
