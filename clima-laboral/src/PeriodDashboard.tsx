@@ -797,7 +797,16 @@ export function PeriodDashboard({
 }) {
   const [expandedDept, setExpandedDept] = useState<string | null>(null);
   const [filterDept, setFilterDept] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [printMode, setPrintMode] = useState(false);
+
+  const dateRange = useMemo(() => {
+    if (responses.length === 0) return { min: "", max: "" };
+    const dates = responses.map((r) => r.createdAt.slice(0, 10)).sort();
+    return { min: dates[0], max: dates[dates.length - 1] };
+  }, [responses]);
+  const showDateFilter = dateRange.min !== dateRange.max;
 
   // Expand all collapsible sections, print, then restore the previous state
   function exportPDF() {
@@ -808,11 +817,15 @@ export function PeriodDashboard({
     }, 120);
   }
 
-  // All analytics recompute when the department filter changes
-  const effectiveResponses = useMemo(
-    () => filterDept ? responses.filter((r) => (r.department || "Sin especificar") === filterDept) : responses,
-    [responses, filterDept]
-  );
+  // All analytics recompute when the department or date filter changes
+  const effectiveResponses = useMemo(() => {
+    let result = filterDept
+      ? responses.filter((r) => (r.department || "Sin especificar") === filterDept)
+      : responses;
+    if (dateFrom) result = result.filter((r) => r.createdAt.slice(0, 10) >= dateFrom);
+    if (dateTo) result = result.filter((r) => r.createdAt.slice(0, 10) <= dateTo);
+    return result;
+  }, [responses, filterDept, dateFrom, dateTo]);
 
   const scores: DimScore[] = useMemo(
     () => DIMENSIONS.map((dim) => ({ dim, pct: dimensionAverage(effectiveResponses, dim.key) })),
@@ -905,6 +918,40 @@ export function PeriodDashboard({
         </div>
       )}
 
+      {responses.length > 0 && showDateFilter && (
+        <div className="date-filter-bar no-print">
+          <span className="dept-filter-label">Filtrar por fecha:</span>
+          <div className="date-filter-row">
+            <input
+              className="org-input date-filter-input"
+              type="date"
+              value={dateFrom}
+              min={dateRange.min}
+              max={dateTo || dateRange.max}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+            <span style={{ color: "var(--muted)", fontSize: "0.8rem" }}>—</span>
+            <input
+              className="org-input date-filter-input"
+              type="date"
+              value={dateTo}
+              min={dateFrom || dateRange.min}
+              max={dateRange.max}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                className="dept-filter-clear"
+                style={{ padding: "5px 12px", border: "1px solid rgba(56,189,248,0.3)", borderRadius: 8, fontSize: "0.75rem" }}
+                onClick={() => { setDateFrom(""); setDateTo(""); }}
+              >
+                × Limpiar
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {responses.length > 0 && (
         <>
           {filterDept && (
@@ -912,6 +959,14 @@ export function PeriodDashboard({
               <span>Viendo: <strong>{filterDept}</strong></span>
               <span style={{ color: "var(--muted)" }}>{effectiveResponses.length} respuesta(s)</span>
               <button className="dept-filter-clear" onClick={() => setFilterDept("")}>← Volver a empresa</button>
+            </div>
+          )}
+          {(dateFrom || dateTo) && (
+            <div className="dept-filter-banner" style={{ borderColor: "rgba(212,175,55,0.3)", background: "rgba(212,175,55,0.05)" }}>
+              <span style={{ color: "var(--gold)" }}>📅 Rango:</span>
+              <span>{dateFrom || dateRange.min} → {dateTo || dateRange.max}</span>
+              <span style={{ color: "var(--muted)" }}>{effectiveResponses.length} respuesta(s)</span>
+              <button className="dept-filter-clear" onClick={() => { setDateFrom(""); setDateTo(""); }}>× Limpiar</button>
             </div>
           )}
           <div className="admin-statbar">

@@ -597,6 +597,11 @@ export const css = `
   .cdelta-same { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
   .compliance-verdict { font-size: 0.73rem; color: var(--muted); line-height: 1.4; margin-top: 2px; }
 
+  /* ── Date range filter ───────────────────────────────────── */
+  .date-filter-bar { margin-bottom: 12px; }
+  .date-filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .date-filter-input { width: auto !important; padding: 6px 10px !important; font-size: 0.82rem !important; border-radius: 10px !important; color-scheme: dark; }
+
   /* ── Top questions panel ─────────────────────────────────── */
   .top-q-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   .top-q-section-label { font-size: 0.75rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
