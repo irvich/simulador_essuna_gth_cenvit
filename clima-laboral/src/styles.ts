@@ -597,11 +597,19 @@ export const css = `
   .cdelta-same { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
   .compliance-verdict { font-size: 0.73rem; color: var(--muted); line-height: 1.4; margin-top: 2px; }
 
-  /* ── Dimension targets ────────────────────────────────────── */
+  /* ── Dimension targets & benchmark ───────────────────────── */
   .target-line {
     position: absolute; top: -2px; bottom: -2px; width: 2px;
     border-left: 2px dashed rgba(212,175,55,0.9);
     pointer-events: none; z-index: 2;
+  }
+  .benchmark-line {
+    position: absolute; top: -2px; bottom: -2px; width: 2px;
+    border-left: 2px dotted rgba(148,163,184,0.65);
+    pointer-events: none; z-index: 1;
+  }
+  .benchmark-summary {
+    font-size: 0.74rem; color: var(--muted); margin-bottom: 14px; line-height: 1.5;
   }
   .target-gap {
     font-size: 0.72rem; font-weight: 700; padding: 2px 8px;

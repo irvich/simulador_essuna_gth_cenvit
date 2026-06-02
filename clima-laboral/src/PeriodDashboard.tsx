@@ -581,14 +581,31 @@ function DimDistribution({ responses, dimKey }: { responses: SurveyResponse[]; d
   );
 }
 
-function ScoreBarWithTarget({ pct, color, target }: { pct: number; color: string; target?: number }) {
-  if (target == null) return <ScoreBar pct={pct} color={color} />;
+// Valores de referencia aproximados para empresas latinoamericanas (promedio sectorial)
+const SECTOR_BENCHMARK: Record<string, number> = {
+  liderazgo: 67,
+  comunicacion: 63,
+  trabajo_en_equipo: 70,
+  motivacion: 62,
+  condiciones_seguridad: 69,
+  desarrollo_crecimiento: 58,
+};
+
+function ScoreBarWithTarget({ pct, color, target, benchmark }: {
+  pct: number; color: string; target?: number; benchmark?: number;
+}) {
+  if (target == null && benchmark == null) return <ScoreBar pct={pct} color={color} />;
   return (
     <div style={{ position: "relative" }}>
       <div className="score-bar-track">
         <div className="score-bar-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <div className="target-line" style={{ left: `${target}%` }} title={`Meta: ${target}%`} />
+      {benchmark != null && (
+        <div className="benchmark-line" style={{ left: `${benchmark}%` }} title={`Benchmark sectorial: ${benchmark}%`} />
+      )}
+      {target != null && (
+        <div className="target-line" style={{ left: `${target}%` }} title={`Meta: ${target}%`} />
+      )}
     </div>
   );
 }
@@ -653,6 +670,11 @@ export function PeriodDashboard({
     const deptResps = deptResponsesMap.get(expandedDept) ?? [];
     return DIMENSIONS.map((dim) => ({ dim, pct: dimensionAverage(deptResps, dim.key) }));
   }, [expandedDept, deptResponsesMap]);
+
+  const benchmarkScores: DimScore[] = useMemo(
+    () => DIMENSIONS.map((dim) => ({ dim, pct: SECTOR_BENCHMARK[dim.key] ?? 65 })),
+    []
+  );
 
   const departments = useMemo(() => {
     const map = new Map<string, SurveyResponse[]>();
@@ -800,19 +822,33 @@ export function PeriodDashboard({
                 Perfil por Dimensión
                 {expandedDept && <span style={{ color: "#d4af37", fontSize: "0.8rem", fontWeight: 600, marginLeft: 10 }}>+ {expandedDept}</span>}
               </h2>
-              <div className="radar-wrap"><RadarChart scores={scores} overlay={overlayScores} /></div>
+              <div className="radar-wrap"><RadarChart scores={scores} overlay={overlayScores} benchmark={expandedDept ? undefined : benchmarkScores} /></div>
             </div>
             <div className="breakdown-card">
-              <h2>Promedio por Dimensión</h2>
+              <h2 style={{ marginBottom: 6 }}>Promedio por Dimensión</h2>
+              {(() => {
+                const above = scores.filter(({ dim, pct }) => pct >= (SECTOR_BENCHMARK[dim.key] ?? 65)).length;
+                return (
+                  <p className="benchmark-summary">
+                    Benchmark sectorial (ref. latinoamérica): <strong style={{ color: above > scores.length / 2 ? "#86efac" : "#fde68a" }}>{above}/{scores.length}</strong> dimensiones por encima
+                  </p>
+                );
+              })()}
               <div className="breakdown-list">
                 {scores.map(({ dim, pct }) => {
                   const target = targets?.[dim.key];
+                  const bm = SECTOR_BENCHMARK[dim.key];
                   const gap = target != null ? pct - target : null;
                   return (
                     <div key={dim.key} className="breakdown-item">
                       <div className="breakdown-header">
                         <span className="breakdown-name" style={{ color: dim.color }}>{dim.label}</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                          {bm != null && (
+                            <span style={{ fontSize: "0.69rem", fontWeight: 700, color: pct >= bm ? "rgba(134,239,172,0.75)" : "rgba(252,165,165,0.75)" }}>
+                              Ref.{bm}%{pct >= bm ? " ↑" : " ↓"}
+                            </span>
+                          )}
                           {gap != null && (
                             <span
                               className="target-gap"
@@ -830,11 +866,23 @@ export function PeriodDashboard({
                           </span>
                         </div>
                       </div>
-                      <ScoreBarWithTarget pct={pct} color={dim.color} target={target} />
+                      <ScoreBarWithTarget pct={pct} color={dim.color} target={target} benchmark={bm} />
                       <DimDistribution responses={effectiveResponses} dimKey={dim.key} />
                     </div>
                   );
                 })}
+              </div>
+              <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: "0.69rem", color: "var(--muted)", flexWrap: "wrap" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ display: "inline-block", width: 16, height: 0, borderTop: "2px dotted rgba(148,163,184,0.65)" }} />
+                  Benchmark sectorial
+                </span>
+                {Object.keys(targets ?? {}).length > 0 && (
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ display: "inline-block", width: 16, height: 0, borderTop: "2px dashed rgba(212,175,55,0.9)" }} />
+                    Meta configurada
+                  </span>
+                )}
               </div>
             </div>
           </div>
