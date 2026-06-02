@@ -11,6 +11,134 @@ import {
 import { ActionMatrix } from "./ActionMatrix";
 import type { ActionRow, SurveyResponse } from "./types";
 
+// ── Participation trend chart ──────────────────────────────────────────────────
+
+type TrendPoint = { label: string; count: number; cumCount: number; avgGlobal: number };
+
+function buildTrendData(responses: SurveyResponse[]): TrendPoint[] | null {
+  if (responses.length < 3) return null;
+  const sorted = [...responses].sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  const byDay = new Map<string, SurveyResponse[]>();
+  for (const r of sorted) {
+    const day = r.createdAt.slice(0, 10);
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day)!.push(r);
+  }
+  const days = Array.from(byDay.entries()).sort(([a], [b]) => a.localeCompare(b));
+  if (days.length < 2) return null;
+
+  // If more than 28 distinct days, group into ISO weeks (YYYY-Www)
+  const useWeeks = days.length > 28;
+  if (useWeeks) {
+    const byWeek = new Map<string, SurveyResponse[]>();
+    for (const r of sorted) {
+      const d = new Date(r.createdAt);
+      const jan1 = new Date(d.getFullYear(), 0, 1);
+      const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+      const key = `${d.getFullYear()}-W${String(week).padStart(2, "0")}`;
+      if (!byWeek.has(key)) byWeek.set(key, []);
+      byWeek.get(key)!.push(r);
+    }
+    let cum: SurveyResponse[] = [];
+    return Array.from(byWeek.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, rs]) => {
+        cum = [...cum, ...rs];
+        return { label: key.replace("-W", " S"), count: rs.length, cumCount: cum.length, avgGlobal: globalAverage(cum) };
+      });
+  }
+
+  let cum: SurveyResponse[] = [];
+  return days.map(([day, rs]) => {
+    cum = [...cum, ...rs];
+    const d = new Date(day + "T12:00:00");
+    const label = d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+    return { label, count: rs.length, cumCount: cum.length, avgGlobal: globalAverage(cum) };
+  });
+}
+
+function ParticipationTrend({ responses }: { responses: SurveyResponse[] }) {
+  const data = useMemo(() => buildTrendData(responses), [responses]);
+  if (!data) return null;
+
+  const W = 560, H = 150;
+  const padL = 28, padR = 12, padT = 12, padB = 26;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+  const n = data.length;
+  const maxCount = Math.max(...data.map((d) => d.count), 1);
+  const gap = chartW / n;
+  const bw = Math.max(4, gap * 0.55);
+
+  const xPos = (i: number) => padL + i * gap + gap / 2;
+  const yBar = (c: number) => padT + chartH - (c / maxCount) * chartH;
+  const yLine = (pct: number) => padT + chartH - (pct / 100) * chartH;
+
+  const linePath = data.map((d, i) => `${i === 0 ? "M" : "L"}${xPos(i).toFixed(1)},${yLine(d.avgGlobal).toFixed(1)}`).join(" ");
+
+  const last = data[data.length - 1];
+
+  return (
+    <div className="breakdown-card">
+      <h2>Tendencia de Participación</h2>
+      <div style={{ overflowX: "auto" }}>
+        <svg
+          width={Math.max(W, n * 28 + padL + padR)}
+          height={H}
+          style={{ display: "block", width: "100%", minWidth: n < 8 ? 0 : n * 28 + padL + padR }}
+          viewBox={`0 0 ${Math.max(W, n * 28 + padL + padR)} ${H}`}
+        >
+          {[25, 50, 75, 100].map((pct) => (
+            <line key={pct} x1={padL} y1={yLine(pct)} x2={Math.max(W, n * 28 + padL + padR) - padR} y2={yLine(pct)} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+          ))}
+          {[25, 50, 75, 100].map((pct) => (
+            <text key={pct} x={padL - 3} y={yLine(pct) + 3} textAnchor="end" fontSize="7.5" fill="rgba(148,163,184,0.5)" style={{ fontFamily: "Inter,sans-serif" }}>{pct}</text>
+          ))}
+          {data.map((d, i) => (
+            <rect
+              key={i}
+              x={xPos(i) - bw / 2}
+              y={yBar(d.count)}
+              width={bw}
+              height={(d.count / maxCount) * chartH}
+              fill="rgba(56,189,248,0.3)"
+              rx="2"
+            >
+              <title>{d.label}: {d.count} respuesta(s) · acumulado {d.cumCount}</title>
+            </rect>
+          ))}
+          <path d={linePath} fill="none" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          {data.map((d, i) => (
+            <circle key={i} cx={xPos(i)} cy={yLine(d.avgGlobal)} r="3" fill="#d4af37" stroke="rgba(7,27,51,0.9)" strokeWidth="1.5">
+              <title>{d.label}: índice {d.avgGlobal}%</title>
+            </circle>
+          ))}
+          {data.map((d, i) => (
+            <text key={i} x={xPos(i)} y={H - padB + 13} textAnchor="middle" fontSize="8" fill="rgba(148,163,184,0.7)" style={{ fontFamily: "Inter,sans-serif" }}>
+              {d.label}
+            </text>
+          ))}
+        </svg>
+      </div>
+      <div style={{ display: "flex", gap: 18, fontSize: "0.72rem", color: "var(--muted)", marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ display: "inline-block", width: 12, height: 8, background: "rgba(56,189,248,0.3)", borderRadius: 2 }} />
+          Respuestas del día
+        </span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ display: "inline-block", width: 16, height: 2, background: "#d4af37", borderRadius: 1 }} />
+          Índice global acumulado
+        </span>
+        <span style={{ marginLeft: "auto", fontWeight: 700, color: "rgba(255,255,255,0.5)" }}>
+          {data.length} día(s) · {last.cumCount} resp. · {last.avgGlobal}% actual
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function exportCSV(responses: SurveyResponse[], label: string) {
   const qHeaders = QUESTIONS.map((q) => `"P${q.id}: ${q.text.replace(/"/g, '""')}"`);
   const header = ["Fecha", "Departamento", ...qHeaders, "Comentario"].join(",");
@@ -653,6 +781,8 @@ export function PeriodDashboard({
               <span style={{ color: "#22c55e" }}>80–100% Bueno</span>
             </div>
           </div>
+
+          {!filterDept && <ParticipationTrend responses={responses} />}
 
           <ExecutiveSummary
             responses={effectiveResponses}
