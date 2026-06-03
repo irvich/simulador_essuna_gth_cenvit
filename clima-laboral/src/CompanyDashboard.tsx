@@ -21,6 +21,24 @@ function persistMetas(empresaId: string, metas: Partial<Record<string, number>>)
   localStorage.setItem(`metas_${empresaId}`, JSON.stringify(metas));
 }
 
+function loadSector(empresaId: string): string {
+  return localStorage.getItem(`sector_${empresaId}`) || "general";
+}
+function saveSector(empresaId: string, sector: string): void {
+  localStorage.setItem(`sector_${empresaId}`, sector);
+}
+
+const SECTOR_OPTIONS = [
+  { value: "general",      label: "General (Latinoamérica)" },
+  { value: "manufactura",  label: "Manufactura" },
+  { value: "retail",       label: "Comercio / Retail" },
+  { value: "tecnologia",   label: "Tecnología" },
+  { value: "salud",        label: "Salud" },
+  { value: "educacion",    label: "Educación" },
+  { value: "servicios",    label: "Servicios profesionales" },
+  { value: "construccion", label: "Construcción" },
+];
+
 function suggestLabel(): string {
   const now = new Date();
   return `${now.getFullYear()}-${now.getMonth() < 6 ? "S1" : "S2"}`;
@@ -138,6 +156,8 @@ export function CompanyDashboard({
 
   const [latestScore, setLatestScore] = useState<number | null>(null);
   const [latestScoreLabel, setLatestScoreLabel] = useState("");
+
+  const [sector, setSector] = useState(() => loadSector(empresa.id));
 
   // Cache loaded plans keyed by periodoId to avoid re-fetching
   const [planCache, setPlanCache] = useState<Map<string, ActionRow[] | null>>(new Map());
@@ -383,6 +403,7 @@ export function CompanyDashboard({
         empresaNombre={empresa.nombre}
         totalColaboradores={viewingPeriodo.total_colaboradores}
         targets={dimTargets}
+        sectorKey={sector}
         prevResponses={viewingPrevResponses.length > 0 ? viewingPrevResponses : undefined}
         prevLabel={viewingPrevLabel || undefined}
         savedPlan={viewingPlan}
@@ -650,6 +671,28 @@ export function CompanyDashboard({
               {showMetas && (
                 <div className="create-period-form" style={{ marginBottom: 20 }}>
                   <label style={{ fontWeight: 700, marginBottom: 8, display: "block" }}>
+                    Configuración de análisis
+                  </label>
+
+                  {/* Sector selector */}
+                  <div style={{ marginBottom: 20 }}>
+                    <p style={{ color: "var(--muted)", fontSize: "0.76rem", marginBottom: 10, lineHeight: 1.55 }}>
+                      <strong style={{ color: "var(--white)" }}>Sector de referencia</strong> — determina qué benchmark sectorial se usa en el dashboard para comparar tus resultados.
+                    </p>
+                    <div className="sector-select-row">
+                      {SECTOR_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          className={`sector-chip${sector === opt.value ? " sector-chip-active" : ""}`}
+                          onClick={() => { setSector(opt.value); saveSector(empresa.id, opt.value); }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <label style={{ fontWeight: 700, marginBottom: 8, display: "block", borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 16 }}>
                     Metas por dimensión (0–100%)
                   </label>
                   <p style={{ color: "var(--muted)", fontSize: "0.76rem", marginBottom: 14, lineHeight: 1.55 }}>
@@ -675,14 +718,14 @@ export function CompanyDashboard({
                   </div>
                   <div className="create-period-form-row" style={{ marginTop: 14, flexWrap: "wrap" }}>
                     <button className="btn-primary" onClick={handleSaveMetas}>Guardar metas</button>
-                    <button className="btn-secondary" onClick={() => setShowMetas(false)}>Cancelar</button>
+                    <button className="btn-secondary" onClick={() => setShowMetas(false)}>Cerrar</button>
                     {Object.keys(dimTargets).length > 0 && (
                       <button
                         className="btn-secondary"
                         style={{ color: "#f87171", borderColor: "rgba(248,113,113,0.35)" }}
-                        onClick={() => { persistMetas(empresa.id, {}); setDimTargets({}); setShowMetas(false); }}
+                        onClick={() => { persistMetas(empresa.id, {}); setDimTargets({}); }}
                       >
-                        Eliminar todas
+                        Limpiar metas
                       </button>
                     )}
                   </div>
@@ -709,10 +752,10 @@ export function CompanyDashboard({
                   onClick={() => { setShowDeptManager(false); openMetas(); }}
                   style={{ fontSize: "0.82rem" }}
                 >
-                  🎯 Metas
-                  {Object.keys(dimTargets).length > 0 && (
+                  ⚙️ Configurar
+                  {(Object.keys(dimTargets).length > 0 || sector !== "general") && (
                     <span style={{ marginLeft: 6, background: "rgba(212,175,55,0.25)", color: "#d4af37", borderRadius: 999, padding: "1px 7px", fontSize: "0.7rem", fontWeight: 800 }}>
-                      {Object.keys(dimTargets).length}
+                      {[Object.keys(dimTargets).length > 0 ? `${Object.keys(dimTargets).length} metas` : "", sector !== "general" ? "sector" : ""].filter(Boolean).join(" · ")}
                     </span>
                   )}
                 </button>

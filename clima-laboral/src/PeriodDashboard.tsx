@@ -817,14 +817,16 @@ function TopQuestions({ responses }: { responses: SurveyResponse[] }) {
   );
 }
 
-// Valores de referencia aproximados para empresas latinoamericanas (promedio sectorial)
-const SECTOR_BENCHMARK: Record<string, number> = {
-  liderazgo: 67,
-  comunicacion: 63,
-  trabajo_en_equipo: 70,
-  motivacion: 62,
-  condiciones_seguridad: 69,
-  desarrollo_crecimiento: 58,
+// Valores de referencia por sector (LATAM, fuentes: SHRM, Aon, Gallup adaptado)
+const SECTOR_BENCHMARKS: Record<string, { label: string; values: Record<string, number> }> = {
+  general:      { label: "General (Latinoamérica)",      values: { liderazgo: 67, comunicacion: 63, trabajo_en_equipo: 70, motivacion: 62, condiciones_seguridad: 69, desarrollo_crecimiento: 58 } },
+  manufactura:  { label: "Manufactura",                  values: { liderazgo: 64, comunicacion: 59, trabajo_en_equipo: 68, motivacion: 60, condiciones_seguridad: 72, desarrollo_crecimiento: 55 } },
+  retail:       { label: "Comercio / Retail",            values: { liderazgo: 65, comunicacion: 65, trabajo_en_equipo: 71, motivacion: 63, condiciones_seguridad: 67, desarrollo_crecimiento: 57 } },
+  tecnologia:   { label: "Tecnología",                   values: { liderazgo: 72, comunicacion: 68, trabajo_en_equipo: 74, motivacion: 70, condiciones_seguridad: 71, desarrollo_crecimiento: 69 } },
+  salud:        { label: "Salud",                        values: { liderazgo: 66, comunicacion: 62, trabajo_en_equipo: 69, motivacion: 64, condiciones_seguridad: 75, desarrollo_crecimiento: 60 } },
+  educacion:    { label: "Educación",                    values: { liderazgo: 68, comunicacion: 66, trabajo_en_equipo: 72, motivacion: 65, condiciones_seguridad: 68, desarrollo_crecimiento: 62 } },
+  servicios:    { label: "Servicios profesionales",      values: { liderazgo: 66, comunicacion: 64, trabajo_en_equipo: 70, motivacion: 62, condiciones_seguridad: 68, desarrollo_crecimiento: 57 } },
+  construccion: { label: "Construcción",                 values: { liderazgo: 63, comunicacion: 58, trabajo_en_equipo: 66, motivacion: 59, condiciones_seguridad: 65, desarrollo_crecimiento: 53 } },
 };
 
 function ScoreBarWithTarget({ pct, color, target, benchmark }: {
@@ -852,6 +854,7 @@ export function PeriodDashboard({
   empresaNombre,
   totalColaboradores,
   targets,
+  sectorKey,
   prevResponses,
   prevLabel,
   savedPlan,
@@ -863,6 +866,7 @@ export function PeriodDashboard({
   empresaNombre?: string;
   totalColaboradores?: number | null;
   targets?: Partial<Record<string, number>>;
+  sectorKey?: string;
   prevResponses?: SurveyResponse[];
   prevLabel?: string;
   savedPlan?: ActionRow[] | null;
@@ -924,9 +928,12 @@ export function PeriodDashboard({
     return DIMENSIONS.map((dim) => ({ dim, pct: dimensionAverage(deptResps, dim.key) }));
   }, [expandedDept, deptResponsesMap]);
 
+  const sectorData = SECTOR_BENCHMARKS[sectorKey ?? "general"] ?? SECTOR_BENCHMARKS.general;
+  const sectorBenchmark = sectorData.values;
+
   const benchmarkScores: DimScore[] = useMemo(
-    () => DIMENSIONS.map((dim) => ({ dim, pct: SECTOR_BENCHMARK[dim.key] ?? 65 })),
-    []
+    () => DIMENSIONS.map((dim) => ({ dim, pct: sectorBenchmark[dim.key] ?? 65 })),
+    [sectorKey]
   );
 
   const prevScores: Map<string, number> | undefined = useMemo(() => {
@@ -1216,17 +1223,18 @@ export function PeriodDashboard({
             <div className="breakdown-card">
               <h2 style={{ marginBottom: 6 }}>Promedio por Dimensión</h2>
               {(() => {
-                const above = scores.filter(({ dim, pct }) => pct >= (SECTOR_BENCHMARK[dim.key] ?? 65)).length;
+                const above = scores.filter(({ dim, pct }) => pct >= (sectorBenchmark[dim.key] ?? 65)).length;
                 return (
                   <p className="benchmark-summary">
-                    Benchmark sectorial (ref. latinoamérica): <strong style={{ color: above > scores.length / 2 ? "#86efac" : "#fde68a" }}>{above}/{scores.length}</strong> dimensiones por encima
+                    Benchmark <strong style={{ color: "rgba(148,163,184,0.8)" }}>{sectorData.label}</strong>:{" "}
+                    <strong style={{ color: above > scores.length / 2 ? "#86efac" : "#fde68a" }}>{above}/{scores.length}</strong> dimensiones por encima
                   </p>
                 );
               })()}
               <div className="breakdown-list">
                 {scores.map(({ dim, pct }) => {
                   const target = targets?.[dim.key];
-                  const bm = SECTOR_BENCHMARK[dim.key];
+                  const bm = sectorBenchmark[dim.key];
                   const gap = target != null ? pct - target : null;
                   const prev = !filterDept ? prevScores?.get(dim.key) : undefined;
                   const prevDelta = prev != null ? pct - prev : null;

@@ -673,6 +673,16 @@ export const css = `
   .meta-row { display: flex; align-items: center; gap: 8px; }
   .meta-dim-name { flex: 1; font-size: 0.82rem; font-weight: 700; }
 
+  /* ── Sector selector chips ───────────────────────────────── */
+  .sector-select-row { display: flex; flex-wrap: wrap; gap: 7px; }
+  .sector-chip {
+    padding: 5px 13px; border-radius: 999px; font-size: 0.78rem; font-weight: 600;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);
+    color: var(--muted); cursor: pointer; transition: all 0.15s;
+  }
+  .sector-chip:hover { background: rgba(56,189,248,0.1); border-color: rgba(56,189,248,0.35); color: var(--sky); }
+  .sector-chip-active { background: rgba(56,189,248,0.15) !important; border-color: rgba(56,189,248,0.55) !important; color: var(--sky) !important; font-weight: 800; }
+
   /* ── Health index badge (company header) ────────────────── */
   .health-index-row {
     display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;
