@@ -795,6 +795,11 @@ export const css = `
   .trend-chart-title { font-size: 0.95rem; font-weight: 700; color: var(--white); }
   .trend-chart-delta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 
+  /* ── FORECAST CHIP ───────────────────────────────────── */
+  .forecast-chip { display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; padding: 10px 14px; background: rgba(56,189,248,0.06); border: 1px solid rgba(56,189,248,0.14); border-radius: 10px; }
+  .forecast-icon { font-size: 1rem; flex-shrink: 0; line-height: 1.4; }
+  .forecast-text { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
   /* ── DIM TREND TABLE ─────────────────────────────────── */
   .dim-trend-wrap { margin-top: 20px; }
   .dim-trend-title { font-size: 0.8rem; font-weight: 900; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 10px; }

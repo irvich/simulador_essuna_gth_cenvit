@@ -241,6 +241,22 @@ function ScoreTrendChart({ data }: { data: Array<{ label: string; pct: number }>
           </span>
         ))}
       </div>
+      {data.length >= 2 && (() => {
+        const slope = data.slice(1).reduce((sum, d, i) => sum + (d.pct - data[i].pct), 0) / (data.length - 1);
+        const projected = Math.max(0, Math.min(100, Math.round(last.pct + slope)));
+        const slopeRounded = Math.round(slope * 10) / 10;
+        const forecastColor = projected >= 80 ? "#22c55e" : projected >= 60 ? "#d4af37" : "#f87171";
+        const trend = slopeRounded > 0.5 ? "mejorando" : slopeRounded < -0.5 ? "deteriorando" : "estable";
+        return (
+          <div className="forecast-chip">
+            <span className="forecast-icon">🔮</span>
+            <span className="forecast-text">
+              Si la tendencia continúa ({trend}, {slopeRounded > 0 ? "+" : ""}{slopeRounded} pts/período), la próxima medición proyecta{" "}
+              <strong style={{ color: forecastColor }}>{projected}%</strong>
+            </span>
+          </div>
+        );
+      })()}
     </div>
   );
 }

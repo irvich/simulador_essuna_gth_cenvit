@@ -1150,6 +1150,11 @@ export function PeriodDashboard({
     [prevResponses]
   );
 
+  const prevDimScores: DimScore[] | undefined = useMemo(() => {
+    if (!prevScores) return undefined;
+    return DIMENSIONS.map((dim) => ({ dim, pct: prevScores.get(dim.key) ?? 0 }));
+  }, [prevScores]);
+
   const departments = useMemo(() => {
     const map = new Map<string, SurveyResponse[]>();
     for (const r of responses) {
@@ -1599,7 +1604,7 @@ export function PeriodDashboard({
                 Perfil por Dimensión
                 {expandedDept && <span style={{ color: "#d4af37", fontSize: "0.8rem", fontWeight: 600, marginLeft: 10 }}>+ {expandedDept}</span>}
               </h2>
-              <div className="radar-wrap"><RadarChart scores={scores} overlay={overlayScores} benchmark={expandedDept ? undefined : benchmarkScores} /></div>
+              <div className="radar-wrap"><RadarChart scores={scores} overlay={overlayScores} prevOverlay={!expandedDept ? prevDimScores : undefined} benchmark={expandedDept ? undefined : benchmarkScores} /></div>
             </div>
             <div className="breakdown-card">
               <h2 style={{ marginBottom: 6 }}>Promedio por Dimensión</h2>
