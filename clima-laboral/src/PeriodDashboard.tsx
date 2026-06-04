@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { DIMENSIONS, QUESTIONS } from "./questions";
 import {
+  BASE,
   RadarChart,
   ScoreBar,
   scoreLevel,
@@ -1243,6 +1244,25 @@ export function PeriodDashboard({
       {/* ── Portada PDF (print-only cover page) ─────────────── */}
       {responses.length > 0 && (
         <div className="pdf-cover">
+          {/* Logos encabezado portada */}
+          <div className="pdf-cover-logos">
+            <div className="pdf-cover-logo-left">
+              <img src={`${BASE}logo-cenvit.png`} alt="Cenvit" className="pdf-cover-logo-img" />
+              <div className="pdf-cover-logo-text">
+                <span className="pdf-cover-logo-name">CENVIT GTH</span>
+                <span className="pdf-cover-logo-sub">Centro Educativo y de Negocios con Visión Integral del Talento Humano</span>
+              </div>
+            </div>
+            <div className="pdf-cover-logo-right">
+              <div className="pdf-cover-logo-text" style={{ textAlign: "right" }}>
+                <span className="pdf-cover-logo-name">Iván Viteri</span>
+                <span className="pdf-cover-logo-sub">Psicología Laboral en acción</span>
+              </div>
+              <img src={`${BASE}logo-ivan-viteri.jpg`} alt="Iván Viteri" className="pdf-cover-logo-img" />
+            </div>
+          </div>
+          <div className="pdf-cover-logos-sep" />
+
           <div className="pdf-cover-top">
             <p className="pdf-cover-eyebrow">INFORME DE CLIMA LABORAL</p>
             <h1 className="pdf-cover-company">{empresaNombre || "Empresa"}</h1>

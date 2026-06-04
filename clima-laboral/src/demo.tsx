@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import ReactDOM from "react-dom/client";
 import { PeriodDashboard } from "./PeriodDashboard";
 import { QUESTIONS, DIMENSIONS } from "./questions";
 import { css } from "./styles";
+import { LOGO_CENVIT, LOGO_IVAN } from "./logoData";
 import type { ActionRow, SurveyResponse, LikertValue } from "./types";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -139,43 +140,137 @@ const demoPlan: ActionRow[] = [
   },
 ];
 
-function DemoBanner() {
+const LIKERT_COLORS = ["#ef4444","#f97316","#eab308","#84cc16","#22c55e"];
+const LIKERT_LABELS_ES = ["Totalmente en desacuerdo","En desacuerdo","Neutral","De acuerdo","Totalmente de acuerdo"];
+
+function SurveyPreview() {
+  const [dimIdx, setDimIdx] = useState(0);
+  const dim = DIMENSIONS[dimIdx];
+  const qs = QUESTIONS.filter(q => q.dimension === dim.key);
+  const [answers, setAnswers] = useState<Record<number, number>>({});
   return (
-    <div style={{
-      background: "linear-gradient(90deg, rgba(56,189,248,0.14), rgba(212,175,55,0.12))",
-      border: "1px solid rgba(56,189,248,0.3)", borderRadius: 14, padding: "14px 20px",
-      margin: "0 auto 24px", maxWidth: 1180, display: "flex", alignItems: "center", gap: 12,
-      flexWrap: "wrap",
-    }}>
-      <span style={{ fontSize: "1.3rem" }}>🎬</span>
-      <div>
-        <strong style={{ color: "#38bdf8" }}>DEMO — Simulador de Clima Laboral · Cenvit GTH</strong>
-        <p style={{ margin: "3px 0 0", fontSize: "0.82rem", color: "#94a3b8" }}>
-          Datos de muestra ({currentResponses.length} participantes simulados, 6 departamentos, comparado con un período anterior).
-          Explora radar, heatmap, correlaciones, tendencias, sentimiento de comentarios y plan de acción. Puedes exportar a PDF.
-        </p>
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 0 40px" }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
+        {DIMENSIONS.map((d, i) => (
+          <button key={d.key} onClick={() => setDimIdx(i)} style={{
+            padding: "6px 14px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 700,
+            cursor: "pointer", border: `1.5px solid ${d.color}`,
+            background: i === dimIdx ? d.color + "33" : "transparent",
+            color: i === dimIdx ? d.color : "rgba(148,163,184,0.7)",
+          }}>{d.label}</button>
+        ))}
       </div>
+      <div style={{ background: "rgba(7,27,51,0.72)", border: `1px solid ${dim.color}44`, borderRadius: 20, padding: "24px 28px", marginBottom: 16 }}>
+        <p style={{ fontSize: "0.68rem", fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", color: dim.color, marginBottom: 4 }}>
+          Dimensión {dimIdx + 1} de {DIMENSIONS.length}
+        </p>
+        <h2 style={{ color: dim.color, margin: "0 0 6px", fontSize: "1.25rem" }}>{dim.label}</h2>
+        <p style={{ color: "rgba(148,163,184,0.75)", fontSize: "0.82rem", margin: 0 }}>{dim.description}</p>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {qs.map((q, qi) => (
+          <div key={q.id} style={{ background: "rgba(7,27,51,0.72)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "18px 20px" }}>
+            <p style={{ fontSize: "0.68rem", color: dim.color, fontWeight: 900, letterSpacing: "0.1em", marginBottom: 6 }}>
+              Pregunta {qs.indexOf(q) + 1} / {qs.length}
+            </p>
+            <p style={{ fontSize: "0.95rem", color: "rgba(255,255,255,0.88)", margin: "0 0 14px", lineHeight: 1.5 }}>{q.text}</p>
+            <div style={{ display: "flex", gap: 6, justifyContent: "space-between" }}>
+              {LIKERT_LABELS_ES.map((lbl, li) => (
+                <button key={li} onClick={() => setAnswers(a => ({ ...a, [q.id]: li + 1 }))} title={lbl} style={{
+                  flex: 1, padding: "10px 4px", borderRadius: 10, border: `2px solid`,
+                  borderColor: answers[q.id] === li + 1 ? LIKERT_COLORS[li] : "rgba(255,255,255,0.1)",
+                  background: answers[q.id] === li + 1 ? LIKERT_COLORS[li] + "33" : "transparent",
+                  color: answers[q.id] === li + 1 ? LIKERT_COLORS[li] : "rgba(148,163,184,0.5)",
+                  fontWeight: 900, fontSize: "0.95rem", cursor: "pointer", transition: "all 0.15s",
+                }}>{li + 1}</button>
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5, fontSize: "0.62rem", color: "rgba(148,163,184,0.4)" }}>
+              <span>En desacuerdo</span><span>De acuerdo</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      {dimIdx < DIMENSIONS.length - 1 && (
+        <button onClick={() => setDimIdx(dimIdx + 1)} style={{
+          marginTop: 20, padding: "12px 32px", background: dim.color, color: "white",
+          border: "none", borderRadius: 999, fontWeight: 800, fontSize: "0.9rem", cursor: "pointer",
+        }}>
+          Siguiente dimensión → {DIMENSIONS[dimIdx + 1].label}
+        </button>
+      )}
     </div>
   );
 }
 
 function DemoRoot() {
+  const [tab, setTab] = useState<"results" | "survey">("results");
   return (
     <div className="shell">
       <style>{css}</style>
+      {/* ── Topbar con logos ── */}
+      <header style={{
+        background: "rgba(7,27,51,0.95)", borderBottom: "1px solid rgba(255,255,255,0.08)",
+        padding: "10px 24px", display: "flex", alignItems: "center", gap: 16,
+        position: "sticky", top: 0, zIndex: 100, backdropFilter: "blur(12px)",
+      }}>
+        <img src={LOGO_CENVIT} alt="Cenvit" style={{ height: 44, width: "auto", objectFit: "contain", borderRadius: 8 }} />
+        <div style={{ width: 1, height: 36, background: "rgba(255,255,255,0.12)" }} />
+        <div>
+          <div style={{ fontWeight: 900, fontSize: "0.92rem", color: "#f8fafc", letterSpacing: "0.02em" }}>CENVIT GTH</div>
+          <div style={{ fontSize: "0.68rem", color: "rgba(148,163,184,0.7)", letterSpacing: "0.08em" }}>Simulador de Clima Laboral</div>
+        </div>
+        <div style={{ flex: 1 }} />
+        <div style={{ width: 1, height: 36, background: "rgba(255,255,255,0.12)" }} />
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontWeight: 800, fontSize: "0.82rem", color: "#f8fafc" }}>Iván Viteri</div>
+          <div style={{ fontSize: "0.65rem", color: "rgba(148,163,184,0.7)" }}>Psicología Laboral en acción</div>
+        </div>
+        <img src={LOGO_IVAN} alt="Iván Viteri" style={{ height: 44, width: 44, objectFit: "contain", borderRadius: 8 }} />
+      </header>
+
+      {/* ── Logo injection for PDF cover: swap src to base64 before print ── */}
+      <script dangerouslySetInnerHTML={{ __html: `
+        window.addEventListener('beforeprint', function() {
+          document.querySelectorAll('.pdf-cover-logo-img').forEach(function(img) {
+            if (img.alt === 'Cenvit') img.src = ${JSON.stringify(LOGO_CENVIT)};
+            if (img.alt === 'Iván Viteri') img.src = ${JSON.stringify(LOGO_IVAN)};
+          });
+        });
+      `}} />
+
+      {/* ── Tabs ── */}
+      <div style={{ background: "rgba(7,27,51,0.85)", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "0 24px", display: "flex", gap: 2 }}>
+        {([["results","📊 Dashboard de Resultados"], ["survey","📝 Vista de la Encuesta"]] as const).map(([t, label]) => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            padding: "12px 20px", background: "none", border: "none", cursor: "pointer",
+            fontWeight: 700, fontSize: "0.82rem",
+            color: tab === t ? "#38bdf8" : "rgba(148,163,184,0.6)",
+            borderBottom: `2px solid ${tab === t ? "#38bdf8" : "transparent"}`,
+          }}>{label}</button>
+        ))}
+        <div style={{ flex: 1 }} />
+        <span style={{ alignSelf: "center", fontSize: "0.72rem", color: "rgba(148,163,184,0.45)", fontStyle: "italic" }}>
+          ⚠ Demo — datos simulados
+        </span>
+      </div>
+
       <div className="container" style={{ paddingTop: 28 }}>
-        <DemoBanner />
-        <PeriodDashboard
-          responses={currentResponses}
-          periodoLabel="2026-S1 (Demo)"
-          empresaNombre="Empresa Demostración S.A."
-          totalColaboradores={60}
-          targets={demoTargets}
-          sectorKey="tecnologia"
-          prevResponses={prevResponses}
-          prevLabel="2025-S2"
-          savedPlan={demoPlan}
-        />
+        {tab === "results" ? (
+          <PeriodDashboard
+            responses={currentResponses}
+            periodoLabel="2026-S1 (Demo)"
+            empresaNombre="Empresa Demostración S.A."
+            totalColaboradores={60}
+            targets={demoTargets}
+            sectorKey="tecnologia"
+            prevResponses={prevResponses}
+            prevLabel="2025-S2"
+            savedPlan={demoPlan}
+          />
+        ) : (
+          <SurveyPreview />
+        )}
       </div>
     </div>
   );
