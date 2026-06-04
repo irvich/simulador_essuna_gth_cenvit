@@ -460,7 +460,7 @@ export const css = `
     .q-row { break-inside: avoid; }
     .shell { background: white !important; }
     .container { width: 100% !important; padding: 10mm 12mm !important; margin: 0 !important; }
-    .results-header, .global-card, .radar-card, .breakdown-card, .recs-section, .matrix-section, .stat-card, .results-footer {
+    .results-header, .global-card, .radar-card, .breakdown-card, .recs-section, .matrix-section, .stat-card, .results-footer, .composite-card {
       background: #f8fafc !important; border: 1px solid #e2e8f0 !important; backdrop-filter: none !important; box-shadow: none !important;
     }
     .results-title, .stat-num { color: #071b33 !important; }
@@ -824,6 +824,31 @@ export const css = `
     .welcome-steps-grid { grid-template-columns: 1fr; }
     .welcome-guide-top { flex-direction: row; }
   }
+
+  /* ── Composite indicators (Engagement, Clima Relacional, etc.) ── */
+  .composite-wrap { margin-bottom: 4px; }
+  .composite-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .composite-card {
+    background: rgba(7,27,51,0.72); border: 1px solid var(--border);
+    border-radius: 18px; padding: 18px 14px; text-align: center;
+    backdrop-filter: blur(10px); display: flex; flex-direction: column;
+    align-items: center; gap: 5px; cursor: default;
+    transition: border-color 0.18s;
+  }
+  .composite-card:hover { border-color: rgba(255,255,255,0.18); }
+  .composite-icon { font-size: 1.5rem; line-height: 1; margin-bottom: 2px; }
+  .composite-score { font-size: 1.75rem; font-weight: 900; line-height: 1; }
+  .composite-label { font-size: 0.82rem; font-weight: 800; color: var(--white); }
+  .composite-level {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 0.68rem; font-weight: 800; border: 1px solid; white-space: nowrap;
+  }
+  .composite-desc { font-size: 0.65rem; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+
+  @media (max-width: 720px) { .composite-row { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 400px) { .composite-row { grid-template-columns: 1fr; } }
+
+  /* Also print these */
 
   /* ── RESPONSIVE ───────────────────────────────────────── */
   @media (max-width: 860px) {

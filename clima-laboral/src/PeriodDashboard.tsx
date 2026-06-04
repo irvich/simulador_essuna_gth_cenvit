@@ -1316,6 +1316,67 @@ export function PeriodDashboard({
             })()}
           </div>
 
+          {/* ── Indicadores compuestos ───────────────────────── */}
+          {(() => {
+            const get = (key: string) => scores.find((s) => s.dim.key === key)?.pct ?? 0;
+            const composites = [
+              {
+                label: "Engagement",
+                icon: "🔥",
+                pct: Math.round((get("motivacion") + get("desarrollo_crecimiento") + get("liderazgo")) / 3),
+                desc: "Motivación · Desarrollo · Liderazgo",
+                tooltip: "Mide el nivel de compromiso activo, impulso de crecimiento y confianza en la dirección.",
+              },
+              {
+                label: "Clima Relacional",
+                icon: "🤝",
+                pct: Math.round((get("comunicacion") + get("trabajo_en_equipo")) / 2),
+                desc: "Comunicación · Trabajo en equipo",
+                tooltip: "Calidad de las relaciones interpersonales, flujo de información y cohesión de equipos.",
+              },
+              {
+                label: "Bienestar Laboral",
+                icon: "🌱",
+                pct: Math.round((get("condiciones_seguridad") + get("motivacion")) / 2),
+                desc: "Condiciones · Motivación",
+                tooltip: "Percepción del entorno físico y emocional de trabajo y el nivel de energía interna.",
+              },
+            ];
+            const turnoverRisk = 100 - Math.round((get("motivacion") * 0.40 + get("desarrollo_crecimiento") * 0.35 + get("liderazgo") * 0.25));
+            const riskLabel = turnoverRisk >= 50 ? "Alto" : turnoverRisk >= 30 ? "Moderado" : "Bajo";
+            const riskColor = turnoverRisk >= 50 ? "#f87171" : turnoverRisk >= 30 ? "#d4af37" : "#22c55e";
+            return (
+              <div className="composite-wrap">
+                <div className="composite-row">
+                  {composites.map((c) => {
+                    const levelColor = scoreLevelColor(c.pct);
+                    const levelLabel = scoreLevelLabel(c.pct);
+                    return (
+                      <div key={c.label} className="composite-card" title={c.tooltip}>
+                        <div className="composite-icon">{c.icon}</div>
+                        <div className="composite-score" style={{ color: levelColor }}>{c.pct}%</div>
+                        <div className="composite-label">{c.label}</div>
+                        <span className="composite-level" style={{ color: levelColor, borderColor: levelColor + "44", background: levelColor + "14" }}>
+                          {levelLabel}
+                        </span>
+                        <div className="composite-desc">{c.desc}</div>
+                      </div>
+                    );
+                  })}
+                  <div className="composite-card composite-risk" title="Índice inverso basado en motivación, desarrollo y liderazgo.">
+                    <div className="composite-icon">📊</div>
+                    <div className="composite-score" style={{ color: riskColor }}>{riskLabel}</div>
+                    <div className="composite-label">Riesgo Rotación</div>
+                    <span className="composite-level" style={{ color: riskColor, borderColor: riskColor + "44", background: riskColor + "14" }}>
+                      {turnoverRisk}%
+                    </span>
+                    <div className="composite-desc">Estimado según engagement</div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {!filterDept && <div id="sec-tendencia"><ParticipationTrend responses={responses} /></div>}
 
           <ExecutiveSummary
