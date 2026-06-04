@@ -454,6 +454,8 @@ export const css = `
     .comment-item { break-inside: avoid; border-left-color: #94a3b8 !important; background: #f8fafc !important; }
     .comment-text { color: #334155 !important; }
     .comments-list { max-height: none !important; overflow: visible !important; }
+    .word-cloud-wrap { background: #f1f5f9 !important; border-color: #e2e8f0 !important; break-inside: avoid; }
+    .word-cloud-pill { color: #0f4c81 !important; }
     .exec-summary-box { background: #f8fafc !important; border-color: #e2e8f0 !important; color: #334155 !important; }
     .exec-kpi { background: #f8fafc !important; border-color: #e2e8f0 !important; }
     .q-analysis-body { break-inside: auto; }
@@ -592,8 +594,16 @@ export const css = `
   .q-row:last-child { border-bottom: none; }
   .q-row-num { flex: 0 0 28px; font-size: 0.72rem; font-weight: 900; text-align: right; }
   .q-row-text { flex: 1; font-size: 0.82rem; color: var(--muted); line-height: 1.4; }
-  .q-row-bar { flex: 0 0 120px; }
+  .q-row-bars { flex: 0 0 130px; display: flex; flex-direction: column; gap: 4px; }
+  .q-dist-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; gap: 1px; }
+  .q-dist-seg { height: 100%; border-radius: 2px; transition: width 0.3s; }
   .q-row-score { flex: 0 0 44px; text-align: right; font-size: 0.82rem; font-weight: 800; white-space: nowrap; }
+
+  /* ── WORD CLOUD ──────────────────────────────────────── */
+  .word-cloud-wrap { margin: 14px 0 4px; padding: 14px 16px; background: rgba(56,189,248,0.04); border-radius: 10px; border: 1px solid rgba(56,189,248,0.1); }
+  .word-cloud-title { font-size: 0.72rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin: 0 0 10px; }
+  .word-cloud-pills { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; }
+  .word-cloud-pill { color: var(--sky); cursor: default; transition: opacity 0.2s; line-height: 1.3; }
 
   /* ── PLAN DE MEJORA ──────────────────────────────────── */
   .plan-progress-inline { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }

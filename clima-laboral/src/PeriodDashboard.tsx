@@ -168,12 +168,19 @@ function QuestionAnalysis({ responses, forceOpen }: { responses: SurveyResponse[
   const byDim = useMemo(() => {
     const qAvgs = QUESTIONS.map((q) => {
       let sum = 0, count = 0;
+      const dist = [0, 0, 0, 0, 0]; // index 0 = value 1, ..., index 4 = value 5
       for (const r of responses) {
         const v = r.answers[q.id];
-        if (v !== undefined) { sum += v; count++; }
+        if (v !== undefined) { sum += v; count++; if (v >= 1 && v <= 5) dist[v - 1]++; }
       }
       const avg = count === 0 ? 0 : sum / count;
-      return { q, avg: Math.round(avg * 10) / 10, pct: count === 0 ? 0 : Math.round((avg / 5) * 100) };
+      return {
+        q,
+        avg: Math.round(avg * 10) / 10,
+        pct: count === 0 ? 0 : Math.round((avg / 5) * 100),
+        dist,
+        total: count,
+      };
     });
     return DIMENSIONS.map((dim) => ({
       dim,
@@ -206,20 +213,39 @@ function QuestionAnalysis({ responses, forceOpen }: { responses: SurveyResponse[
               <h3 style={{ color: dim.color, fontSize: "0.88rem", fontWeight: 800, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 {dim.label}
               </h3>
-              {questions.map(({ q, avg, pct }) => (
-                <div key={q.id} className="q-row">
-                  <div className="q-row-num" style={{ color: dim.color }}>P{q.id}</div>
-                  <div className="q-row-text">{q.text}</div>
-                  <div className="q-row-bar">
-                    <div className="score-bar-track">
-                      <div className="score-bar-fill" style={{ width: `${pct}%`, background: scoreLevelColor(pct) }} />
+              {questions.map(({ q, avg, pct, dist, total }) => {
+                const LIKERT_COLORS = ["#f87171", "#fb923c", "#facc15", "#86efac", "#4ade80"];
+                const LIKERT_LABELS = ["Muy bajo", "Bajo", "Medio", "Alto", "Muy alto"];
+                return (
+                  <div key={q.id} className="q-row">
+                    <div className="q-row-num" style={{ color: dim.color }}>P{q.id}</div>
+                    <div className="q-row-text">{q.text}</div>
+                    <div className="q-row-bars">
+                      <div className="score-bar-track">
+                        <div className="score-bar-fill" style={{ width: `${pct}%`, background: scoreLevelColor(pct) }} />
+                      </div>
+                      {total > 0 && (
+                        <div className="q-dist-bar">
+                          {dist.map((n, idx) => {
+                            const w = Math.round((n / total) * 100);
+                            return w > 0 ? (
+                              <div
+                                key={idx}
+                                className="q-dist-seg"
+                                style={{ width: `${w}%`, background: LIKERT_COLORS[idx] }}
+                                title={`${LIKERT_LABELS[idx]} (${idx + 1}): ${n} resp. (${w}%)`}
+                              />
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <div className="q-row-score" style={{ color: scoreLevelColor(pct) }}>
+                      {avg}/5
                     </div>
                   </div>
-                  <div className="q-row-score" style={{ color: scoreLevelColor(pct) }}>
-                    {avg}/5
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ))}
         </div>
@@ -279,6 +305,25 @@ function DeptDrillDown({ deptName, deptResponses, globalScores }: {
   );
 }
 
+const STOPWORDS = new Set([
+  "de","la","el","en","y","a","que","los","las","un","una","por","con","del","al","se","es","su","sus","para","no","lo","le","me","mi","más","pero","como","si","ha","he","han","hay","ya","fue","ser","son","era","esto","esta","este","eso","entre","sobre","porque","donde","cuando","también","todo","todos","toda","todas","muy","bien","así","sin","hasta","desde","tienen","tiene","puede","poder","nos","les","quien","cada","solo","solo","nada","algo","mucho","muchos","mucha","muchas","poco","poca","pocos","pocas","otro","otra","otros","otras","mismo","misma","mismos","mismas","hace","hacer","hemos","antes","después","ahora","aún","aunque","mientras","dentro","fuera","junto","vez","veces","tanto","tan","ni","sino","sea","soy","somos","fueron","están","estaba","estamos","estoy","estaba","había","hubiera","me","te","nos","os","les"
+]);
+
+function topWords(comments: Array<{ text: string }>): Array<{ word: string; count: number }> {
+  const freq: Record<string, number> = {};
+  for (const { text } of comments) {
+    const words = text.toLowerCase().replace(/[^a-záéíóúüñ\s]/gi, " ").split(/\s+/);
+    for (const w of words) {
+      if (w.length < 4 || STOPWORDS.has(w)) continue;
+      freq[w] = (freq[w] || 0) + 1;
+    }
+  }
+  return Object.entries(freq)
+    .map(([word, count]) => ({ word, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 18);
+}
+
 function CommentsSection({ responses, forceOpen }: { responses: SurveyResponse[]; forceOpen?: boolean }) {
   const [openState, setOpen] = useState(false);
   const open = openState || !!forceOpen;
@@ -288,8 +333,11 @@ function CommentsSection({ responses, forceOpen }: { responses: SurveyResponse[]
       .map((r) => ({ text: r.comment!.trim(), department: r.department, createdAt: r.createdAt })),
     [responses]
   );
+  const wordCloud = useMemo(() => topWords(comments), [comments]);
 
   if (comments.length === 0) return null;
+
+  const maxCount = wordCloud[0]?.count || 1;
 
   return (
     <div className="breakdown-card">
@@ -310,14 +358,38 @@ function CommentsSection({ responses, forceOpen }: { responses: SurveyResponse[]
         </p>
       )}
       {open && (
-        <div className="comments-list">
-          {comments.map((c, i) => (
-            <div key={i} className="comment-item">
-              <p className="comment-text">"{c.text}"</p>
-              <p className="comment-meta">— {c.department}</p>
+        <>
+          {wordCloud.length >= 4 && (
+            <div className="word-cloud-wrap">
+              <p className="word-cloud-title">Palabras más frecuentes</p>
+              <div className="word-cloud-pills">
+                {wordCloud.map(({ word, count }) => {
+                  const ratio = count / maxCount;
+                  const size = 0.72 + ratio * 0.72;
+                  const opacity = 0.45 + ratio * 0.55;
+                  return (
+                    <span
+                      key={word}
+                      className="word-cloud-pill"
+                      style={{ fontSize: `${size}rem`, opacity, fontWeight: ratio > 0.6 ? 800 : ratio > 0.3 ? 700 : 600 }}
+                      title={`${count} vez${count > 1 ? "es" : ""}`}
+                    >
+                      {word}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
-          ))}
-        </div>
+          )}
+          <div className="comments-list">
+            {comments.map((c, i) => (
+              <div key={i} className="comment-item">
+                <p className="comment-text">"{c.text}"</p>
+                <p className="comment-meta">— {c.department}</p>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
