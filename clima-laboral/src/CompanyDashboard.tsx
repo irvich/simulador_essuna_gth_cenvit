@@ -748,7 +748,19 @@ export function CompanyDashboard({
                     style={{ padding: "6px 14px", fontSize: "0.8rem", flexShrink: 0 }}
                     onClick={() => shareUrl(surveyUrl(activePeriodo.id, empresa.id), empresa.nombre)}
                   >
-                    {copyOk ? "¡Copiado!" : "Compartir"}
+                    {copyOk ? "¡Copiado!" : "Copiar enlace"}
+                  </button>
+                  <button
+                    className="btn-whatsapp"
+                    style={{ flexShrink: 0 }}
+                    onClick={() => {
+                      const url = surveyUrl(activePeriodo.id, empresa.id);
+                      const msg = `Hola, te comparto el enlace de la encuesta de clima laboral de *${empresa.nombre}*. Es anónima y toma ~5 minutos:\n${url}`;
+                      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+                    }}
+                    title="Compartir por WhatsApp"
+                  >
+                    💬 WhatsApp
                   </button>
                 </div>
               </div>
@@ -1001,6 +1013,47 @@ export function CompanyDashboard({
           )}
 
           {trendData.length >= 2 && <ScoreTrendChart data={trendData} />}
+
+          {/* ── Próxima medición recomendada ──────────────────── */}
+          {closedPeriodos.length > 0 && !activePeriodo && (() => {
+            const lastClosed = [...closedPeriodos].sort(
+              (a, b) => new Date(b.cerrado_at ?? b.created_at).getTime() - new Date(a.cerrado_at ?? a.created_at).getTime()
+            )[0];
+            const base = new Date(lastClosed.cerrado_at ?? lastClosed.created_at);
+            const next = new Date(base);
+            next.setMonth(next.getMonth() + 6);
+            const diffDays = Math.ceil((next.getTime() - Date.now()) / 86400000);
+            const isOverdue = diffDays < 0;
+            const isSoon = diffDays >= 0 && diffDays <= 45;
+            const accent = isOverdue ? "#f87171" : isSoon ? "#d4af37" : "#94a3b8";
+            return (
+              <div className="next-meas-card" style={{ borderColor: accent + "44", background: accent + "0d" }}>
+                <div className="next-meas-icon" style={{ color: accent }}>{isOverdue ? "⚠️" : "📅"}</div>
+                <div className="next-meas-body">
+                  <p className="next-meas-label" style={{ color: accent }}>PRÓXIMA MEDICIÓN RECOMENDADA</p>
+                  <p className="next-meas-date">
+                    {next.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
+                  </p>
+                  <p className="next-meas-sub">
+                    {isOverdue
+                      ? `Vencida hace ${Math.abs(diffDays)} días — considera iniciar una nueva medición`
+                      : isSoon
+                      ? `En ${diffDays} día(s) — prepara el próximo período`
+                      : `Faltan ${diffDays} días · 6 meses desde el cierre de ${lastClosed.etiqueta}`}
+                  </p>
+                </div>
+                {(isOverdue || isSoon) && (
+                  <button
+                    className="btn-primary"
+                    style={{ marginLeft: "auto", fontSize: "0.82rem", padding: "10px 20px", flexShrink: 0 }}
+                    onClick={() => setShowCreate(true)}
+                  >
+                    + Iniciar ahora
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           {closedPeriodos.length >= 2 && (
             <div className="comparison-trigger">

@@ -721,6 +721,25 @@ export const css = `
   .sector-chip:hover { background: rgba(56,189,248,0.1); border-color: rgba(56,189,248,0.35); color: var(--sky); }
   .sector-chip-active { background: rgba(56,189,248,0.15) !important; border-color: rgba(56,189,248,0.55) !important; color: var(--sky) !important; font-weight: 800; }
 
+  /* ── WhatsApp share button ───────────────────────────────── */
+  .btn-whatsapp {
+    padding: 6px 13px; border-radius: 12px; border: 1px solid rgba(37,211,102,0.45);
+    background: rgba(37,211,102,0.1); color: #4ade80; font-weight: 700; font-size: 0.8rem;
+    transition: background 0.15s, transform 0.12s;
+  }
+  .btn-whatsapp:hover { background: rgba(37,211,102,0.18); transform: translateY(-1px); }
+
+  /* ── Próxima medición card ───────────────────────────────── */
+  .next-meas-card {
+    display: flex; align-items: center; gap: 16px; padding: 16px 20px;
+    border: 1px solid; border-radius: 14px; margin-top: 18px; flex-wrap: wrap;
+  }
+  .next-meas-icon { font-size: 1.6rem; flex-shrink: 0; }
+  .next-meas-body { flex: 1; min-width: 0; }
+  .next-meas-label { font-size: 0.62rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 3px; }
+  .next-meas-date { font-size: 1.05rem; font-weight: 800; color: var(--white); line-height: 1.2; margin-bottom: 3px; }
+  .next-meas-sub { font-size: 0.78rem; color: var(--muted); line-height: 1.4; }
+
   /* ── Participation ring (active period card) ─────────────── */
   .part-ring-wrap { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
   .part-ring-meta { display: flex; flex-direction: column; gap: 4px; }
