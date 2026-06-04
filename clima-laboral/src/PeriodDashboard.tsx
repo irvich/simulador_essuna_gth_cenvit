@@ -1013,7 +1013,7 @@ export function PeriodDashboard({
 
           <div className="pdf-cover-footer">
             <div className="pdf-cover-footer-sep" />
-            <p>Diagnóstico elaborado con <strong>Simulador Essuna GTH · Cenvit</strong></p>
+            <p>Diagnóstico elaborado con <strong>Simulador de Clima Laboral · Cenvit GTH</strong></p>
             <p className="pdf-cover-confidential">DOCUMENTO CONFIDENCIAL · Uso exclusivo del área de Recursos Humanos</p>
           </div>
         </div>
