@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { computePeriodSummary, HistoricalComparison, type PeriodSummary } from "./HistoricalComparison";
 import { PeriodDashboard } from "./PeriodDashboard";
-import { DIMENSIONS } from "./questions";
+import { DIMENSIONS, QUESTIONS } from "./questions";
 import {
   closePeriod,
   createPeriod,
@@ -42,6 +42,18 @@ const SECTOR_OPTIONS = [
 function suggestLabel(): string {
   const now = new Date();
   return `${now.getFullYear()}-${now.getMonth() < 6 ? "S1" : "S2"}`;
+}
+
+function computeDimPct(responses: SurveyResponse[], dimKey: string): number {
+  const ids = QUESTIONS.filter((q) => q.dimension === dimKey).map((q) => q.id);
+  let sum = 0, count = 0;
+  for (const r of responses) {
+    for (const qid of ids) {
+      const v = r.answers[qid];
+      if (v !== undefined) { sum += v; count++; }
+    }
+  }
+  return count === 0 ? 0 : Math.round((sum / count / 5) * 100);
 }
 
 function computeGlobalPct(responses: SurveyResponse[]): number | null {
@@ -233,6 +245,59 @@ function ScoreTrendChart({ data }: { data: Array<{ label: string; pct: number }>
   );
 }
 
+function DimTrendTable({ periods, dimScoreCache }: {
+  periods: Array<{ id: string; label: string }>;
+  dimScoreCache: Map<string, Record<string, number>>;
+}) {
+  const cols = periods.filter((p) => dimScoreCache.has(p.id));
+  if (cols.length < 2) return null;
+
+  function cellBg(pct: number): string {
+    return pct >= 80 ? "rgba(34,197,94,0.18)" : pct >= 60 ? "rgba(212,175,55,0.14)" : "rgba(248,113,113,0.14)";
+  }
+  function cellColor(pct: number): string {
+    return pct >= 80 ? "#22c55e" : pct >= 60 ? "#d4af37" : "#f87171";
+  }
+
+  return (
+    <div className="dim-trend-wrap">
+      <h3 className="dim-trend-title">Evolución por Dimensión</h3>
+      <div style={{ overflowX: "auto" }}>
+        <table className="dim-trend-table">
+          <thead>
+            <tr>
+              <th className="dim-trend-th-dim">Dimensión</th>
+              {cols.map((p) => <th key={p.id} className="dim-trend-th">{p.label}</th>)}
+              <th className="dim-trend-th">Var.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {DIMENSIONS.map((dim) => {
+              const values = cols.map((p) => dimScoreCache.get(p.id)?.[dim.key] ?? 0);
+              const first = values[0];
+              const last = values[values.length - 1];
+              const delta = last - first;
+              return (
+                <tr key={dim.key}>
+                  <td className="dim-trend-td-dim" style={{ color: dim.color }}>{dim.shortLabel}</td>
+                  {values.map((v, i) => (
+                    <td key={i} className="dim-trend-td" style={{ background: cellBg(v), color: cellColor(v) }}>
+                      {v}%
+                    </td>
+                  ))}
+                  <td className="dim-trend-td" style={{ color: delta > 0 ? "#22c55e" : delta < 0 ? "#f87171" : "var(--muted)", fontWeight: 900 }}>
+                    {delta > 0 ? `+${delta}` : delta === 0 ? "=" : delta}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function CompanyDashboard({
   empresa,
   onLogout,
@@ -289,6 +354,7 @@ export function CompanyDashboard({
   const [latestScore, setLatestScore] = useState<number | null>(null);
   const [latestScoreLabel, setLatestScoreLabel] = useState("");
   const [scoreCache, setScoreCache] = useState<Map<string, number>>(new Map());
+  const [dimScoreCache, setDimScoreCache] = useState<Map<string, Record<string, number>>>(new Map());
 
   const [sector, setSector] = useState(() => loadSector(empresa.id));
 
@@ -340,7 +406,7 @@ export function CompanyDashboard({
       .catch(() => {});
   }, [closedPeriodos.length]);
 
-  // Load global scores for all closed periods in background (for trend chart)
+  // Load global + per-dimension scores for all closed periods in background
   useEffect(() => {
     closedPeriodos.forEach((p) => {
       if (scoreCache.has(p.id)) return;
@@ -348,17 +414,32 @@ export function CompanyDashboard({
         .then((resps) => {
           const pct = computeGlobalPct(resps);
           if (pct !== null) setScoreCache((prev) => new Map(prev).set(p.id, pct));
+          const dims: Record<string, number> = {};
+          for (const dim of DIMENSIONS) dims[dim.key] = computeDimPct(resps, dim.key);
+          setDimScoreCache((prev) => new Map(prev).set(p.id, dims));
         })
         .catch(() => {});
     });
   }, [periodos]);
 
-  const trendData = useMemo(() => {
-    return [...closedPeriodos]
-      .sort((a, b) => new Date(a.cerrado_at ?? a.created_at).getTime() - new Date(b.cerrado_at ?? b.created_at).getTime())
+  const sortedClosedPeriodos = useMemo(
+    () => [...closedPeriodos].sort((a, b) =>
+      new Date(a.cerrado_at ?? a.created_at).getTime() - new Date(b.cerrado_at ?? b.created_at).getTime()
+    ),
+    [closedPeriodos]
+  );
+
+  const trendData = useMemo(
+    () => sortedClosedPeriodos
       .filter((p) => scoreCache.has(p.id))
-      .map((p) => ({ label: p.etiqueta, pct: scoreCache.get(p.id)! }));
-  }, [closedPeriodos, scoreCache]);
+      .map((p) => ({ label: p.etiqueta, pct: scoreCache.get(p.id)! })),
+    [sortedClosedPeriodos, scoreCache]
+  );
+
+  const trendPeriods = useMemo(
+    () => sortedClosedPeriodos.map((p) => ({ id: p.id, label: p.etiqueta })),
+    [sortedClosedPeriodos]
+  );
 
   // Pre-fetch plans for closed periods in the background to show badges
   useEffect(() => {
@@ -1013,6 +1094,7 @@ export function CompanyDashboard({
           )}
 
           {trendData.length >= 2 && <ScoreTrendChart data={trendData} />}
+          <DimTrendTable periods={trendPeriods} dimScoreCache={dimScoreCache} />
 
           {/* ── Próxima medición recomendada ──────────────────── */}
           {closedPeriodos.length > 0 && !activePeriodo && (() => {

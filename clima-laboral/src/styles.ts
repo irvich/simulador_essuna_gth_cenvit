@@ -795,6 +795,15 @@ export const css = `
   .trend-chart-title { font-size: 0.95rem; font-weight: 700; color: var(--white); }
   .trend-chart-delta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 
+  /* ── DIM TREND TABLE ─────────────────────────────────── */
+  .dim-trend-wrap { margin-top: 20px; }
+  .dim-trend-title { font-size: 0.8rem; font-weight: 900; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 10px; }
+  .dim-trend-table { border-collapse: collapse; font-size: 0.78rem; width: 100%; }
+  .dim-trend-th { padding: 5px 10px; text-align: center; font-size: 0.7rem; font-weight: 800; color: var(--muted); white-space: nowrap; }
+  .dim-trend-th-dim { padding: 5px 0 5px 2px; text-align: left; font-size: 0.7rem; font-weight: 800; color: var(--muted); }
+  .dim-trend-td { padding: 5px 10px; text-align: center; font-weight: 800; border-radius: 5px; white-space: nowrap; }
+  .dim-trend-td-dim { padding: 5px 12px 5px 2px; font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
+
   /* ── Health index badge (company header) ────────────────── */
   .health-index-row {
     display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;
