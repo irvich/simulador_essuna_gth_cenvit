@@ -341,6 +341,7 @@ function computeCorrelation(responses: SurveyResponse[]): Record<string, Record<
 
 function CorrelationMatrix({ responses }: { responses: SurveyResponse[] }) {
   const corr = useMemo(() => computeCorrelation(responses), [responses]);
+  const [open, setOpen] = useState(false);
   if (!corr) return null;
   function cellColor(r: number): string {
     if (r >= 0.7) return "#22c55e";
@@ -357,52 +358,70 @@ function CorrelationMatrix({ responses }: { responses: SurveyResponse[] }) {
     return "rgba(248,113,113,0.12)";
   }
   return (
-    <div className="breakdown-card">
-      <h2>Correlación entre Dimensiones</h2>
-      <p style={{ color: "var(--muted)", fontSize: "0.78rem", marginBottom: 16 }}>
-        Indica qué tan relacionadas están las dimensiones entre sí. Correlación alta (verde) significa que ambas tienden a subir o bajar juntas en cada colaborador.
-      </p>
-      <div className="corr-table-wrap">
-        <table className="corr-table">
-          <thead>
-            <tr>
-              <th />
-              {DIMENSIONS.map((d) => (
-                <th key={d.key} title={d.label} style={{ color: d.color }}>{d.shortLabel}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {DIMENSIONS.map((d1, i) => (
-              <tr key={d1.key}>
-                <td className="corr-row-label" style={{ color: d1.color }}>{d1.shortLabel}</td>
-                {DIMENSIONS.map((d2, j) => {
-                  if (j > i) return <td key={d2.key} className="corr-cell-empty" />;
-                  const r = corr[d1.key][d2.key];
-                  return (
-                    <td
-                      key={d2.key}
-                      className="corr-cell"
-                      style={{ background: cellBg(r), color: cellColor(r) }}
-                      title={`${d1.label} ↔ ${d2.label}: r = ${r}`}
-                    >
-                      {j === i ? "—" : r.toFixed(2)}
-                    </td>
-                  );
-                })}
-              </tr>
+    <div className="breakdown-card no-print">
+      <button
+        className="q-analysis-toggle"
+        onClick={() => setOpen((o) => !o)}
+        style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", color: "inherit", padding: 0, cursor: "pointer", width: "100%" }}
+      >
+        <h2 style={{ margin: 0 }}>Correlación entre Dimensiones</h2>
+        <span style={{ color: "var(--muted)", fontSize: "0.85rem", marginLeft: "auto" }}>
+          {open ? "Ocultar ▲" : "Ver análisis ▼"}
+        </span>
+      </button>
+      {!open && (
+        <p style={{ color: "var(--muted)", fontSize: "0.82rem", marginTop: 10 }}>
+          Muestra qué tan relacionadas están las dimensiones entre sí (correlación de Pearson).
+        </p>
+      )}
+      {open && (
+        <>
+          <p style={{ color: "var(--muted)", fontSize: "0.78rem", margin: "12px 0 16px" }}>
+            Indica qué tan relacionadas están las dimensiones entre sí. Correlación alta (verde) significa que ambas tienden a subir o bajar juntas en cada colaborador.
+          </p>
+          <div className="corr-table-wrap">
+            <table className="corr-table">
+              <thead>
+                <tr>
+                  <th />
+                  {DIMENSIONS.map((d) => (
+                    <th key={d.key} title={d.label} style={{ color: d.color }}>{d.shortLabel}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {DIMENSIONS.map((d1, i) => (
+                  <tr key={d1.key}>
+                    <td className="corr-row-label" style={{ color: d1.color }}>{d1.shortLabel}</td>
+                    {DIMENSIONS.map((d2, j) => {
+                      if (j > i) return <td key={d2.key} className="corr-cell-empty" />;
+                      const r = corr[d1.key][d2.key];
+                      return (
+                        <td
+                          key={d2.key}
+                          className="corr-cell"
+                          style={{ background: cellBg(r), color: cellColor(r) }}
+                          title={`${d1.label} ↔ ${d2.label}: r = ${r}`}
+                        >
+                          {j === i ? "—" : r.toFixed(2)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="corr-legend">
+            {[["≥0.70", "#22c55e", "Fuerte"], ["0.40–0.69", "#86efac", "Moderada"], ["0.20–0.39", "#d4af37", "Débil"], ["<0.20", "rgba(148,163,184,0.6)", "Muy débil"], ["< 0", "#f87171", "Inversa"]].map(([range, color, label]) => (
+              <span key={label} className="corr-legend-item">
+                <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: color, marginRight: 4 }} />
+                <span style={{ color: "var(--muted)", fontSize: "0.72rem" }}>{range} — {label}</span>
+              </span>
             ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="corr-legend">
-        {[["≥0.70", "#22c55e", "Fuerte"], ["0.40–0.69", "#86efac", "Moderada"], ["0.20–0.39", "#d4af37", "Débil"], ["<0.20", "rgba(148,163,184,0.6)", "Muy débil"], ["< 0", "#f87171", "Inversa"]].map(([range, color, label]) => (
-          <span key={label} className="corr-legend-item">
-            <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: color, marginRight: 4 }} />
-            <span style={{ color: "var(--muted)", fontSize: "0.72rem" }}>{range} — {label}</span>
-          </span>
-        ))}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1581,32 +1600,39 @@ export function PeriodDashboard({
               <span style={{ color: "#d4af37" }}>60–79% Regular</span>
               <span style={{ color: "#22c55e" }}>80–100% Bueno</span>
             </div>
-            <RespondentHistogram responses={effectiveResponses} />
-            {(() => {
-              const enps = computeENPS(effectiveResponses);
-              if (!enps) return null;
-              return (
-                <div className="enps-block">
-                  <div className="enps-header">
-                    <span className="enps-label">eNPS Adaptado</span>
-                    <span className="enps-score" style={{ color: enps.score >= 20 ? "#22c55e" : enps.score >= 0 ? "#d4af37" : "#f87171" }}>
-                      {enps.score >= 0 ? "+" : ""}{enps.score}
-                    </span>
-                  </div>
-                  <div className="enps-bar">
-                    <div style={{ width: `${enps.pctDetractors}%`, background: "#f87171" }} title={`Detractores: ${enps.pctDetractors}%`} />
-                    <div style={{ width: `${enps.pctNeutral}%`, background: "#94a3b8" }} title={`Neutros: ${enps.pctNeutral}%`} />
-                    <div style={{ width: `${enps.pctPromoters}%`, background: "#22c55e" }} title={`Promotores: ${enps.pctPromoters}%`} />
-                  </div>
-                  <div className="enps-legend">
-                    <span style={{ color: "#f87171" }}>Det. {enps.pctDetractors}%</span>
-                    <span style={{ color: "var(--muted)" }}>Neutros {enps.pctNeutral}%</span>
-                    <span style={{ color: "#22c55e" }}>Prom. {enps.pctPromoters}%</span>
-                  </div>
-                </div>
-              );
-            })()}
           </div>
+
+          {/* ── eNPS + Histogram (detalle opcional) ─────────── */}
+          {(() => {
+            const enps = computeENPS(effectiveResponses);
+            return (enps || effectiveResponses.length >= 3) ? (
+              <div className="breakdown-card no-print" style={{ display: "flex", gap: 28, flexWrap: "wrap", alignItems: "flex-start", padding: "18px 22px" }}>
+                {enps && (
+                  <div className="enps-block" style={{ flex: "1 1 220px", minWidth: 180 }}>
+                    <div className="enps-header">
+                      <span className="enps-label">eNPS Adaptado</span>
+                      <span className="enps-score" style={{ color: enps.score >= 20 ? "#22c55e" : enps.score >= 0 ? "#d4af37" : "#f87171" }}>
+                        {enps.score >= 0 ? "+" : ""}{enps.score}
+                      </span>
+                    </div>
+                    <div className="enps-bar">
+                      <div style={{ width: `${enps.pctDetractors}%`, background: "#f87171" }} title={`Detractores: ${enps.pctDetractors}%`} />
+                      <div style={{ width: `${enps.pctNeutral}%`, background: "#94a3b8" }} title={`Neutros: ${enps.pctNeutral}%`} />
+                      <div style={{ width: `${enps.pctPromoters}%`, background: "#22c55e" }} title={`Promotores: ${enps.pctPromoters}%`} />
+                    </div>
+                    <div className="enps-legend">
+                      <span style={{ color: "#f87171" }}>Det. {enps.pctDetractors}%</span>
+                      <span style={{ color: "var(--muted)" }}>Neutros {enps.pctNeutral}%</span>
+                      <span style={{ color: "#22c55e" }}>Prom. {enps.pctPromoters}%</span>
+                    </div>
+                  </div>
+                )}
+                <div style={{ flex: "2 1 260px" }}>
+                  <RespondentHistogram responses={effectiveResponses} />
+                </div>
+              </div>
+            ) : null;
+          })()}
 
           {/* ── Indicadores compuestos ───────────────────────── */}
           {(() => {
@@ -1711,7 +1737,7 @@ export function PeriodDashboard({
                     <div key={dim.key} className="breakdown-item">
                       <div className="breakdown-header">
                         <span className="breakdown-name" style={{ color: dim.color }}>{dim.label}</span>
-                        <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
                           {prevDelta != null && (
                             <span style={{
                               fontSize: "0.69rem", fontWeight: 800, padding: "1px 6px", borderRadius: 999,
@@ -1720,12 +1746,7 @@ export function PeriodDashboard({
                               border: `1px solid ${prevDelta > 0 ? "rgba(34,197,94,0.3)" : prevDelta < 0 ? "rgba(248,113,113,0.3)" : "rgba(148,163,184,0.2)"}`,
                               whiteSpace: "nowrap",
                             }}>
-                              {prevDelta > 0 ? "▲ +" : prevDelta < 0 ? "▼ " : "= "}{prevDelta} pts
-                            </span>
-                          )}
-                          {bm != null && (
-                            <span style={{ fontSize: "0.69rem", fontWeight: 700, color: pct >= bm ? "rgba(134,239,172,0.75)" : "rgba(252,165,165,0.75)" }}>
-                              Ref.{bm}%{pct >= bm ? " ↑" : " ↓"}
+                              {prevDelta > 0 ? "▲ +" : prevDelta < 0 ? "▼ " : "= "}{prevDelta}
                             </span>
                           )}
                           {gap != null && (
@@ -1737,16 +1758,15 @@ export function PeriodDashboard({
                                 background: (gap >= 0 ? "rgba(34,197,94," : "rgba(248,113,113,") + "0.08)",
                               }}
                             >
-                              Meta {target}% · {gap > 0 ? "+" : ""}{gap} pts
+                              Meta {target}%
                             </span>
                           )}
                           <span className="breakdown-pct" style={{ color: scoreLevelColor(pct) }}>
-                            {pct}% — {scoreLevelLabel(pct)}
+                            {pct}%
                           </span>
                         </div>
                       </div>
                       <ScoreBarWithTarget pct={pct} color={dim.color} target={target} benchmark={bm} />
-                      <DimDistribution responses={effectiveResponses} dimKey={dim.key} />
                     </div>
                   );
                 })}
