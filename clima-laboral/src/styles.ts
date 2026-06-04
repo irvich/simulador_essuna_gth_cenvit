@@ -612,6 +612,18 @@ export const css = `
   .sent-neutral  { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.22); }
   .sent-negative { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.28); }
 
+  /* ── PRIORITY RANKING ────────────────────────────────── */
+  .priority-list { display: flex; flex-direction: column; gap: 8px; }
+  .priority-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; }
+  .priority-rank { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 0.95rem; }
+  .priority-body { flex: 1; min-width: 0; }
+  .priority-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .priority-dim { font-weight: 800; font-size: 0.9rem; }
+  .priority-tier { font-size: 0.66rem; font-weight: 800; padding: 1px 8px; border-radius: 999px; border: 1px solid; text-transform: uppercase; letter-spacing: 0.05em; }
+  .priority-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 3px; font-size: 0.74rem; color: var(--muted); }
+  .priority-tag { color: rgba(252,165,165,0.85); font-weight: 600; }
+  .priority-window { font-style: italic; }
+
   /* ── CORRELATION MATRIX ──────────────────────────────── */
   .corr-table-wrap { overflow-x: auto; margin: 4px 0 14px; }
   .corr-table { border-collapse: collapse; font-size: 0.78rem; min-width: 360px; }

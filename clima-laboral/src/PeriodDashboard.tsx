@@ -418,6 +418,69 @@ function classifySentiment(text: string): "positive" | "negative" | "neutral" {
   return "neutral";
 }
 
+function PriorityRanking({ scores, benchmark, prevScores }: {
+  scores: DimScore[];
+  benchmark: Record<string, number>;
+  prevScores?: Map<string, number>;
+}) {
+  const ranked = useMemo(() => {
+    return scores.map(({ dim, pct }) => {
+      const bm = benchmark[dim.key] ?? 65;
+      const gap = Math.max(0, bm - pct);              // brecha vs benchmark
+      const severity = Math.max(0, 100 - pct);        // qué tan bajo está
+      const prev = prevScores?.get(dim.key);
+      const drop = prev != null ? Math.max(0, prev - pct) : 0; // caída vs período anterior
+      // Índice de prioridad: severidad (50%) + brecha (30%) + caída reciente (20%)
+      const priority = Math.round(severity * 0.5 + gap * 0.3 + drop * 2.0 * 0.2);
+      return { dim, pct, bm, gap, drop, prev, priority };
+    }).sort((a, b) => b.priority - a.priority);
+  }, [scores, benchmark, prevScores]);
+
+  function tierFor(priority: number): { label: string; color: string; window: string } {
+    if (priority >= 40) return { label: "Crítica", color: "#f87171", window: "Acción inmediata (0–30 días)" };
+    if (priority >= 28) return { label: "Alta", color: "#fb923c", window: "Corto plazo (1–3 meses)" };
+    if (priority >= 18) return { label: "Media", color: "#d4af37", window: "Mediano plazo (3–6 meses)" };
+    return { label: "Baja", color: "#22c55e", window: "Mantener / monitorear" };
+  }
+
+  return (
+    <div className="breakdown-card">
+      <h2>Ranking de Prioridades de Intervención</h2>
+      <p style={{ color: "var(--muted)", fontSize: "0.78rem", marginBottom: 14 }}>
+        Orden sugerido de atención combinando puntaje bajo, brecha frente al benchmark sectorial
+        {prevScores ? " y caída respecto al período anterior" : ""}. Empieza por arriba.
+      </p>
+      <div className="priority-list">
+        {ranked.map((r, i) => {
+          const tier = tierFor(r.priority);
+          return (
+            <div key={r.dim.key} className="priority-row">
+              <div className="priority-rank" style={{ background: tier.color + "22", color: tier.color, border: `1px solid ${tier.color}55` }}>
+                {i + 1}
+              </div>
+              <div className="priority-body">
+                <div className="priority-head">
+                  <span className="priority-dim" style={{ color: r.dim.color }}>{r.dim.label}</span>
+                  <span className="priority-tier" style={{ color: tier.color, borderColor: tier.color + "55", background: tier.color + "14" }}>
+                    {tier.label}
+                  </span>
+                </div>
+                <div className="priority-meta">
+                  <span style={{ color: scoreLevelColor(r.pct), fontWeight: 800 }}>{r.pct}%</span>
+                  {r.gap > 0 && <span className="priority-tag">▼ {r.gap} pts bajo benchmark ({r.bm}%)</span>}
+                  {r.drop > 0 && <span className="priority-tag" style={{ color: "#f87171" }}>↓ {r.drop} pts vs período ant.</span>}
+                  {r.gap === 0 && r.drop === 0 && <span className="priority-tag" style={{ color: "#22c55e" }}>✓ Sobre benchmark</span>}
+                  <span className="priority-window">· {tier.window}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const STOPWORDS = new Set([
   "de","la","el","en","y","a","que","los","las","un","una","por","con","del","al","se","es","su","sus","para","no","lo","le","me","mi","más","pero","como","si","ha","he","han","hay","ya","fue","ser","son","era","esto","esta","este","eso","entre","sobre","porque","donde","cuando","también","todo","todos","toda","todas","muy","bien","así","sin","hasta","desde","tienen","tiene","puede","poder","nos","les","quien","cada","solo","solo","nada","algo","mucho","muchos","mucha","muchas","poco","poca","pocos","pocas","otro","otra","otros","otras","mismo","misma","mismos","mismas","hace","hacer","hemos","antes","después","ahora","aún","aunque","mientras","dentro","fuera","junto","vez","veces","tanto","tan","ni","sino","sea","soy","somos","fueron","están","estaba","estamos","estoy","estaba","había","hubiera","me","te","nos","os","les"
 ]);
@@ -1748,6 +1811,8 @@ export function PeriodDashboard({
               globalPct={globalPct}
             />
           )}
+
+          <PriorityRanking scores={scores} benchmark={sectorBenchmark} prevScores={!filterDept ? prevScores : undefined} />
 
           <CorrelationMatrix responses={effectiveResponses} />
 
