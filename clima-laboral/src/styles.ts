@@ -721,6 +721,22 @@ export const css = `
   .sector-chip:hover { background: rgba(56,189,248,0.1); border-color: rgba(56,189,248,0.35); color: var(--sky); }
   .sector-chip-active { background: rgba(56,189,248,0.15) !important; border-color: rgba(56,189,248,0.55) !important; color: var(--sky) !important; font-weight: 800; }
 
+  /* ── Participation ring (active period card) ─────────────── */
+  .part-ring-wrap { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+  .part-ring-meta { display: flex; flex-direction: column; gap: 4px; }
+
+  /* ── Contextual alert chips (period dashboard) ──────────── */
+  .alert-chips-row { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
+  .alert-chip {
+    display: flex; align-items: flex-start; gap: 8px; padding: 10px 15px;
+    border-radius: 10px; font-size: 0.82rem; font-weight: 600; line-height: 1.5;
+    border: 1px solid;
+  }
+  .alert-chip-danger  { background: rgba(248,113,113,0.10); border-color: rgba(248,113,113,0.32); color: #fca5a5; }
+  .alert-chip-warning { background: rgba(251,146,60,0.10);  border-color: rgba(251,146,60,0.32);  color: #fdba74; }
+  .alert-chip-success { background: rgba(34,197,94,0.10);   border-color: rgba(34,197,94,0.32);   color: #86efac; }
+  .alert-chip-info    { background: rgba(56,189,248,0.10);  border-color: rgba(56,189,248,0.32);  color: #7dd3fc; }
+
   /* ── Score trend chart (company dashboard) ──────────────── */
   .trend-chart-wrap {
     background: rgba(7,27,51,0.72); border: 1px solid var(--border);

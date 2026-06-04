@@ -101,6 +101,42 @@ function PlanBadge({ plan }: { plan: ActionRow[] }) {
   );
 }
 
+function ParticipationRing({ current, total, loading }: { current: number; total: number; loading?: boolean }) {
+  const pct = Math.min(100, Math.round((current / total) * 100));
+  const R = 40, CX = 50, CY = 50;
+  const circumference = 2 * Math.PI * R;
+  const dashOffset = circumference * (1 - pct / 100);
+  const color = pct >= 70 ? "#22c55e" : pct >= 40 ? "#d4af37" : "#f87171";
+  return (
+    <div className="part-ring-wrap">
+      <svg width={100} height={100} viewBox="0 0 100 100">
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="10" />
+        {!loading && (
+          <circle
+            cx={CX} cy={CY} r={R} fill="none"
+            stroke={color} strokeWidth="10"
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${CX} ${CY})`}
+            style={{ transition: "stroke-dashoffset 0.9s ease" }}
+          />
+        )}
+        <text x={CX} y={CY - 5} textAnchor="middle" fontSize="16" fontWeight="900" fill={loading ? "rgba(148,163,184,0.4)" : color} style={{ fontFamily: "Inter,sans-serif" }}>
+          {loading ? "…" : `${pct}%`}
+        </text>
+        <text x={CX} y={CY + 11} textAnchor="middle" fontSize="7.5" fill="rgba(148,163,184,0.55)" style={{ fontFamily: "Inter,sans-serif" }}>RESPUESTA</text>
+      </svg>
+      <div className="part-ring-meta">
+        <span style={{ fontSize: "1.3rem", fontWeight: 900, color: loading ? "var(--muted)" : color, lineHeight: 1 }}>
+          {loading ? "…" : current}
+        </span>
+        <span style={{ fontSize: "0.7rem", color: "var(--muted)", lineHeight: 1.3 }}>de {total}<br />colaboradores</span>
+      </div>
+    </div>
+  );
+}
+
 function trendColor(pct: number): string {
   return pct >= 80 ? "#22c55e" : pct >= 60 ? "#d4af37" : "#f87171";
 }
@@ -683,29 +719,18 @@ export function CompanyDashboard({
               <p className="period-meta">Iniciado el {fmtDate(activePeriodo.created_at)}</p>
 
               <div className="period-stats-row">
-                <div className="period-stat">
-                  <div className="period-stat-num">
-                    {activeLoading ? "…" : activeResponses.length}
-                  </div>
-                  <div className="period-stat-label">Respuestas recibidas</div>
-                </div>
-                {activePeriodo.total_colaboradores && (
+                {activePeriodo.total_colaboradores ? (
+                  <ParticipationRing
+                    current={activeLoading ? 0 : activeResponses.length}
+                    total={activePeriodo.total_colaboradores}
+                    loading={activeLoading}
+                  />
+                ) : (
                   <div className="period-stat">
-                    <div className="period-stat-num" style={{ color: (() => {
-                      const pct = Math.round((activeResponses.length / activePeriodo.total_colaboradores!) * 100);
-                      return pct >= 70 ? "#22c55e" : pct >= 40 ? "#d4af37" : "#f87171";
-                    })() }}>
-                      {activeLoading ? "…" : `${Math.round((activeResponses.length / activePeriodo.total_colaboradores) * 100)}%`}
+                    <div className="period-stat-num">
+                      {activeLoading ? "…" : activeResponses.length}
                     </div>
-                    <div className="period-stat-label">Tasa de respuesta</div>
-                  </div>
-                )}
-                {activePeriodo.total_colaboradores && (
-                  <div className="period-stat">
-                    <div className="period-stat-num" style={{ color: "var(--muted)", fontSize: "1.4rem" }}>
-                      {activePeriodo.total_colaboradores}
-                    </div>
-                    <div className="period-stat-label">Colaboradores esperados</div>
+                    <div className="period-stat-label">Respuestas recibidas</div>
                   </div>
                 )}
               </div>

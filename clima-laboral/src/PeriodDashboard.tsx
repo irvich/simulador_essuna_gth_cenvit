@@ -1203,6 +1203,71 @@ export function PeriodDashboard({
             </div>
           </div>
 
+          {/* ── Alertas contextuales inteligentes ───────────────── */}
+          {(() => {
+            type AlertType = "danger" | "warning" | "success" | "info";
+            const alerts: Array<{ type: AlertType; text: string }> = [];
+
+            // Dimensiones críticas
+            const criticalDims = scores.filter((s) => s.pct < 60);
+            if (criticalDims.length >= 2) {
+              alerts.push({ type: "danger", text: `🚨 ${criticalDims.length} dimensiones en zona crítica (${criticalDims.map((s) => s.dim.shortLabel).join(", ")}) — revisa el plan de acción` });
+            } else if (criticalDims.length === 1) {
+              alerts.push({ type: "warning", text: `⚠️ ${criticalDims[0].dim.label} en zona crítica (${criticalDims[0].pct}%) — prioriza acciones de mejora` });
+            }
+
+            // Baja participación
+            if (!filterDept && totalColaboradores && totalColaboradores > 0) {
+              const partPct = (effectiveResponses.length / totalColaboradores) * 100;
+              if (partPct < 30) {
+                alerts.push({ type: "warning", text: `⚠️ Tasa de respuesta muy baja (${Math.round(partPct)}%) — los resultados pueden no ser representativos` });
+              }
+            }
+
+            // Alta polarización (σ > 1.4 en alguna dimensión)
+            const polarized = scores.filter((s) => {
+              const ids = QUESTIONS.filter((q) => q.dimension === s.dim.key).map((q) => q.id);
+              let sm = 0, sm2 = 0, cnt = 0;
+              for (const r of effectiveResponses) {
+                for (const qid of ids) {
+                  const v = r.answers[qid];
+                  if (v !== undefined) { sm += v; sm2 += v * v; cnt++; }
+                }
+              }
+              if (cnt < 5) return false;
+              const mean = sm / cnt;
+              return Math.sqrt(sm2 / cnt - mean * mean) > 1.4;
+            });
+            if (polarized.length >= 2) {
+              alerts.push({ type: "info", text: `⚡ Opiniones polarizadas en ${polarized.map((s) => s.dim.shortLabel).join(", ")} — complementa con entrevistas o focus groups` });
+            }
+
+            // Superación del benchmark
+            const aboveBm = scores.filter((s) => s.pct >= (sectorBenchmark[s.dim.key] ?? 65)).length;
+            if (aboveBm >= 5) {
+              alerts.push({ type: "success", text: `✅ ${aboveBm} de 6 dimensiones superan el benchmark sectorial — organización con clima sólido` });
+            }
+
+            // Evolución vs período anterior
+            if (prevGlobalPct != null && !filterDept) {
+              const delta = globalPct - prevGlobalPct;
+              if (delta >= 5) {
+                alerts.push({ type: "success", text: `📈 Mejora significativa: +${delta} pts respecto a ${prevLabel}` });
+              } else if (delta <= -5) {
+                alerts.push({ type: "warning", text: `📉 Descenso de ${Math.abs(delta)} pts respecto a ${prevLabel} — analiza los factores de riesgo` });
+              }
+            }
+
+            if (alerts.length === 0) return null;
+            return (
+              <div className="alert-chips-row no-print">
+                {alerts.map((a, i) => (
+                  <div key={i} className={`alert-chip alert-chip-${a.type}`}>{a.text}</div>
+                ))}
+              </div>
+            );
+          })()}
+
           <div className="global-card">
             <p className="global-label">Índice Global de Clima Laboral</p>
             <div className="global-score" style={{ color: scoreLevelColor(globalPct) }}>{globalPct}%</div>
