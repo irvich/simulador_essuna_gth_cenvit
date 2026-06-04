@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { computePeriodSummary, HistoricalComparison, type PeriodSummary } from "./HistoricalComparison";
 import { PeriodDashboard } from "./PeriodDashboard";
 import { DIMENSIONS } from "./questions";
@@ -101,6 +101,102 @@ function PlanBadge({ plan }: { plan: ActionRow[] }) {
   );
 }
 
+function trendColor(pct: number): string {
+  return pct >= 80 ? "#22c55e" : pct >= 60 ? "#d4af37" : "#f87171";
+}
+
+function ScoreTrendChart({ data }: { data: Array<{ label: string; pct: number }> }) {
+  if (data.length < 2) return null;
+
+  const W = 580, H = 160;
+  const padL = 30, padR = 14, padT = 22, padB = 36;
+  const n = data.length;
+  const totalW = Math.max(W, n * 90);
+  const chartW = totalW - padL - padR;
+  const chartH = H - padT - padB;
+
+  const xPos = (i: number) => padL + (n === 1 ? chartW / 2 : (i / (n - 1)) * chartW);
+  const yPos = (pct: number) => padT + (1 - pct / 100) * chartH;
+
+  const linePath = data.map((d, i) =>
+    `${i === 0 ? "M" : "L"}${xPos(i).toFixed(1)},${yPos(d.pct).toFixed(1)}`
+  ).join(" ");
+  const areaPath = `${linePath} L${xPos(n - 1).toFixed(1)},${(padT + chartH).toFixed(1)} L${xPos(0).toFixed(1)},${(padT + chartH).toFixed(1)} Z`;
+
+  const last = data[data.length - 1];
+  const first = data[0];
+  const totalDelta = last.pct - first.pct;
+
+  return (
+    <div className="trend-chart-wrap">
+      <div className="trend-chart-header">
+        <h3 className="trend-chart-title">Evolución del Índice Global</h3>
+        <div className="trend-chart-delta">
+          <span style={{ color: trendColor(last.pct), fontWeight: 900, fontSize: "1.35rem", lineHeight: 1 }}>
+            {last.pct}%
+          </span>
+          <span style={{
+            fontSize: "0.75rem", fontWeight: 700, marginTop: 3,
+            color: totalDelta > 0 ? "#22c55e" : totalDelta < 0 ? "#f87171" : "var(--muted)",
+          }}>
+            {totalDelta > 0 ? "▲ +" : totalDelta < 0 ? "▼ " : "= "}{totalDelta} pts respecto a {first.label}
+          </span>
+        </div>
+      </div>
+      <div style={{ overflowX: "auto" }}>
+        <svg
+          width={totalW} height={H}
+          viewBox={`0 0 ${totalW} ${H}`}
+          style={{ display: "block", width: "100%", minWidth: n > 5 ? totalW : 0 }}
+        >
+          <defs>
+            <linearGradient id="trendArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgba(56,189,248,0.18)" />
+              <stop offset="100%" stopColor="rgba(56,189,248,0)" />
+            </linearGradient>
+          </defs>
+          {/* Grid */}
+          {[40, 60, 80, 100].map((pct) => (
+            <React.Fragment key={pct}>
+              <line x1={padL} y1={yPos(pct)} x2={totalW - padR} y2={yPos(pct)} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+              <text x={padL - 4} y={yPos(pct) + 3} textAnchor="end" fontSize="7.5" fill="rgba(148,163,184,0.4)" style={{ fontFamily: "Inter,sans-serif" }}>{pct}%</text>
+            </React.Fragment>
+          ))}
+          {/* Level thresholds */}
+          <line x1={padL} y1={yPos(60)} x2={totalW - padR} y2={yPos(60)} stroke="rgba(212,175,55,0.22)" strokeWidth="1" strokeDasharray="4,3" />
+          <line x1={padL} y1={yPos(80)} x2={totalW - padR} y2={yPos(80)} stroke="rgba(34,197,94,0.22)" strokeWidth="1" strokeDasharray="4,3" />
+          {/* Area fill */}
+          <path d={areaPath} fill="url(#trendArea)" />
+          {/* Main line */}
+          <path d={linePath} fill="none" stroke="rgba(56,189,248,0.75)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {/* Points + labels */}
+          {data.map((d, i) => {
+            const x = xPos(i);
+            const y = yPos(d.pct);
+            return (
+              <g key={i}>
+                <circle cx={x} cy={y} r="7" fill={trendColor(d.pct)} stroke="rgba(4,20,38,0.9)" strokeWidth="2">
+                  <title>{d.label}: {d.pct}%</title>
+                </circle>
+                <text x={x} y={y - 13} textAnchor="middle" fontSize="9.5" fontWeight="800" fill={trendColor(d.pct)} style={{ fontFamily: "Inter,sans-serif" }}>{d.pct}%</text>
+                <text x={x} y={H - padB + 14} textAnchor="middle" fontSize="8.5" fill="rgba(148,163,184,0.7)" style={{ fontFamily: "Inter,sans-serif" }}>{d.label}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <div style={{ display: "flex", gap: 16, fontSize: "0.69rem", color: "var(--muted)", marginTop: 8, flexWrap: "wrap" }}>
+        {([["#f87171","Crítico (0–59%)"],["#d4af37","Regular (60–79%)"],["#22c55e","Bueno (80–100%)"]] as const).map(([col, label]) => (
+          <span key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ width: 9, height: 9, borderRadius: "50%", background: col, display: "inline-block", flexShrink: 0 }} />
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function CompanyDashboard({
   empresa,
   onLogout,
@@ -156,6 +252,7 @@ export function CompanyDashboard({
 
   const [latestScore, setLatestScore] = useState<number | null>(null);
   const [latestScoreLabel, setLatestScoreLabel] = useState("");
+  const [scoreCache, setScoreCache] = useState<Map<string, number>>(new Map());
 
   const [sector, setSector] = useState(() => loadSector(empresa.id));
 
@@ -206,6 +303,26 @@ export function CompanyDashboard({
       })
       .catch(() => {});
   }, [closedPeriodos.length]);
+
+  // Load global scores for all closed periods in background (for trend chart)
+  useEffect(() => {
+    closedPeriodos.forEach((p) => {
+      if (scoreCache.has(p.id)) return;
+      getResponsesForPeriod(p.id)
+        .then((resps) => {
+          const pct = computeGlobalPct(resps);
+          if (pct !== null) setScoreCache((prev) => new Map(prev).set(p.id, pct));
+        })
+        .catch(() => {});
+    });
+  }, [periodos]);
+
+  const trendData = useMemo(() => {
+    return [...closedPeriodos]
+      .sort((a, b) => new Date(a.cerrado_at ?? a.created_at).getTime() - new Date(b.cerrado_at ?? b.created_at).getTime())
+      .filter((p) => scoreCache.has(p.id))
+      .map((p) => ({ label: p.etiqueta, pct: scoreCache.get(p.id)! }));
+  }, [closedPeriodos, scoreCache]);
 
   // Pre-fetch plans for closed periods in the background to show badges
   useEffect(() => {
@@ -857,6 +974,8 @@ export function CompanyDashboard({
               </div>
             </div>
           )}
+
+          {trendData.length >= 2 && <ScoreTrendChart data={trendData} />}
 
           {closedPeriodos.length >= 2 && (
             <div className="comparison-trigger">

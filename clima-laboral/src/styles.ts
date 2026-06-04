@@ -721,6 +721,18 @@ export const css = `
   .sector-chip:hover { background: rgba(56,189,248,0.1); border-color: rgba(56,189,248,0.35); color: var(--sky); }
   .sector-chip-active { background: rgba(56,189,248,0.15) !important; border-color: rgba(56,189,248,0.55) !important; color: var(--sky) !important; font-weight: 800; }
 
+  /* ── Score trend chart (company dashboard) ──────────────── */
+  .trend-chart-wrap {
+    background: rgba(7,27,51,0.72); border: 1px solid var(--border);
+    border-radius: 20px; padding: 22px 20px; margin-top: 24px; backdrop-filter: blur(10px);
+  }
+  .trend-chart-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .trend-chart-title { font-size: 0.95rem; font-weight: 700; color: var(--white); }
+  .trend-chart-delta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+
   /* ── Health index badge (company header) ────────────────── */
   .health-index-row {
     display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;
