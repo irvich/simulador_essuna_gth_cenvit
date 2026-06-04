@@ -305,6 +305,119 @@ function DeptDrillDown({ deptName, deptResponses, globalScores }: {
   );
 }
 
+function computeCorrelation(responses: SurveyResponse[]): Record<string, Record<string, number>> | null {
+  if (responses.length < 8) return null;
+  const data: Record<string, number>[] = responses.map((r) => {
+    const row: Record<string, number> = {};
+    for (const dim of DIMENSIONS) {
+      const ids = QUESTIONS.filter((q) => q.dimension === dim.key).map((q) => q.id);
+      const vals = ids.map((id) => r.answers[id]).filter((v): v is number => v !== undefined);
+      row[dim.key] = vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : NaN;
+    }
+    return row;
+  }).filter((d) => !Object.values(d).some(isNaN));
+  if (data.length < 8) return null;
+  const means: Record<string, number> = {};
+  for (const dim of DIMENSIONS) {
+    means[dim.key] = data.reduce((s, d) => s + d[dim.key], 0) / data.length;
+  }
+  const corr: Record<string, Record<string, number>> = {};
+  for (const d1 of DIMENSIONS) {
+    corr[d1.key] = {};
+    for (const d2 of DIMENSIONS) {
+      if (d1.key === d2.key) { corr[d1.key][d2.key] = 1; continue; }
+      let num = 0, den1 = 0, den2 = 0;
+      for (const d of data) {
+        const xi = d[d1.key] - means[d1.key];
+        const yi = d[d2.key] - means[d2.key];
+        num += xi * yi; den1 += xi * xi; den2 += yi * yi;
+      }
+      corr[d1.key][d2.key] = den1 === 0 || den2 === 0 ? 0 : Math.round((num / Math.sqrt(den1 * den2)) * 100) / 100;
+    }
+  }
+  return corr;
+}
+
+function CorrelationMatrix({ responses }: { responses: SurveyResponse[] }) {
+  const corr = useMemo(() => computeCorrelation(responses), [responses]);
+  if (!corr) return null;
+  function cellColor(r: number): string {
+    if (r >= 0.7) return "#22c55e";
+    if (r >= 0.4) return "#86efac";
+    if (r >= 0.2) return "#d4af37";
+    if (r >= 0) return "rgba(148,163,184,0.5)";
+    return "#f87171";
+  }
+  function cellBg(r: number): string {
+    if (r >= 0.7) return "rgba(34,197,94,0.18)";
+    if (r >= 0.4) return "rgba(134,239,172,0.12)";
+    if (r >= 0.2) return "rgba(212,175,55,0.12)";
+    if (r >= 0) return "rgba(148,163,184,0.07)";
+    return "rgba(248,113,113,0.12)";
+  }
+  return (
+    <div className="breakdown-card">
+      <h2>Correlación entre Dimensiones</h2>
+      <p style={{ color: "var(--muted)", fontSize: "0.78rem", marginBottom: 16 }}>
+        Indica qué tan relacionadas están las dimensiones entre sí. Correlación alta (verde) significa que ambas tienden a subir o bajar juntas en cada colaborador.
+      </p>
+      <div className="corr-table-wrap">
+        <table className="corr-table">
+          <thead>
+            <tr>
+              <th />
+              {DIMENSIONS.map((d) => (
+                <th key={d.key} title={d.label} style={{ color: d.color }}>{d.shortLabel}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {DIMENSIONS.map((d1, i) => (
+              <tr key={d1.key}>
+                <td className="corr-row-label" style={{ color: d1.color }}>{d1.shortLabel}</td>
+                {DIMENSIONS.map((d2, j) => {
+                  if (j > i) return <td key={d2.key} className="corr-cell-empty" />;
+                  const r = corr[d1.key][d2.key];
+                  return (
+                    <td
+                      key={d2.key}
+                      className="corr-cell"
+                      style={{ background: cellBg(r), color: cellColor(r) }}
+                      title={`${d1.label} ↔ ${d2.label}: r = ${r}`}
+                    >
+                      {j === i ? "—" : r.toFixed(2)}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="corr-legend">
+        {[["≥0.70", "#22c55e", "Fuerte"], ["0.40–0.69", "#86efac", "Moderada"], ["0.20–0.39", "#d4af37", "Débil"], ["<0.20", "rgba(148,163,184,0.6)", "Muy débil"], ["< 0", "#f87171", "Inversa"]].map(([range, color, label]) => (
+          <span key={label} className="corr-legend-item">
+            <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: color, marginRight: 4 }} />
+            <span style={{ color: "var(--muted)", fontSize: "0.72rem" }}>{range} — {label}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const POSITIVE_KW = ["bien", "excelente", "buen", "buena", "bueno", "positivo", "feliz", "contento", "satisfecho", "satisfecha", "mejor", "genial", "agradecido", "agradecida", "gracias", "apoyo", "motivado", "motivada", "orgulloso", "orgullosa", "aprendizaje", "crecimiento", "respeto", "gran equipo", "unidos", "colaboraci"];
+const NEGATIVE_KW = ["mal ", "malo", "mala", "pésimo", "terrible", "peor", "difícil", "problema", "falta de", "estresante", "estrés", "sobrecarga", "injusto", "injusticia", "desmotivado", "desmotivada", "presión excesiva", "conflicto", "desorganizado", "sin apoyo", "no se comunica", "no hay claridad", "poco reconocimiento"];
+
+function classifySentiment(text: string): "positive" | "negative" | "neutral" {
+  const lower = text.toLowerCase();
+  const pos = POSITIVE_KW.filter((kw) => lower.includes(kw)).length;
+  const neg = NEGATIVE_KW.filter((kw) => lower.includes(kw)).length;
+  if (pos > neg) return "positive";
+  if (neg > pos) return "negative";
+  return "neutral";
+}
+
 const STOPWORDS = new Set([
   "de","la","el","en","y","a","que","los","las","un","una","por","con","del","al","se","es","su","sus","para","no","lo","le","me","mi","más","pero","como","si","ha","he","han","hay","ya","fue","ser","son","era","esto","esta","este","eso","entre","sobre","porque","donde","cuando","también","todo","todos","toda","todas","muy","bien","así","sin","hasta","desde","tienen","tiene","puede","poder","nos","les","quien","cada","solo","solo","nada","algo","mucho","muchos","mucha","muchas","poco","poca","pocos","pocas","otro","otra","otros","otras","mismo","misma","mismos","mismas","hace","hacer","hemos","antes","después","ahora","aún","aunque","mientras","dentro","fuera","junto","vez","veces","tanto","tan","ni","sino","sea","soy","somos","fueron","están","estaba","estamos","estoy","estaba","había","hubiera","me","te","nos","os","les"
 ]);
@@ -334,6 +447,15 @@ function CommentsSection({ responses, forceOpen }: { responses: SurveyResponse[]
     [responses]
   );
   const wordCloud = useMemo(() => topWords(comments), [comments]);
+  const tagged = useMemo(
+    () => comments.map((c) => ({ ...c, sentiment: classifySentiment(c.text) })),
+    [comments]
+  );
+  const sentCounts = useMemo(() => ({
+    positive: tagged.filter((c) => c.sentiment === "positive").length,
+    neutral: tagged.filter((c) => c.sentiment === "neutral").length,
+    negative: tagged.filter((c) => c.sentiment === "negative").length,
+  }), [tagged]);
 
   if (comments.length === 0) return null;
 
@@ -381,13 +503,23 @@ function CommentsSection({ responses, forceOpen }: { responses: SurveyResponse[]
               </div>
             </div>
           )}
+          {comments.length >= 3 && (
+            <div className="sent-summary">
+              <span className="sent-chip sent-positive">✓ Positivo {sentCounts.positive}</span>
+              <span className="sent-chip sent-neutral">~ Neutral {sentCounts.neutral}</span>
+              <span className="sent-chip sent-negative">↓ Mejorable {sentCounts.negative}</span>
+            </div>
+          )}
           <div className="comments-list">
-            {comments.map((c, i) => (
-              <div key={i} className="comment-item">
-                <p className="comment-text">"{c.text}"</p>
-                <p className="comment-meta">— {c.department}</p>
-              </div>
-            ))}
+            {tagged.map((c, i) => {
+              const sentColor = c.sentiment === "positive" ? "#22c55e" : c.sentiment === "negative" ? "#f87171" : "rgba(148,163,184,0.6)";
+              return (
+                <div key={i} className="comment-item" style={{ borderLeftColor: sentColor + "99" }}>
+                  <p className="comment-text">"{c.text}"</p>
+                  <p className="comment-meta">— {c.department}</p>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -1611,6 +1743,8 @@ export function PeriodDashboard({
               globalPct={globalPct}
             />
           )}
+
+          <CorrelationMatrix responses={effectiveResponses} />
 
           {/* ── Recomendaciones por dimensión ─────────────── */}
           <div className="recs-section">

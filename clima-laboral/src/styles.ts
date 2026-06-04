@@ -605,6 +605,23 @@ export const css = `
   .word-cloud-pills { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; }
   .word-cloud-pill { color: var(--sky); cursor: default; transition: opacity 0.2s; line-height: 1.3; }
 
+  /* ── SENTIMENT ───────────────────────────────────────── */
+  .sent-summary { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 2px; }
+  .sent-chip { padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 800; }
+  .sent-positive { background: rgba(34,197,94,0.12); color: #22c55e; border: 1px solid rgba(34,197,94,0.28); }
+  .sent-neutral  { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.22); }
+  .sent-negative { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.28); }
+
+  /* ── CORRELATION MATRIX ──────────────────────────────── */
+  .corr-table-wrap { overflow-x: auto; margin: 4px 0 14px; }
+  .corr-table { border-collapse: collapse; font-size: 0.78rem; min-width: 360px; }
+  .corr-table th { padding: 5px 8px; font-size: 0.7rem; font-weight: 800; text-align: center; white-space: nowrap; }
+  .corr-row-label { font-size: 0.7rem; font-weight: 800; white-space: nowrap; padding: 5px 8px 5px 0; text-align: right; }
+  .corr-cell { padding: 5px 8px; text-align: center; border-radius: 4px; font-weight: 800; font-size: 0.78rem; white-space: nowrap; }
+  .corr-cell-empty { }
+  .corr-legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 6px; }
+  .corr-legend-item { display: flex; align-items: center; }
+
   /* ── PLAN DE MEJORA ──────────────────────────────────── */
   .plan-progress-inline { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
   .plan-save-area { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
