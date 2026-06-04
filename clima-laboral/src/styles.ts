@@ -406,6 +406,7 @@ export const css = `
   .dist-align-badge { flex-shrink: 0; font-size: 0.67rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid; white-space: nowrap; letter-spacing: 0.04em; }
 
   .print-only { display: none; }
+  .pdf-cover { display: none; }
 
   /* ── PRINT / PDF ──────────────────────────────────────── */
   @media print {
@@ -413,6 +414,43 @@ export const css = `
     body { background: #ffffff !important; color: #071b33 !important; font-size: 11pt; }
     .topbar, .no-print { display: none !important; }
     .print-only { display: block !important; }
+
+    /* ── Cover page ──── */
+    .pdf-cover {
+      display: flex !important; flex-direction: column; justify-content: space-between;
+      min-height: 100vh; padding: 60px 72px;
+      page-break-after: always; break-after: page;
+      background: white !important; color: #071b33 !important;
+    }
+    .pdf-cover-eyebrow { font-size: 0.65rem; letter-spacing: 0.28em; text-transform: uppercase; color: #94a3b8 !important; margin-bottom: 18px; }
+    .pdf-cover-company { font-size: 2.8rem; font-weight: 900; color: #071b33 !important; margin-bottom: 8px; line-height: 1.1; }
+    .pdf-cover-period { font-size: 1.3rem; color: #334155 !important; margin-bottom: 4px; font-weight: 600; }
+    .pdf-cover-date { font-size: 0.8rem; color: #64748b !important; }
+    .pdf-cover-score-wrap { display: flex; align-items: center; gap: 40px; margin: 48px 0; }
+    .pdf-cover-score-circle {
+      width: 136px; height: 136px; border-radius: 50%; border: 5px solid;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      flex-shrink: 0; background: white !important;
+    }
+    .pdf-cover-score-num { font-size: 2.2rem; font-weight: 900; line-height: 1; }
+    .pdf-cover-score-sub { font-size: 0.52rem; letter-spacing: 0.16em; text-transform: uppercase; color: #94a3b8 !important; margin-top: 4px; }
+    .pdf-cover-score-meta { display: flex; flex-direction: column; gap: 8px; }
+    .pdf-cover-level { display: inline-block; padding: 5px 16px; border-radius: 999px; border: 2px solid; font-weight: 900; font-size: 0.9rem; letter-spacing: 0.06em; text-transform: uppercase; background: white !important; }
+    .pdf-cover-participants { font-size: 0.88rem; color: #334155 !important; }
+    .pdf-cover-sector { font-size: 0.78rem; color: #64748b !important; }
+    .pdf-cover-dims { display: flex; flex-direction: column; gap: 11px; }
+    .pdf-cover-dims-title { font-size: 0.68rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8 !important; margin-bottom: 6px; }
+    .pdf-cover-dim-row { display: flex; align-items: center; gap: 14px; }
+    .pdf-cover-dim-name { flex: 0 0 170px; font-size: 0.82rem; font-weight: 700; color: #334155 !important; }
+    .pdf-cover-dim-bar-track { flex: 1; height: 9px; background: #e2e8f0 !important; border-radius: 4px; overflow: visible; position: relative; }
+    .pdf-cover-dim-bar-fill { height: 100%; border-radius: 4px; }
+    .pdf-cover-dim-bm-line { position: absolute; top: -3px; bottom: -3px; width: 0; border-left: 2px dotted #94a3b8; pointer-events: none; }
+    .pdf-cover-dim-pct { flex: 0 0 38px; text-align: right; font-size: 0.82rem; font-weight: 800; color: #334155 !important; }
+    .pdf-cover-bm-note { font-size: 0.68rem; color: #94a3b8 !important; margin-top: 8px; font-style: italic; }
+    .pdf-cover-footer { margin-top: 0; }
+    .pdf-cover-footer-sep { height: 1px; background: #e2e8f0 !important; margin-bottom: 14px; }
+    .pdf-cover-footer p { font-size: 0.8rem; color: #64748b !important; text-align: center; }
+    .pdf-cover-confidential { font-size: 0.62rem !important; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8 !important; margin-top: 4px; }
     .comment-item { break-inside: avoid; border-left-color: #94a3b8 !important; background: #f8fafc !important; }
     .comment-text { color: #334155 !important; }
     .comments-list { max-height: none !important; overflow: visible !important; }

@@ -968,6 +968,57 @@ export function PeriodDashboard({
         </button>
       )}
 
+      {/* ── Portada PDF (print-only cover page) ─────────────── */}
+      {responses.length > 0 && (
+        <div className="pdf-cover">
+          <div className="pdf-cover-top">
+            <p className="pdf-cover-eyebrow">INFORME DE CLIMA LABORAL</p>
+            <h1 className="pdf-cover-company">{empresaNombre || "Empresa"}</h1>
+            <p className="pdf-cover-period">{periodoLabel}</p>
+            <p className="pdf-cover-date">
+              Generado el {new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}
+            </p>
+          </div>
+
+          <div className="pdf-cover-score-wrap">
+            <div className="pdf-cover-score-circle" style={{ borderColor: scoreLevelColor(globalPct) }}>
+              <span className="pdf-cover-score-num" style={{ color: scoreLevelColor(globalPct) }}>{globalPct}%</span>
+              <span className="pdf-cover-score-sub">ÍNDICE GLOBAL</span>
+            </div>
+            <div className="pdf-cover-score-meta">
+              <span className="pdf-cover-level" style={{ color: scoreLevelColor(globalPct), borderColor: scoreLevelColor(globalPct) }}>
+                {scoreLevelLabel(globalPct)}
+              </span>
+              <p className="pdf-cover-participants">{responses.length} participante(s) encuestado(s)</p>
+              {(sectorKey && sectorKey !== "general") && (
+                <p className="pdf-cover-sector">Sector de referencia: {sectorData.label}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="pdf-cover-dims">
+            <p className="pdf-cover-dims-title">Resultados por dimensión</p>
+            {scores.map(({ dim, pct }) => (
+              <div key={dim.key} className="pdf-cover-dim-row">
+                <span className="pdf-cover-dim-name">{dim.label}</span>
+                <div className="pdf-cover-dim-bar-track">
+                  <div className="pdf-cover-dim-bar-fill" style={{ width: `${pct}%`, background: dim.color }} />
+                  <div className="pdf-cover-dim-bm-line" style={{ left: `${sectorBenchmark[dim.key] ?? 65}%` }} />
+                </div>
+                <span className="pdf-cover-dim-pct">{pct}%</span>
+              </div>
+            ))}
+            <p className="pdf-cover-bm-note">La línea vertical en cada barra indica el benchmark sectorial de referencia.</p>
+          </div>
+
+          <div className="pdf-cover-footer">
+            <div className="pdf-cover-footer-sep" />
+            <p>Diagnóstico elaborado con <strong>Simulador Essuna GTH · Cenvit</strong></p>
+            <p className="pdf-cover-confidential">DOCUMENTO CONFIDENCIAL · Uso exclusivo del área de Recursos Humanos</p>
+          </div>
+        </div>
+      )}
+
       <div className="results-header" id="sec-resumen">
         {empresaNombre && <p className="eyebrow gold">{empresaNombre}</p>}
         <h1 className="results-title">Resultados · {periodoLabel}</h1>
