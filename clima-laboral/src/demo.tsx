@@ -399,6 +399,16 @@ function StepResultados() {
           <button key={t} onClick={()=>setTab(t)} style={{padding:"8px 16px",background:tab===t?"rgba(56,189,248,0.18)":"transparent",border:`1px solid ${tab===t?"rgba(56,189,248,0.35)":"transparent"}`,borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:"0.8rem",color:tab===t?"#38bdf8":"rgba(148,163,184,0.55)",transition:"all 0.15s"}}>{l}</button>
         ))}
       </div>
+      {tab!=="survey"&&(
+        <div style={{display:"flex",gap:8,marginBottom:18,alignItems:"center"}}>
+          {tab==="report"&&<button onClick={()=>window.print()} style={{padding:"7px 16px",borderRadius:999,background:"rgba(212,175,55,0.1)",border:"1px solid rgba(212,175,55,0.3)",color:"#d4af37",fontWeight:800,fontSize:"0.77rem",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>🖨 Imprimir informe</button>}
+          {tab==="dashboard"&&<>
+            <button style={{padding:"7px 16px",borderRadius:999,background:"rgba(56,189,248,0.08)",border:"1px solid rgba(56,189,248,0.24)",color:"#38bdf8",fontWeight:800,fontSize:"0.77rem",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>⬇ Exportar CSV</button>
+            <button style={{padding:"7px 16px",borderRadius:999,background:"rgba(56,189,248,0.08)",border:"1px solid rgba(56,189,248,0.24)",color:"#38bdf8",fontWeight:800,fontSize:"0.77rem",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>📊 Exportar PNG</button>
+          </>}
+          <span style={{fontSize:"0.73rem",color:"#475569",marginLeft:4}}>{tab==="report"?"Informe 14 págs · firma del Psicólogo Laboral":"Datos del período 2026 · I Semestre"}</span>
+        </div>
+      )}
       {tab==="report"?<ReportDocument className="rp-screen" empresaNombre="Empresa Demostración S.A." periodoLabel="2026 · I Semestre" prevLabel="2025 · II Semestre" totalColaboradores={120} responses={curR} prevResponses={prevR} benchmark={{}} sectorLabel="General (Latinoamérica)" plan={demoPlan} history={demoHistory} logoCenvit={LOGO_CENVIT} logoIvan={LOGO_IVAN}/>
         :tab==="survey"?<SurveyPreview/>
         :<PeriodDashboard responses={curR} periodoLabel="2026 · I Semestre" empresaNombre="Empresa Demostración S.A." totalColaboradores={120} targets={demoTargets} sectorKey="general" prevResponses={prevR} prevLabel="2025 · II Semestre" savedPlan={demoPlan} history={demoHistory}/>}
@@ -626,6 +636,19 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
           </div>
         </div>
       </div>
+      {/* Insights bar */}
+      <div style={{display:"flex",gap:10,marginBottom:22}}>
+        {[
+          {icon:"⚠",color:"#f87171",bg:"rgba(248,113,113,0.07)",bd:"rgba(248,113,113,0.2)",text:"Reconocimiento en zona crítica (58%) — tercera caída consecutiva"},
+          {icon:"▲",color:"#22c55e",bg:"rgba(34,197,94,0.06)",bd:"rgba(34,197,94,0.18)",text:"T. Equipo lidera (82%) — punto de apoyo para el plan de mejora"},
+          {icon:"⏳",color:"#f97316",bg:"rgba(249,115,22,0.06)",bd:"rgba(249,115,22,0.18)",text:"Hospital del Valle requiere validación — pendiente desde ayer"},
+        ].map((ins,i)=>(
+          <div key={i} style={{flex:1,display:"flex",gap:9,alignItems:"center",background:ins.bg,border:`1px solid ${ins.bd}`,borderRadius:12,padding:"10px 14px",minWidth:0}}>
+            <span style={{fontSize:"0.85rem",flexShrink:0,color:ins.color}}>{ins.icon}</span>
+            <span style={{fontSize:"0.76rem",color:"#94a3b8",lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ins.text}</span>
+          </div>
+        ))}
+      </div>
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:22}}>
         {kpis.map(k=>{const vc=k.alert?"#f97316":k.warn?"#fb923c":"#f8fafc";const delta=k.trend[k.trend.length-1]-k.trend[0];return(
@@ -765,15 +788,35 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
 
 function MedicionesSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
   const [hovRow,setHovRow]=useState<number|null>(null);
+  type SortKey="Empresa"|"Período"|"Puntaje";
+  const [sortKey,setSortKey]=useState<SortKey>("Período");
   const meds=[
     {co:"Empresa Demostración S.A.",periodo:"2026 · I Semestre",respuestas:103,total:120,score:curPct,status:"validated",  id:"demo"},
     {co:"Empresa Demostración S.A.",periodo:"2025 · II Semestre",respuestas:109,total:120,score:prevPct,status:"validated", id:"demo"},
     {co:"Constructora Andina Cía.",  periodo:"2026 · I Semestre",respuestas:55, total:85, score:null,   status:"collecting",id:"andina"},
     {co:"Hospital del Valle",        periodo:"2026 · I Semestre",respuestas:187,total:210,score:68,     status:"pending_validation",id:"hospital"},
   ];
+  const sorted=[...meds].sort((a,b)=>{
+    if(sortKey==="Empresa")return a.co.localeCompare(b.co);
+    if(sortKey==="Puntaje")return(b.score??-1)-(a.score??-1);
+    return b.periodo.localeCompare(a.periodo);
+  });
+  const STATS=[{label:"Total",value:meds.length,color:"#94a3b8"},{label:"Validadas",value:meds.filter(m=>m.status==="validated").length,color:"#22c55e"},{label:"Recolectando",value:meds.filter(m=>m.status==="collecting").length,color:"#38bdf8"},{label:"Pend. validación",value:meds.filter(m=>m.status==="pending_validation").length,color:"#f97316"}];
   return (
     <div>
-      <div style={{marginBottom:22}}><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Mediciones</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Historial de todos los períodos de medición por empresa.</p></div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:16}}>
+        <div><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Mediciones</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Historial de todos los períodos de medición por empresa.</p></div>
+        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+          <span style={{fontSize:"0.68rem",color:"#64748b",fontWeight:700,marginRight:2}}>Ordenar:</span>
+          {(["Empresa","Período","Puntaje"] as SortKey[]).map(s=><button key={s} onClick={()=>setSortKey(s)} style={{padding:"5px 12px",borderRadius:999,fontSize:"0.72rem",fontWeight:700,cursor:"pointer",background:sortKey===s?"rgba(56,189,248,0.14)":"rgba(255,255,255,0.04)",border:`1px solid ${sortKey===s?"rgba(56,189,248,0.35)":"rgba(255,255,255,0.09)"}`,color:sortKey===s?"#38bdf8":"#94a3b8",transition:"all 0.14s"}}>{s}{sortKey===s?" ↓":""}</button>)}
+        </div>
+      </div>
+      <div style={{display:"flex",gap:10,marginBottom:16}}>
+        {STATS.map(s=><div key={s.label} style={{padding:"6px 14px",borderRadius:999,background:`${s.color}10`,border:`1px solid ${s.color}28`,display:"flex",gap:8,alignItems:"center"}}>
+          <span style={{fontWeight:900,color:s.color,fontSize:"0.9rem"}}>{s.value}</span>
+          <span style={{fontSize:"0.71rem",color:"#94a3b8"}}>{s.label}</span>
+        </div>)}
+      </div>
       <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,overflow:"hidden"}}>
         <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead>
@@ -782,7 +825,7 @@ function MedicionesSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
             </tr>
           </thead>
           <tbody>
-            {meds.map((m,i)=>{const sc=STATUS_CFG[m.status as keyof typeof STATUS_CFG];const pct=Math.round((m.respuestas/m.total)*100);return(
+            {sorted.map((m,i)=>{const sc=STATUS_CFG[m.status as keyof typeof STATUS_CFG];const pct=Math.round((m.respuestas/m.total)*100);return(
               <tr key={i} onMouseEnter={()=>setHovRow(i)} onMouseLeave={()=>setHovRow(null)} style={{borderBottom:"1px solid rgba(255,255,255,0.05)",background:hovRow===i?"rgba(56,189,248,0.04)":"transparent",transition:"background 0.12s",cursor:"default"}}>
                 <td style={{padding:"13px 16px",fontSize:"0.84rem",fontWeight:700,color:"#f8fafc"}}>{m.co}</td>
                 <td style={{padding:"13px 16px",fontSize:"0.82rem",color:"#94a3b8"}}>{m.periodo}</td>
@@ -945,8 +988,9 @@ const NAV_ITEMS: {key: SideSection; icon: string; label: string; badge?: number}
   {key:"config",       icon:"⚙️", label:"Configuración"},
 ];
 
-function Sidebar({active, onSelect, collapsed, onToggle}: {active: SideSection; onSelect:(s:SideSection)=>void; collapsed:boolean; onToggle:()=>void}) {
+function Sidebar({active, onSelect, collapsed, onToggle, onLogout}: {active: SideSection; onSelect:(s:SideSection)=>void; collapsed:boolean; onToggle:()=>void; onLogout:()=>void}) {
   const [hovNav,setHovNav]=useState<string|null>(null);
+  const [showUser,setShowUser]=useState(false);
   const W=collapsed?56:220;
   return (
     <aside style={{width:W,minWidth:W,background:"rgba(4,20,38,0.97)",borderRight:"1px solid rgba(212,175,55,0.15)",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,overflow:"hidden",transition:"width 0.22s ease,min-width 0.22s ease",flexShrink:0}}>
@@ -975,12 +1019,21 @@ function Sidebar({active, onSelect, collapsed, onToggle}: {active: SideSection; 
         </button>
       </div>
       {/* User */}
-      <div style={{padding:collapsed?"10px 6px":"14px 16px",borderTop:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"flex-start",gap:10}}>
-        <img src={LOGO_IVAN} alt="Iván Viteri" style={{width:34,height:34,objectFit:"contain",background:"white",borderRadius:8,padding:2,border:"1px solid rgba(56,189,248,0.3)",flexShrink:0}}/>
-        {!collapsed&&<div style={{minWidth:0}}>
-          <div style={{fontWeight:800,fontSize:"0.8rem",color:"#f8fafc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Iván Viteri</div>
-          <div style={{fontSize:"0.63rem",color:"#64748b"}}>Psicólogo Laboral</div>
-        </div>}
+      <div style={{position:"relative"}}>
+        {showUser&&(
+          <div style={{position:"absolute",bottom:"100%",left:6,right:6,background:"rgba(4,20,38,0.97)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:12,padding:6,marginBottom:4,zIndex:100,boxShadow:"0 -12px 32px rgba(0,0,0,0.4)"}}>
+            <button onClick={()=>{setShowUser(false);onSelect("config");}} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:"#94a3b8",fontSize:"0.8rem",fontWeight:700,textAlign:"left"}}>👤 Perfil</button>
+            <button onClick={()=>{setShowUser(false);onLogout();}} style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",color:"#f87171",fontSize:"0.8rem",fontWeight:700,textAlign:"left"}}>⎋ Cerrar sesión</button>
+          </div>
+        )}
+        <div onClick={()=>setShowUser(s=>!s)} style={{padding:collapsed?"10px 6px":"12px 16px",borderTop:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"flex-start",gap:10,cursor:"pointer",background:showUser?"rgba(255,255,255,0.04)":"transparent",transition:"background 0.15s"}}>
+          <img src={LOGO_IVAN} alt="Iván Viteri" style={{width:34,height:34,objectFit:"contain",background:"white",borderRadius:8,padding:2,border:`1px solid ${showUser?"rgba(56,189,248,0.5)":"rgba(56,189,248,0.3)"}`,flexShrink:0}}/>
+          {!collapsed&&<div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:800,fontSize:"0.8rem",color:"#f8fafc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Iván Viteri</div>
+            <div style={{fontSize:"0.63rem",color:"#64748b"}}>Psicólogo Laboral</div>
+          </div>}
+          {!collapsed&&<span style={{fontSize:"0.65rem",color:"#475569",flexShrink:0}}>{showUser?"▾":"▸"}</span>}
+        </div>
       </div>
     </aside>
   );
@@ -1057,7 +1110,7 @@ function DemoRoot() {
       {/* Logo injection for print */}
       <script dangerouslySetInnerHTML={{__html:`window.addEventListener('beforeprint',function(){document.querySelectorAll('img').forEach(function(i){if(i.alt==='CENVIT'||i.alt==='Cenvit')i.src=${JSON.stringify(LOGO_CENVIT)};if(i.alt==='Iván Viteri')i.src=${JSON.stringify(LOGO_IVAN)};});});`}}/>
 
-      <Sidebar active={section} onSelect={s=>{setSection(s);setCompanyId(null);}} collapsed={sideCollapsed} onToggle={()=>setSideCollapsed(c=>!c)}/>
+      <Sidebar active={section} onSelect={s=>{setSection(s);setCompanyId(null);}} collapsed={sideCollapsed} onToggle={()=>setSideCollapsed(c=>!c)} onLogout={()=>setLoggedIn(false)}/>
 
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,background:"linear-gradient(135deg,#041426,#071b33 42%,#0b2f56)"}}>
         {/* Topbar */}
