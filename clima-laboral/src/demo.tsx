@@ -448,8 +448,15 @@ function CompanyWorkflow({cid, onBack}: {cid: string; onBack: ()=>void}) {
 // SECCIONES PRINCIPALES
 // ─────────────────────────────────────────────────────────────────────────────
 
+function Sparkline({data,color,w=64,h=28}:{data:number[];color:string;w?:number;h?:number}) {
+  const mn=Math.min(...data),mx=Math.max(...data),rng=mx-mn||1;
+  const pts=data.map((v,i)=>`${(i/(data.length-1))*w},${h-((v-mn)/rng)*h*0.8-h*0.1}`).join(" ");
+  const last=pts.split(" ").pop()!.split(",").map(Number);
+  return(<svg width={w} height={h} style={{display:"block",overflow:"visible"}}><polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.7}/><circle cx={last[0]} cy={last[1]} r={2.5} fill={color}/></svg>);
+}
+
 function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
-  const kpis=[{icon:"🏢",label:"Empresas cliente",value:"4",sub:"+1 este semestre"},{icon:"📊",label:"Mediciones activas",value:"3",sub:"2026 · I Semestre"},{icon:"⏳",label:"Pend. validación",value:"1",sub:"Hospital del Valle",alert:true},{icon:"💳",label:"Suscripciones",value:"4",sub:"1 por vencer",warn:true}];
+  const kpis=[{icon:"🏢",label:"Empresas cliente",value:"4",sub:"+1 este semestre",trend:[1,2,2,3,4],tColor:"#22c55e"},{icon:"📊",label:"Mediciones activas",value:"3",sub:"2026 · I Semestre",trend:[4,3,5,4,3],tColor:"#38bdf8"},{icon:"⏳",label:"Pend. validación",value:"1",sub:"Hospital del Valle",alert:true,trend:[0,1,0,2,1],tColor:"#f97316"},{icon:"💳",label:"Suscripciones",value:"4",sub:"1 por vencer",warn:true,trend:[2,3,3,4,4],tColor:"#fb923c"}];
   const activity=[
     {icon:"✅",label:"Empresa Demostración S.A.",detail:"Validación aprobada · Informe liberado",time:"Hoy 09:42",color:"#22c55e"},
     {icon:"📊",label:"Constructora Andina Cía.",detail:"55 de 85 respuestas recibidas (64.7%)",time:"Hoy 08:15",color:"#38bdf8"},
@@ -471,12 +478,20 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
       </div>
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:22}}>
-        {kpis.map(k=><div key={k.label} style={{background:"rgba(7,27,51,0.65)",border:`1px solid ${k.alert?"rgba(249,115,22,0.3)":k.warn?"rgba(249,115,22,0.2)":"rgba(255,255,255,0.08)"}`,borderRadius:18,padding:"18px 20px"}}>
-          <div style={{fontSize:"1.5rem",marginBottom:7}}>{k.icon}</div>
-          <div style={{fontSize:"1.9rem",fontWeight:900,color:k.alert?"#f97316":k.warn?"#fb923c":"#f8fafc",lineHeight:1}}>{k.value}</div>
-          <div style={{fontSize:"0.72rem",fontWeight:700,color:"#94a3b8",marginTop:4}}>{k.label}</div>
-          <div style={{fontSize:"0.68rem",color:k.alert||k.warn?"#f97316":"#64748b",marginTop:2}}>{k.sub}</div>
-        </div>)}
+        {kpis.map(k=>{const vc=k.alert?"#f97316":k.warn?"#fb923c":"#f8fafc";const delta=k.trend[k.trend.length-1]-k.trend[0];return(
+          <div key={k.label} style={{background:"rgba(7,27,51,0.65)",border:`1px solid ${k.alert?"rgba(249,115,22,0.3)":k.warn?"rgba(249,115,22,0.2)":"rgba(255,255,255,0.08)"}`,borderRadius:18,padding:"18px 20px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+              <span style={{fontSize:"1.5rem"}}>{k.icon}</span>
+              <Sparkline data={k.trend} color={k.tColor}/>
+            </div>
+            <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+              <div style={{fontSize:"1.9rem",fontWeight:900,color:vc,lineHeight:1}}>{k.value}</div>
+              {delta!==0&&<span style={{fontSize:"0.7rem",fontWeight:800,color:delta>0?"#4ade80":"#f87171"}}>{delta>0?"▲":"▼"}{Math.abs(delta)}</span>}
+            </div>
+            <div style={{fontSize:"0.72rem",fontWeight:700,color:"#94a3b8",marginTop:4}}>{k.label}</div>
+            <div style={{fontSize:"0.68rem",color:k.alert||k.warn?"#f97316":"#64748b",marginTop:2}}>{k.sub}</div>
+          </div>
+        );})}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 360px",gap:16}}>
         {/* Actividad */}
@@ -510,6 +525,7 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
 }
 
 function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
+  const [hovId,setHovId]=useState<string|null>(null);
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
@@ -521,7 +537,7 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
           const sc=STATUS_CFG[co.status]; const tc=TIER_C[co.subTier];
           const days=Math.ceil((new Date(co.subExpiry).getTime()-Date.now())/86400000);
           return(
-            <div key={co.id} style={{background:"rgba(7,27,51,0.65)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,padding:"20px 22px",display:"flex",flexDirection:"column",gap:12}}>
+            <div key={co.id} onMouseEnter={()=>setHovId(co.id)} onMouseLeave={()=>setHovId(null)} style={{background:hovId===co.id?"rgba(10,36,65,0.8)":"rgba(7,27,51,0.65)",border:`1px solid ${hovId===co.id?"rgba(56,189,248,0.28)":"rgba(255,255,255,0.08)"}`,borderRadius:20,padding:"20px 22px",display:"flex",flexDirection:"column",gap:12,transition:"all 0.18s",transform:hovId===co.id?"translateY(-2px)":"none",boxShadow:hovId===co.id?"0 8px 24px rgba(0,0,0,0.28)":"none"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                 <div><h3 style={{fontSize:"0.95rem",fontWeight:800,color:"#f8fafc",margin:"0 0 3px",lineHeight:1.2}}>{co.nombre}</h3><span style={{fontSize:"0.73rem",color:"#94a3b8"}}>{co.sector} · {co.empleados} colab.</span></div>
                 <span style={{padding:"3px 10px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:tc+"18",border:`1px solid ${tc}33`,color:tc,flexShrink:0}}>{co.subTier}</span>
@@ -721,6 +737,7 @@ const NAV_ITEMS: {key: SideSection; icon: string; label: string; badge?: number}
 ];
 
 function Sidebar({active, onSelect}: {active: SideSection; onSelect:(s:SideSection)=>void}) {
+  const [hovNav,setHovNav]=useState<string|null>(null);
   return (
     <aside style={{width:220,minWidth:220,background:"rgba(4,20,38,0.97)",borderRight:"1px solid rgba(212,175,55,0.15)",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,overflow:"hidden"}}>
       {/* Logo */}
@@ -733,7 +750,7 @@ function Sidebar({active, onSelect}: {active: SideSection; onSelect:(s:SideSecti
       {/* Nav */}
       <nav style={{flex:1,padding:"12px 10px",overflowY:"auto"}}>
         {NAV_ITEMS.map(item=>{const isA=active===item.key;return(
-          <button key={item.key} onClick={()=>onSelect(item.key)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,border:"none",cursor:"pointer",marginBottom:2,background:isA?"rgba(56,189,248,0.12)":"transparent",textAlign:"left"}}>
+          <button key={item.key} onClick={()=>onSelect(item.key)} onMouseEnter={()=>setHovNav(item.key)} onMouseLeave={()=>setHovNav(null)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,border:"none",cursor:"pointer",marginBottom:2,background:isA?"rgba(56,189,248,0.12)":hovNav===item.key?"rgba(255,255,255,0.05)":"transparent",textAlign:"left",transition:"background 0.15s"}}>
             <span style={{fontSize:"1rem",width:20,textAlign:"center",lineHeight:1,flexShrink:0}}>{item.icon}</span>
             <span style={{flex:1,fontSize:"0.84rem",fontWeight:700,color:isA?"#38bdf8":"#94a3b8"}}>{item.label}</span>
             {item.badge&&<span style={{minWidth:18,height:18,borderRadius:999,background:"#f97316",color:"white",fontSize:"0.68rem",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px"}}>{item.badge}</span>}
@@ -756,12 +773,59 @@ function Sidebar({active, onSelect}: {active: SideSection; onSelect:(s:SideSecti
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// LOGIN SCREEN
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LoginScreen({onLogin}: {onLogin:()=>void}) {
+  const [pass,setPass]=useState("");
+  const [err,setErr]=useState(false);
+  const [loading,setLoading]=useState(false);
+  function submit(){if(!pass.trim()){setErr(true);return;}setLoading(true);setTimeout(()=>{setLoading(false);onLogin();},700);}
+  return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#020e1f 0%,#041426 50%,#071b33 100%)",position:"relative",overflow:"hidden"}}>
+      <style>{css}</style>
+      <div style={{position:"absolute",top:"20%",left:"28%",width:480,height:480,borderRadius:"50%",background:"rgba(56,189,248,0.04)",filter:"blur(90px)",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",bottom:"10%",right:"20%",width:360,height:360,borderRadius:"50%",background:"rgba(212,175,55,0.05)",filter:"blur(70px)",pointerEvents:"none"}}/>
+      <div style={{width:"100%",maxWidth:420,margin:"0 20px",background:"rgba(4,20,38,0.9)",border:"1px solid rgba(212,175,55,0.25)",borderRadius:28,padding:"44px 38px",backdropFilter:"blur(24px)",boxShadow:"0 32px 64px rgba(0,0,0,0.55),0 0 0 1px rgba(255,255,255,0.04)"}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",marginBottom:36}}>
+          <div style={{padding:8,background:"white",borderRadius:18,border:"2px solid rgba(212,175,55,0.5)",boxShadow:"0 0 28px rgba(212,175,55,0.22)",marginBottom:18}}>
+            <img src={LOGO_CENVIT} alt="CENVIT" style={{width:64,height:64,objectFit:"contain",display:"block"}}/>
+          </div>
+          <div style={{fontWeight:900,fontSize:"1.6rem",color:"#d4af37",letterSpacing:"0.08em",lineHeight:1}}>CENVIT GTH</div>
+          <div style={{fontSize:"0.82rem",color:"#64748b",marginTop:6,letterSpacing:"0.05em"}}>Panel del Consultor</div>
+        </div>
+        <div style={{marginBottom:16}}>
+          <label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.12em",textTransform:"uppercase",color:"#94a3b8",marginBottom:7}}>Usuario</label>
+          <input type="text" defaultValue="ivan.viteri" readOnly style={{width:"100%",padding:"11px 14px",borderRadius:12,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#94a3b8",fontSize:"0.95rem",boxSizing:"border-box",cursor:"default"}}/>
+        </div>
+        <div style={{marginBottom:err?8:22}}>
+          <label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.12em",textTransform:"uppercase",color:"#94a3b8",marginBottom:7}}>Contraseña</label>
+          <input type="password" value={pass} onChange={e=>{setPass(e.target.value);setErr(false);}} onKeyDown={e=>e.key==="Enter"&&submit()} placeholder="Cualquier contraseña" style={{width:"100%",padding:"11px 14px",borderRadius:12,border:`1px solid ${err?"rgba(248,113,113,0.5)":"rgba(255,255,255,0.1)"}`,background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.95rem",boxSizing:"border-box",outline:"none"}}/>
+        </div>
+        {err&&<p style={{fontSize:"0.78rem",color:"#f87171",marginBottom:16,marginTop:0}}>Ingresa cualquier contraseña para continuar.</p>}
+        <button onClick={submit} disabled={loading} style={{width:"100%",padding:"13px 0",background:loading?"rgba(212,175,55,0.35)":"linear-gradient(135deg,#d4af37,#b8932a)",color:"#071b33",border:"none",borderRadius:12,fontWeight:900,fontSize:"0.97rem",cursor:loading?"default":"pointer",boxShadow:loading?"none":"0 4px 18px rgba(212,175,55,0.28)",transition:"all 0.2s"}}>
+          {loading?"Ingresando...":"Ingresar al panel →"}
+        </button>
+        <div style={{marginTop:22,padding:"11px 14px",background:"rgba(56,189,248,0.06)",border:"1px solid rgba(56,189,248,0.18)",borderRadius:10,textAlign:"center"}}>
+          <div style={{fontSize:"0.7rem",color:"#64748b",marginBottom:2}}>Demostración</div>
+          <div style={{fontSize:"0.78rem",color:"#38bdf8",fontWeight:700}}>ivan.viteri · cualquier contraseña</div>
+        </div>
+      </div>
+      <div style={{position:"absolute",bottom:22,left:0,right:0,textAlign:"center",fontSize:"0.68rem",color:"rgba(100,116,139,0.45)"}}>Iván Viteri, MSc. · Psicólogo Laboral · CENVIT GTH</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RAÍZ PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
 function DemoRoot() {
+  const [loggedIn, setLoggedIn] = useState(false);
   const [section, setSection] = useState<SideSection>("dashboard");
   const [companyId, setCompanyId] = useState<string|null>(null);
+
+  if (!loggedIn) return <LoginScreen onLogin={() => setLoggedIn(true)} />;
 
   function goCompany(id: string) { setCompanyId(id); setSection("empresas"); }
 
@@ -786,6 +850,13 @@ function DemoRoot() {
           <span style={{fontSize:"0.88rem",fontWeight:700,color:"#f8fafc"}}>{companyId?COMPANIES.find(c=>c.id===companyId)?.nombre:sectionTitles[section]}</span>
           <div style={{flex:1}}/>
           <span style={{fontSize:"0.7rem",color:"#94a3b8",fontStyle:"italic",background:"rgba(249,115,22,0.08)",border:"1px solid rgba(249,115,22,0.2)",padding:"4px 12px",borderRadius:999}}>⚠ Demo — datos simulados</span>
+          <div style={{position:"relative",cursor:"pointer",marginLeft:4,flexShrink:0}}>
+            <span style={{fontSize:"1rem",color:"#64748b"}}>🔔</span>
+            <span style={{position:"absolute",top:-3,right:-3,width:13,height:13,borderRadius:"50%",background:"#f97316",border:"2px solid rgba(4,20,38,0.95)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.54rem",fontWeight:900,color:"white",lineHeight:"1"}}>1</span>
+          </div>
+          <div style={{width:28,height:28,borderRadius:"50%",overflow:"hidden",border:"1.5px solid rgba(56,189,248,0.3)",cursor:"pointer",flexShrink:0}}>
+            <img src={LOGO_IVAN} alt="avatar" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+          </div>
         </header>
 
         {/* Content */}
