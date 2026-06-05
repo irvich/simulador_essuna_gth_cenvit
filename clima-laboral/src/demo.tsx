@@ -9,25 +9,18 @@ import type { ActionRow, SurveyResponse, LikertValue } from "./types";
 import { scoreLevelColor, scoreLevelLabel } from "./shared";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GENERACIÓN DE DATOS DE MUESTRA
+// GENERACIÓN DE DATOS
 // ─────────────────────────────────────────────────────────────────────────────
 
 function demoGlobalPct(responses: SurveyResponse[]): number {
   let sum = 0, count = 0;
-  for (const r of responses) for (const q of QUESTIONS) {
-    const v = r.answers[q.id];
-    if (v !== undefined) { sum += v; count++; }
-  }
+  for (const r of responses) for (const q of QUESTIONS) { const v = r.answers[q.id]; if (v !== undefined) { sum += v; count++; } }
   return count === 0 ? 0 : Math.round((sum / count / 5) * 100);
 }
-
 let _s = 123456789;
 function rng(): number { _s = (_s * 1103515245 + 12345) & 0x7fffffff; return _s / 0x7fffffff; }
-function gauss(mean: number, sd: number): number {
-  const u = Math.max(rng(), 1e-6), v = rng();
-  return mean + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
-}
-function clampLikert(x: number): LikertValue { return Math.max(1, Math.min(5, Math.round(x))) as LikertValue; }
+function gauss(m: number, sd: number): number { const u = Math.max(rng(), 1e-6), v = rng(); return m + sd * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+function cl(x: number): LikertValue { return Math.max(1, Math.min(5, Math.round(x))) as LikertValue; }
 
 const DIM_BASE: Record<string, number> = {
   liderazgo: 3.60, comunicacion: 3.20, reconocimiento: 2.90, motivacion: 3.90,
@@ -40,114 +33,81 @@ const DEPTS = [
   { name: "Comercial", bias: -0.18, n: 20 }, { name: "Operaciones", bias: -0.38, n: 22 },
   { name: "Logística", bias: -0.55, n: 13 },
 ];
-const POS_CMT = [
-  "El ambiente con mis compañeros es excelente, hay mucho apoyo y trabajo en equipo.",
-  "Me siento contento con mi equipo, hemos logrado grandes resultados juntos.",
-  "Agradezco las oportunidades de aprendizaje que he tenido este año.",
-];
-const NEG_CMT = [
-  "Hay mucha sobrecarga de trabajo y poco reconocimiento por el esfuerzo.",
-  "La comunicación entre áreas es difícil, a veces no hay claridad en las decisiones.",
-  "Me siento desmotivado porque no veo oportunidades de crecimiento.",
-];
-const NEU_CMT = [
-  "Algunas cosas funcionan bien y otras se pueden mejorar con el tiempo.",
-  "En general estable, aunque sería bueno revisar la carga de trabajo.",
-];
-
-function makeResponses(periodBias: number, withComments: boolean): SurveyResponse[] {
-  const out: SurveyResponse[] = []; let idc = 0;
-  for (const dept of DEPTS) {
-    for (let i = 0; i < dept.n; i++) {
-      const answers: Record<number, LikertValue> = {};
-      for (const q of QUESTIONS) answers[q.id] = clampLikert(gauss((DIM_BASE[q.dimension] ?? 3.2) + dept.bias + periodBias, 0.9));
-      let comment: string | undefined;
-      if (withComments && rng() < 0.4) {
-        const avg = Object.values(answers).reduce((s, v) => s + v, 0) / QUESTIONS.length;
-        const pool = avg >= 3.7 ? POS_CMT : avg <= 2.9 ? NEG_CMT : NEU_CMT;
-        comment = pool[Math.floor(rng() * pool.length)];
-      }
-      out.push({ id: `demo-${idc++}`, createdAt: new Date(Date.now() - Math.floor(rng() * 25) * 86400000).toISOString(), department: dept.name, answers, comment });
-    }
+function makeResponses(periodBias: number, withCmt: boolean): SurveyResponse[] {
+  const POS = ["Excelente compañerismo y apoyo mutuo en el equipo.","Buenas oportunidades de aprendizaje este semestre.","Mi jefe directo da buena retroalimentación y respeto."];
+  const NEG = ["Poco reconocimiento por el esfuerzo diario.","Comunicación difícil entre áreas, falta claridad.","Sin oportunidades de crecimiento visibles."];
+  const NEU = ["Algunas cosas bien, otras mejorables.","En general estable, revisar cargas de trabajo."];
+  const out: SurveyResponse[] = []; let id = 0;
+  for (const dept of DEPTS) for (let i = 0; i < dept.n; i++) {
+    const answers: Record<number, LikertValue> = {};
+    for (const q of QUESTIONS) answers[q.id] = cl(gauss((DIM_BASE[q.dimension] ?? 3.2) + dept.bias + periodBias, 0.9));
+    const avg = Object.values(answers).reduce((s, v) => s + v, 0) / QUESTIONS.length;
+    out.push({ id: `d-${id++}`, createdAt: new Date(Date.now() - Math.floor(rng() * 25) * 86400000).toISOString(), department: dept.name, answers,
+      comment: withCmt && rng() < 0.4 ? (avg >= 3.7 ? POS : avg <= 2.9 ? NEG : NEU)[Math.floor(rng() * 3)] : undefined });
   }
   return out;
 }
 
-const currentResponses = makeResponses(0, true);
-const prevResponses = makeResponses(-0.11, false);
-const _curPct = demoGlobalPct(currentResponses);
-const _prevPct = demoGlobalPct(prevResponses);
-const demoHistory = [
-  { label: "2024-I", pct: 62 }, { label: "2024-II", pct: 65 },
-  { label: "2025-I", pct: Math.max(65, _prevPct - 2) }, { label: "2025-II", pct: _prevPct },
-  { label: "2026-I", pct: _curPct },
-];
+const curR = makeResponses(0, true);
+const prevR = makeResponses(-0.11, false);
+const curPct = demoGlobalPct(curR);
+const prevPct = demoGlobalPct(prevR);
+const demoHistory = [{ label: "2024-I", pct: 62 }, { label: "2024-II", pct: 65 }, { label: "2025-I", pct: Math.max(65, prevPct - 2) }, { label: "2025-II", pct: prevPct }, { label: "2026-I", pct: curPct }];
 const demoTargets: Partial<Record<string, number>> = { reconocimiento: 70, comunicacion: 72, equidad: 68, bienestar: 75 };
 const demoPlan: ActionRow[] = [
-  { dimension: "Reconocimiento", finding: "Dimensión más baja (58%); reconocimiento insuficiente del esfuerzo diario.", level: "low", action: "Institucionalizar programa mensual de reconocimiento con criterios claros.", responsible: "Talento Humano", deadline: "2026-08-15", indicator: "N.º de reconocimientos y percepción de valoración", priority: "Alta", status: "en_progreso" },
-  { dimension: "Comunicación interna", finding: "Retroceso semestral; información no llega con igual claridad a todas las áreas.", level: "low", action: "Protocolizar canales y reuniones breves de coordinación semanal.", responsible: "TH / Jefaturas", deadline: "2026-07-31", indicator: "% de áreas con reunión semanal registrada", priority: "Alta", status: "pendiente" },
-  { dimension: "Bienestar psicosocial", finding: "Retrocede 2 pts; conviene monitorear presión y balance laboral.", level: "medium", action: "Plan de bienestar psicosocial y revisión de cargas en áreas críticas.", responsible: "Talento Humano", deadline: "2026-09-30", indicator: "Índice de bienestar y carga percibida", priority: "Media", status: "pendiente" },
+  { dimension: "Reconocimiento", finding: "Dimensión más baja (58%); reconocimiento insuficiente.", level: "low", action: "Programa mensual de reconocimiento con criterios claros.", responsible: "Talento Humano", deadline: "2026-08-15", indicator: "N.º reconocimientos / percepción de valoración", priority: "Alta", status: "en_progreso" },
+  { dimension: "Comunicación interna", finding: "Retroceso semestral; información no llega a todas las áreas.", level: "low", action: "Protocolizar canales y reuniones semanales de coordinación.", responsible: "TH / Jefaturas", deadline: "2026-07-31", indicator: "% áreas con reunión semanal registrada", priority: "Alta", status: "pendiente" },
+  { dimension: "Bienestar psicosocial", finding: "Retrocede 2 pts; monitorear presión y balance laboral.", level: "medium", action: "Plan de bienestar psicosocial y revisión de cargas.", responsible: "Talento Humano", deadline: "2026-09-30", indicator: "Índice de bienestar y carga percibida", priority: "Media", status: "pendiente" },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TIPOS Y CONSTANTES DEL FLUJO CONSULTOR
+// TIPOS Y CONSTANTES
 // ─────────────────────────────────────────────────────────────────────────────
 
+type SideSection = "dashboard" | "empresas" | "mediciones" | "validaciones" | "subscriptions" | "config";
 type WorkflowStep = "empresa" | "periodo" | "encuesta" | "validacion" | "resultados";
 type ResultsTab = "dashboard" | "report" | "survey";
 
-interface DemoCompany {
-  id: string; nombre: string; sector: string; empleados: number;
-  departamentos: string[]; lastPeriod: string | null; lastScore: number | null;
-  status: "validated" | "collecting" | "pending_validation" | "new";
-  subTier: "Básico" | "Profesional" | "Enterprise"; subExpiry: string;
-}
+interface DemoCompany { id: string; nombre: string; sector: string; empleados: number; departamentos: string[]; lastPeriod: string | null; lastScore: number | null; lastResponses: number | null; lastTotal: number | null; status: "validated" | "collecting" | "pending_validation" | "new"; subTier: "Básico" | "Profesional" | "Enterprise"; subExpiry: string; }
 
-const DEMO_COMPANIES: DemoCompany[] = [
-  { id: "demo", nombre: "Empresa Demostración S.A.", sector: "Servicios", empleados: 120, departamentos: ["Gerencia","Administración","Talento Humano","Financiero","Comercial","Operaciones","Logística"], lastPeriod: "2026 · I Semestre", lastScore: _curPct, status: "validated", subTier: "Profesional", subExpiry: "2026-12-31" },
-  { id: "andina", nombre: "Constructora Andina Cía.", sector: "Construcción", empleados: 85, departamentos: ["Dirección","Obras","Administración","RRHH","Finanzas"], lastPeriod: "2026 · I Semestre", lastScore: null, status: "collecting", subTier: "Básico", subExpiry: "2026-09-30" },
-  { id: "hospital", nombre: "Hospital del Valle", sector: "Salud", empleados: 210, departamentos: ["Medicina","Enfermería","Cirugía","Administración","Farmacia","Urgencias"], lastPeriod: "2026 · I Semestre", lastScore: 68, status: "pending_validation", subTier: "Enterprise", subExpiry: "2026-12-31" },
-  { id: "tech", nombre: "Tech Solutions Ecuador", sector: "Tecnología", empleados: 45, departamentos: ["Desarrollo","QA","Producto","Ventas","Soporte"], lastPeriod: null, lastScore: null, status: "new", subTier: "Básico", subExpiry: "2026-06-19" },
+const COMPANIES: DemoCompany[] = [
+  { id: "demo",    nombre: "Empresa Demostración S.A.",  sector: "Servicios",    empleados: 120, departamentos: ["Gerencia","Administración","Talento Humano","Financiero","Comercial","Operaciones","Logística"],   lastPeriod: "2026 · I Sem.", lastScore: curPct, lastResponses: 103, lastTotal: 120, status: "validated",          subTier: "Profesional", subExpiry: "2026-12-31" },
+  { id: "andina",  nombre: "Constructora Andina Cía.",   sector: "Construcción", empleados:  85, departamentos: ["Dirección","Obras","Administración","RRHH","Finanzas"],                                             lastPeriod: "2026 · I Sem.", lastScore: null,    lastResponses:  55, lastTotal:  85, status: "collecting",         subTier: "Básico",       subExpiry: "2026-09-30" },
+  { id: "hospital",nombre: "Hospital del Valle",         sector: "Salud",        empleados: 210, departamentos: ["Medicina","Enfermería","Cirugía","Administración","Farmacia","Urgencias"],                           lastPeriod: "2026 · I Sem.", lastScore: 68,      lastResponses: 187, lastTotal: 210, status: "pending_validation", subTier: "Enterprise",   subExpiry: "2026-12-31" },
+  { id: "tech",    nombre: "Tech Solutions Ecuador",     sector: "Tecnología",   empleados:  45, departamentos: ["Desarrollo","QA","Producto","Ventas","Soporte"],                                                     lastPeriod: null,            lastScore: null,    lastResponses: null, lastTotal: null, status: "new",              subTier: "Básico",       subExpiry: "2026-06-19" },
 ];
 
-const TIER_COLORS: Record<string, string> = { "Básico": "#38bdf8", "Profesional": "#d4af37", "Enterprise": "#a855f7" };
+const TIER_C: Record<string, string> = { "Básico": "#38bdf8", "Profesional": "#d4af37", "Enterprise": "#a855f7" };
 const STATUS_CFG = {
-  validated:          { label: "Validado ✓",           color: "#22c55e", bg: "rgba(34,197,94,0.12)" },
-  collecting:         { label: "Recolectando...",       color: "#38bdf8", bg: "rgba(56,189,248,0.12)" },
-  pending_validation: { label: "Pendiente validación",  color: "#f97316", bg: "rgba(249,115,22,0.12)" },
-  new:                { label: "Sin medición",          color: "#94a3b8", bg: "rgba(148,163,184,0.1)"  },
+  validated:          { label: "Validado ✓",          color: "#22c55e", bg: "rgba(34,197,94,0.12)"   },
+  collecting:         { label: "Recolectando...",      color: "#38bdf8", bg: "rgba(56,189,248,0.12)"  },
+  pending_validation: { label: "Pend. validación",     color: "#f97316", bg: "rgba(249,115,22,0.12)"  },
+  new:                { label: "Sin medición",         color: "#94a3b8", bg: "rgba(148,163,184,0.1)"  },
 };
-
-const TIER_LIMITS: Record<string, string> = {
-  "Básico":       "1 medición/año · hasta 100 colaboradores",
-  "Profesional":  "2 mediciones/año · hasta 300 colaboradores · validación profesional",
-  "Enterprise":   "Mediciones ilimitadas · colaboradores ilimitados · benchmarking sectorial",
-};
-
-const SUBS_DATA = [
-  { company: "Empresa Demostración S.A.", tier: "Profesional" as const, inicio: "2026-01-01", fin: "2026-12-31", empleados: 120, status: "activa" },
-  { company: "Constructora Andina Cía.",  tier: "Básico"       as const, inicio: "2026-01-01", fin: "2026-09-30", empleados:  85, status: "activa" },
-  { company: "Hospital del Valle",        tier: "Enterprise"   as const, inicio: "2026-01-01", fin: "2026-12-31", empleados: 210, status: "activa" },
+const SUBS = [
+  { company: "Empresa Demostración S.A.", tier: "Profesional" as const, inicio: "2026-01-01", fin: "2026-12-31", empleados: 120, status: "activa"    },
+  { company: "Constructora Andina Cía.",  tier: "Básico"       as const, inicio: "2026-01-01", fin: "2026-09-30", empleados:  85, status: "activa"    },
+  { company: "Hospital del Valle",        tier: "Enterprise"   as const, inicio: "2026-01-01", fin: "2026-12-31", empleados: 210, status: "activa"    },
   { company: "Tech Solutions Ecuador",    tier: "Básico"       as const, inicio: "2025-12-01", fin: "2026-06-19", empleados:  45, status: "por_vencer" },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// QR CODE (decorativo, no escaneable)
+// QR CODE decorativo
 // ─────────────────────────────────────────────────────────────────────────────
 
-function QRCode({ size = 156 }: { size?: number }) {
+function QRCode({ size = 148 }: { size?: number }) {
   const n = 21;
-  function filled(r: number, c: number): boolean {
-    if (r < 7 && c < 7) { if (r === 0||r === 6||c === 0||c === 6) return true; return r>=2&&r<=4&&c>=2&&c<=4; }
-    if (r < 7 && c >= 14) { const cc=c-14; if (r===0||r===6||cc===0||cc===6) return true; return r>=2&&r<=4&&cc>=2&&cc<=4; }
-    if (r >= 14 && c < 7) { const rr=r-14; if (rr===0||rr===6||c===0||c===6) return true; return rr>=2&&rr<=4&&c>=2&&c<=4; }
-    if (r===6&&c>7&&c<13) return c%2===0; if (c===6&&r>7&&r<13) return r%2===0;
-    return (r*17+c*13+r*c*7)%8<3;
+  function f(r: number, c: number): boolean {
+    if (r<7&&c<7){if(r===0||r===6||c===0||c===6)return true;return r>=2&&r<=4&&c>=2&&c<=4;}
+    if (r<7&&c>=14){const cc=c-14;if(r===0||r===6||cc===0||cc===6)return true;return r>=2&&r<=4&&cc>=2&&cc<=4;}
+    if (r>=14&&c<7){const rr=r-14;if(rr===0||rr===6||c===0||c===6)return true;return rr>=2&&rr<=4&&c>=2&&c<=4;}
+    if(r===6&&c>7&&c<13)return c%2===0; if(c===6&&r>7&&r<13)return r%2===0;
+    return(r*17+c*13+r*c*7)%8<3;
   }
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${n} ${n}`} style={{ imageRendering: "pixelated", display: "block", borderRadius: 8 }}>
+    <svg width={size} height={size} viewBox={`0 0 ${n} ${n}`} style={{imageRendering:"pixelated",display:"block",borderRadius:8}}>
       <rect width={n} height={n} fill="white"/>
-      {Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>filled(r,c)?<rect key={`${r}-${c}`} x={c} y={r} width={1} height={1} fill="#071b33"/>:null))}
+      {Array.from({length:n},(_,r)=>Array.from({length:n},(_,c)=>f(r,c)?<rect key={`${r}-${c}`} x={c} y={r} width={1} height={1} fill="#071b33"/>:null))}
     </svg>
   );
 }
@@ -156,278 +116,181 @@ function QRCode({ size = 156 }: { size?: number }) {
 // WORKFLOW STEPPER
 // ─────────────────────────────────────────────────────────────────────────────
 
-const STEPS: { key: WorkflowStep; label: string; icon: string }[] = [
-  { key: "empresa",    label: "Empresa",    icon: "🏢" },
-  { key: "periodo",    label: "Período",    icon: "📅" },
-  { key: "encuesta",   label: "Encuesta",   icon: "🔗" },
-  { key: "validacion", label: "Validación", icon: "✅" },
-  { key: "resultados", label: "Resultados", icon: "📊" },
+const WSTEPS: {key: WorkflowStep; label: string; icon: string}[] = [
+  {key:"empresa",    label:"Empresa",    icon:"🏢"},
+  {key:"periodo",    label:"Período",    icon:"📅"},
+  {key:"encuesta",   label:"Encuesta",   icon:"🔗"},
+  {key:"validacion", label:"Validación", icon:"✅"},
+  {key:"resultados", label:"Resultados", icon:"📊"},
 ];
 
-function WorkflowStepper({ current, onChange, completed }: { current: WorkflowStep; onChange: (s: WorkflowStep) => void; completed: WorkflowStep[] }) {
-  const curIdx = STEPS.findIndex(s => s.key === current);
+function WorkflowStepper({current, onChange, completed}: {current: WorkflowStep; onChange: (s: WorkflowStep) => void; completed: WorkflowStep[]}) {
+  const ci = WSTEPS.findIndex(s => s.key === current);
   return (
-    <div style={{ display: "flex", alignItems: "center", marginBottom: 28, overflowX: "auto", padding: "4px 0 4px" }}>
-      {STEPS.map((step, i) => {
-        const done = completed.includes(step.key);
-        const cur = step.key === current;
-        return (
-          <React.Fragment key={step.key}>
-            <button onClick={() => onChange(step.key)} style={{
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
-              padding: "10px 14px", borderRadius: 14, border: "none", cursor: "pointer",
-              background: cur ? "rgba(56,189,248,0.12)" : "transparent", flexShrink: 0,
-            }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: done ? "1.1rem" : "1rem", fontWeight: 900,
-                background: done ? "rgba(34,197,94,0.15)" : cur ? "rgba(56,189,248,0.18)" : "rgba(255,255,255,0.05)",
-                border: `2px solid ${done ? "#22c55e" : cur ? "#38bdf8" : "rgba(255,255,255,0.12)"}`,
-                color: done ? "#22c55e" : cur ? "#38bdf8" : "rgba(148,163,184,0.45)",
-              }}>{done ? "✓" : step.icon}</div>
-              <span style={{ fontSize: "0.7rem", fontWeight: 700, whiteSpace: "nowrap", color: cur ? "#38bdf8" : done ? "#4ade80" : "rgba(148,163,184,0.45)" }}>{step.label}</span>
-            </button>
-            {i < STEPS.length - 1 && (
-              <div style={{ flex: 1, height: 2, minWidth: 8, maxWidth: 36, background: i < curIdx ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.07)" }} />
-            )}
-          </React.Fragment>
-        );
-      })}
+    <div style={{display:"flex",alignItems:"center",marginBottom:24,overflowX:"auto",padding:"2px 0"}}>
+      {WSTEPS.map((s,i)=>{const done=completed.includes(s.key),cur=s.key===current;return(
+        <React.Fragment key={s.key}>
+          <button onClick={()=>onChange(s.key)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:"8px 12px",borderRadius:12,border:"none",cursor:"pointer",background:cur?"rgba(56,189,248,0.1)":"transparent",flexShrink:0}}>
+            <div style={{width:38,height:38,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:done?"1rem":"0.95rem",background:done?"rgba(34,197,94,0.15)":cur?"rgba(56,189,248,0.18)":"rgba(255,255,255,0.04)",border:`2px solid ${done?"#22c55e":cur?"#38bdf8":"rgba(255,255,255,0.1)"}`,color:done?"#22c55e":cur?"#38bdf8":"rgba(148,163,184,0.4)"}}>
+              {done?"✓":s.icon}
+            </div>
+            <span style={{fontSize:"0.68rem",fontWeight:700,whiteSpace:"nowrap",color:cur?"#38bdf8":done?"#4ade80":"rgba(148,163,184,0.4)"}}>{s.label}</span>
+          </button>
+          {i<WSTEPS.length-1&&<div style={{flex:1,height:2,minWidth:6,maxWidth:32,background:i<ci?"rgba(34,197,94,0.3)":"rgba(255,255,255,0.06)"}}/>}
+        </React.Fragment>
+      );})}
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PASO 1 — DATOS DE LA EMPRESA
+// PASOS DEL WORKFLOW
 // ─────────────────────────────────────────────────────────────────────────────
 
-function StepEmpresa({ company, onNext }: { company: DemoCompany; onNext: () => void }) {
-  const S = { card: { background: "rgba(7,27,51,0.72)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: "24px 28px", marginBottom: 16 } as React.CSSProperties };
-  const Field = ({ label, value }: { label: string; value: string }) => (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: "0.68rem", fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", color: "#94a3b8", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: "1rem", color: "#f8fafc", fontWeight: 600 }}>{value}</div>
+function StepEmpresa({co, onNext}: {co: DemoCompany; onNext: ()=>void}) {
+  const F = ({label,value}: {label:string;value:string}) => (
+    <div style={{marginBottom:14}}>
+      <div style={{fontSize:"0.65rem",fontWeight:900,letterSpacing:"0.14em",textTransform:"uppercase",color:"#94a3b8",marginBottom:3}}>{label}</div>
+      <div style={{fontSize:"0.95rem",color:"#f8fafc",fontWeight:600}}>{value}</div>
     </div>
   );
   return (
-    <div style={{ maxWidth: 680 }}>
-      <p style={{ color: "#94a3b8", fontSize: "0.88rem", marginBottom: 20, lineHeight: 1.6 }}>
-        Datos de la empresa registrados en la plataforma. El consultor completa este formulario al dar de alta un nuevo cliente.
-      </p>
-      <div style={S.card}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 32px" }}>
-          <Field label="Razón social" value={company.nombre} />
-          <Field label="Sector" value={company.sector} />
-          <Field label="N.º de colaboradores" value={`${company.empleados} personas`} />
-          <Field label="Suscripción activa" value={`${company.subTier} · hasta ${company.subExpiry}`} />
+    <div style={{maxWidth:640}}>
+      <p style={{color:"#94a3b8",fontSize:"0.85rem",marginBottom:18,lineHeight:1.6}}>Datos de la empresa registrados en la plataforma. El consultor puede actualizar esta información en cualquier momento.</p>
+      <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:18,padding:"22px 26px",marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
+          <F label="Razón social" value={co.nombre}/>
+          <F label="Sector" value={co.sector}/>
+          <F label="Colaboradores" value={`${co.empleados} personas`}/>
+          <F label="Suscripción" value={`${co.subTier} · vence ${co.subExpiry}`}/>
         </div>
-        <div style={{ marginTop: 4 }}>
-          <div style={{ fontSize: "0.68rem", fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", color: "#94a3b8", marginBottom: 8 }}>Departamentos / Áreas</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-            {company.departamentos.map(d => (
-              <span key={d} style={{ padding: "4px 12px", borderRadius: 999, background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.25)", color: "#38bdf8", fontSize: "0.8rem", fontWeight: 700 }}>{d}</span>
-            ))}
+        <div style={{marginTop:6}}>
+          <div style={{fontSize:"0.65rem",fontWeight:900,letterSpacing:"0.14em",textTransform:"uppercase",color:"#94a3b8",marginBottom:8}}>Áreas / Departamentos</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:7}}>
+            {co.departamentos.map(d=><span key={d} style={{padding:"4px 11px",borderRadius:999,background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.22)",color:"#38bdf8",fontSize:"0.78rem",fontWeight:700}}>{d}</span>)}
           </div>
         </div>
       </div>
-      <div style={{ background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 14, padding: "14px 18px", marginBottom: 24 }}>
-        <p style={{ fontSize: "0.82rem", color: "#d4af37", margin: 0 }}>
-          <strong>Nota:</strong> En la plataforma real el consultor puede editar esta información, agregar/quitar departamentos, ajustar el conteo de colaboradores y configurar el ciclo de medición.
-        </p>
-      </div>
-      <button onClick={onNext} style={{ padding: "12px 32px", background: "#38bdf8", color: "#071b33", border: "none", borderRadius: 999, fontWeight: 800, fontSize: "0.9rem", cursor: "pointer" }}>
-        Crear período de medición →
-      </button>
+      <button onClick={onNext} style={{padding:"11px 28px",background:"#38bdf8",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.88rem",cursor:"pointer"}}>Crear período de medición →</button>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PASO 2 — CREACIÓN DEL PERÍODO
-// ─────────────────────────────────────────────────────────────────────────────
-
-function StepPeriodo({ company, onNext }: { company: DemoCompany; onNext: () => void }) {
-  const [semestre, setSemestre] = useState<"I" | "II">("I");
-  const [year, setYear] = useState("2026");
-  const [created, setCreated] = useState(false);
-  const label = `${year} · ${semestre} Semestre`;
+function StepPeriodo({co, onNext}: {co: DemoCompany; onNext: ()=>void}) {
+  const [sem, setSem] = useState<"I"|"II">("I");
+  const [yr, setYr] = useState("2026");
+  const [ok, setOk] = useState(false);
   return (
-    <div style={{ maxWidth: 680 }}>
-      <p style={{ color: "#94a3b8", fontSize: "0.88rem", marginBottom: 20, lineHeight: 1.6 }}>
-        Cada empresa realiza la medición dos veces al año (I y II semestre). El período define el intervalo en que los colaboradores pueden responder la encuesta.
-      </p>
-      {!created ? (
-        <div style={{ background: "rgba(7,27,51,0.72)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: "28px" }}>
-          <h3 style={{ marginBottom: 20, fontSize: "1.1rem", color: "#f8fafc" }}>Nuevo período para {company.nombre}</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+    <div style={{maxWidth:600}}>
+      <p style={{color:"#94a3b8",fontSize:"0.85rem",marginBottom:18,lineHeight:1.6}}>La medición de clima laboral es semestral: I semestre (ene–jun) y II semestre (jul–dic). El período define la ventana en que los colaboradores pueden responder.</p>
+      {!ok ? (
+        <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:18,padding:"26px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:18}}>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", color: "#94a3b8", marginBottom: 8 }}>Año</label>
-              <select value={year} onChange={e => setYear(e.target.value)} style={{ width: "100%", padding: "11px 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "#f8fafc", fontSize: "0.95rem" }}>
+              <label style={{display:"block",fontSize:"0.68rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:7}}>Año</label>
+              <select value={yr} onChange={e=>setYr(e.target.value)} style={{width:"100%",padding:"10px 13px",borderRadius:12,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.05)",color:"#f8fafc",fontSize:"0.93rem"}}>
                 <option value="2026">2026</option><option value="2027">2027</option>
               </select>
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", color: "#94a3b8", marginBottom: 8 }}>Semestre</label>
-              <div style={{ display: "flex", gap: 10 }}>
-                {(["I","II"] as const).map(s => (
-                  <button key={s} onClick={() => setSemestre(s)} style={{
-                    flex: 1, padding: "11px 0", borderRadius: 12, fontWeight: 800, fontSize: "0.95rem", cursor: "pointer",
-                    background: semestre === s ? "rgba(56,189,248,0.2)" : "rgba(255,255,255,0.04)",
-                    border: `2px solid ${semestre === s ? "#38bdf8" : "rgba(255,255,255,0.12)"}`,
-                    color: semestre === s ? "#38bdf8" : "#94a3b8",
-                  }}>{s}</button>
-                ))}
+              <label style={{display:"block",fontSize:"0.68rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:7}}>Semestre</label>
+              <div style={{display:"flex",gap:8}}>
+                {(["I","II"] as const).map(s=><button key={s} onClick={()=>setSem(s)} style={{flex:1,padding:"10px 0",borderRadius:12,fontWeight:800,fontSize:"0.93rem",cursor:"pointer",background:sem===s?"rgba(56,189,248,0.18)":"rgba(255,255,255,0.04)",border:`2px solid ${sem===s?"#38bdf8":"rgba(255,255,255,0.1)"}`,color:sem===s?"#38bdf8":"#94a3b8"}}>{s}</button>)}
               </div>
             </div>
           </div>
-          <div style={{ background: "rgba(56,189,248,0.06)", border: "1px solid rgba(56,189,248,0.18)", borderRadius: 12, padding: "14px 16px", marginBottom: 24 }}>
-            <p style={{ fontSize: "0.82rem", color: "#94a3b8", margin: 0 }}>
-              <strong style={{ color: "#38bdf8" }}>Período:</strong> {label} &nbsp;·&nbsp; Apertura: <strong>hoy</strong> &nbsp;·&nbsp; Cierre sugerido: <strong>30 días</strong>
-            </p>
+          <div style={{background:"rgba(56,189,248,0.06)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:10,padding:"12px 14px",marginBottom:22}}>
+            <p style={{fontSize:"0.8rem",color:"#94a3b8",margin:0}}><strong style={{color:"#38bdf8"}}>Período:</strong> {yr} · {sem} Semestre · Apertura hoy · Cierre sugerido: 30 días</p>
           </div>
-          <button onClick={() => setCreated(true)} style={{ padding: "12px 32px", background: "#38bdf8", color: "#071b33", border: "none", borderRadius: 999, fontWeight: 800, fontSize: "0.9rem", cursor: "pointer" }}>
-            Crear período y generar enlace →
-          </button>
+          <button onClick={()=>setOk(true)} style={{padding:"11px 28px",background:"#38bdf8",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.88rem",cursor:"pointer"}}>Crear período y generar enlace →</button>
         </div>
       ) : (
         <div>
-          <div style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 16, padding: "18px 22px", marginBottom: 20, display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ fontSize: "1.8rem" }}>✅</div>
-            <div>
-              <div style={{ fontWeight: 800, color: "#22c55e", marginBottom: 2 }}>Período creado exitosamente</div>
-              <div style={{ fontSize: "0.84rem", color: "#94a3b8" }}>{label} · {company.nombre}</div>
-            </div>
+          <div style={{background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.28)",borderRadius:14,padding:"16px 20px",marginBottom:18,display:"flex",gap:12,alignItems:"center"}}>
+            <span style={{fontSize:"1.6rem"}}>✅</span>
+            <div><div style={{fontWeight:800,color:"#22c55e",marginBottom:2}}>Período creado exitosamente</div><div style={{fontSize:"0.82rem",color:"#94a3b8"}}>{yr} · {sem} Semestre · {co.nombre}</div></div>
           </div>
-          <button onClick={onNext} style={{ padding: "12px 32px", background: "#38bdf8", color: "#071b33", border: "none", borderRadius: 999, fontWeight: 800, fontSize: "0.9rem", cursor: "pointer" }}>
-            Ver enlace y compartir encuesta →
-          </button>
+          <button onClick={onNext} style={{padding:"11px 28px",background:"#38bdf8",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.88rem",cursor:"pointer"}}>Ver enlace y compartir encuesta →</button>
         </div>
       )}
     </div>
   );
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PASO 3 — ENLACE Y SEGUIMIENTO EN VIVO
-// ─────────────────────────────────────────────────────────────────────────────
 
 const SURVEY_URL = "https://clima.cenvit.ec/s/DEMO26I";
-const DEPT_RESPONSES = [
-  { name: "Gerencia", received: 8, total: 8 },
-  { name: "Administración", received: 14, total: 16 },
-  { name: "Talento Humano", received: 10, total: 10 },
-  { name: "Financiero", received: 11, total: 14 },
-  { name: "Comercial", received: 18, total: 20 },
-  { name: "Operaciones", received: 17, total: 22 },
-  { name: "Logística", received: 9, total: 13 },
-];
+const DEPT_R = [{name:"Gerencia",r:8,t:8},{name:"Administración",r:14,t:16},{name:"Talento Humano",r:10,t:10},{name:"Financiero",r:11,t:14},{name:"Comercial",r:18,t:20},{name:"Operaciones",r:17,t:22},{name:"Logística",r:9,t:13}];
 
-function StepEncuesta({ onNext }: { onNext: () => void }) {
+function StepEncuesta({onNext}: {onNext:()=>void}) {
   const [copied, setCopied] = useState(false);
-  const [simulating, setSimulating] = useState(false);
-  const [totalReceived, setTotalReceived] = useState(87);
+  const [sim, setSim] = useState(false);
+  const [n, setN] = useState(87);
   const [closed, setClosed] = useState(false);
-  const total = 103;
-
-  useEffect(() => {
-    if (!simulating) return;
-    if (totalReceived >= total) { setSimulating(false); return; }
-    const t = setTimeout(() => setTotalReceived(n => Math.min(n + Math.ceil(Math.random() * 3), total)), 160);
-    return () => clearTimeout(t);
-  }, [simulating, totalReceived]);
-
-  const pct = Math.round((totalReceived / 120) * 100);
-
-  function copy() { navigator.clipboard?.writeText(SURVEY_URL).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 2000); }
-
+  const target = 103;
+  useEffect(()=>{
+    if(!sim)return; if(n>=target){setSim(false);return;}
+    const t=setTimeout(()=>setN(x=>Math.min(x+Math.ceil(Math.random()*3),target)),160);
+    return()=>clearTimeout(t);
+  },[sim,n]);
+  const pct=Math.round((n/120)*100);
+  function copy(){navigator.clipboard?.writeText(SURVEY_URL).catch(()=>{});setCopied(true);setTimeout(()=>setCopied(false),2000);}
   return (
-    <div style={{ maxWidth: 780 }}>
-      <p style={{ color: "#94a3b8", fontSize: "0.88rem", marginBottom: 20, lineHeight: 1.6 }}>
-        El consultor comparte este enlace único con los colaboradores. Cada respuesta es anónima y se registra en tiempo real.
-      </p>
-
-      {/* URL + QR */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 20, marginBottom: 20 }}>
-        <div style={{ background: "rgba(7,27,51,0.72)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: "24px 24px" }}>
-          <div style={{ fontSize: "0.68rem", fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", color: "#94a3b8", marginBottom: 10 }}>Enlace de la encuesta</div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 16 }}>
-            <div style={{ flex: 1, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#38bdf8", fontSize: "0.88rem", fontFamily: "monospace", wordBreak: "break-all" }}>{SURVEY_URL}</div>
-            <button onClick={copy} style={{ padding: "10px 18px", borderRadius: 10, background: copied ? "rgba(34,197,94,0.2)" : "rgba(56,189,248,0.15)", border: `1px solid ${copied ? "rgba(34,197,94,0.4)" : "rgba(56,189,248,0.3)"}`, color: copied ? "#22c55e" : "#38bdf8", fontWeight: 800, fontSize: "0.82rem", cursor: "pointer", whiteSpace: "nowrap" }}>
-              {copied ? "✓ Copiado" : "Copiar"}
-            </button>
+    <div style={{maxWidth:740}}>
+      <p style={{color:"#94a3b8",fontSize:"0.85rem",marginBottom:18,lineHeight:1.6}}>Comparte el enlace o el código QR con los colaboradores. Cada respuesta es anónima y se registra en tiempo real.</p>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 156px",gap:16,marginBottom:16}}>
+        <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:18,padding:"20px 22px"}}>
+          <div style={{fontSize:"0.65rem",fontWeight:900,letterSpacing:"0.13em",textTransform:"uppercase",color:"#94a3b8",marginBottom:9}}>Enlace único de la encuesta</div>
+          <div style={{display:"flex",gap:9,alignItems:"center",marginBottom:14}}>
+            <div style={{flex:1,padding:"9px 13px",borderRadius:10,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.09)",color:"#38bdf8",fontSize:"0.85rem",fontFamily:"monospace",wordBreak:"break-all"}}>{SURVEY_URL}</div>
+            <button onClick={copy} style={{padding:"9px 16px",borderRadius:10,background:copied?"rgba(34,197,94,0.18)":"rgba(56,189,248,0.13)",border:`1px solid ${copied?"rgba(34,197,94,0.38)":"rgba(56,189,248,0.28)"}`,color:copied?"#22c55e":"#38bdf8",fontWeight:800,fontSize:"0.8rem",cursor:"pointer",whiteSpace:"nowrap"}}>{copied?"✓ Copiado":"Copiar"}</button>
           </div>
-          <div style={{ fontSize: "0.78rem", color: "#94a3b8", lineHeight: 1.6 }}>
-            Comparte por WhatsApp, correo o intranet. Cada colaborador responde una vez desde su dispositivo. La encuesta incluye <strong style={{ color: "#f8fafc" }}>52 preguntas</strong> en 10 dimensiones (~8 min).
-          </div>
+          <p style={{fontSize:"0.76rem",color:"#94a3b8",margin:0,lineHeight:1.55}}>Comparte por WhatsApp, correo o intranet · <strong style={{color:"#f8fafc"}}>52 preguntas</strong> · 10 dimensiones · ~8 min · anónimo</p>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          <QRCode size={140} />
-          <span style={{ fontSize: "0.68rem", color: "#94a3b8", textAlign: "center" }}>Escanear para<br/>acceder</span>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:9}}>
+          <QRCode size={148}/>
+          <span style={{fontSize:"0.67rem",color:"#94a3b8",textAlign:"center"}}>Escanear para acceder</span>
         </div>
       </div>
-
       {/* Participación */}
-      <div style={{ background: "rgba(7,27,51,0.72)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: "22px 24px", marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+      <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:18,padding:"20px 22px",marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:12}}>
           <div>
-            <div style={{ fontSize: "0.68rem", fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", color: "#94a3b8", marginBottom: 4 }}>Participación en tiempo real</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <span style={{ fontSize: "2.4rem", fontWeight: 900, color: scoreLevelColor(pct) }}>{totalReceived}</span>
-              <span style={{ fontSize: "1.1rem", color: "#94a3b8" }}>/ 120 colaboradores</span>
-              <span style={{ fontSize: "1rem", fontWeight: 800, color: scoreLevelColor(pct) }}>({pct}%)</span>
+            <div style={{fontSize:"0.65rem",fontWeight:900,letterSpacing:"0.13em",textTransform:"uppercase",color:"#94a3b8",marginBottom:4}}>Participación en tiempo real</div>
+            <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+              <span style={{fontSize:"2.2rem",fontWeight:900,color:scoreLevelColor(pct)}}>{n}</span>
+              <span style={{fontSize:"1rem",color:"#94a3b8"}}>/ 120 · {pct}%</span>
             </div>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginBottom: 4 }}>Tasa de respuesta</div>
-            <div style={{ width: 60, height: 60, borderRadius: "50%", background: `conic-gradient(${scoreLevelColor(pct)} ${pct * 3.6}deg, rgba(255,255,255,0.07) 0deg)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#071b33", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 900, color: scoreLevelColor(pct) }}>{pct}%</div>
-            </div>
+          <div style={{width:56,height:56,borderRadius:"50%",background:`conic-gradient(${scoreLevelColor(pct)} ${pct*3.6}deg,rgba(255,255,255,0.06) 0)`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div style={{width:40,height:40,borderRadius:"50%",background:"#071b33",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.7rem",fontWeight:900,color:scoreLevelColor(pct)}}>{pct}%</div>
           </div>
         </div>
-        <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.07)", overflow: "hidden", marginBottom: 18 }}>
-          <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, ${scoreLevelColor(pct)}, ${scoreLevelColor(pct)}bb)`, borderRadius: 999, transition: "width 0.3s" }} />
+        <div style={{height:7,borderRadius:999,background:"rgba(255,255,255,0.07)",overflow:"hidden",marginBottom:16}}>
+          <div style={{height:"100%",width:`${pct}%`,background:scoreLevelColor(pct),borderRadius:999,transition:"width 0.25s"}}/>
         </div>
-        {/* Dept breakdown */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
-          {DEPT_RESPONSES.map(d => {
-            const dp = Math.round((d.received / d.total) * 100);
-            return (
-              <div key={d.name} style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: "0.8rem" }}>
-                  <span style={{ color: "#f8fafc", fontWeight: 600 }}>{d.name}</span>
-                  <span style={{ color: "#94a3b8" }}>{d.received}/{d.total}</span>
-                </div>
-                <div style={{ height: 4, borderRadius: 999, background: "rgba(255,255,255,0.07)" }}>
-                  <div style={{ height: "100%", width: `${dp}%`, background: dp === 100 ? "#22c55e" : "#38bdf8", borderRadius: 999 }} />
-                </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(188px,1fr))",gap:8}}>
+          {DEPT_R.map(d=>{const dp=Math.round((d.r/d.t)*100);return(
+            <div key={d.name} style={{background:"rgba(255,255,255,0.03)",borderRadius:9,padding:"9px 11px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontSize:"0.78rem"}}>
+                <span style={{color:"#f8fafc",fontWeight:600}}>{d.name}</span>
+                <span style={{color:"#94a3b8"}}>{d.r}/{d.t}</span>
               </div>
-            );
-          })}
+              <div style={{height:4,borderRadius:999,background:"rgba(255,255,255,0.07)"}}>
+                <div style={{height:"100%",width:`${dp}%`,background:dp===100?"#22c55e":"#38bdf8",borderRadius:999}}/>
+              </div>
+            </div>
+          );})}
         </div>
       </div>
-
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-        {!closed ? (
-          <>
-            <button onClick={() => setSimulating(true)} disabled={simulating || totalReceived >= total} style={{
-              padding: "11px 24px", borderRadius: 999, fontWeight: 800, fontSize: "0.88rem", cursor: "pointer",
-              background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.3)", color: "#38bdf8",
-              opacity: simulating || totalReceived >= total ? 0.5 : 1,
-            }}>
-              {simulating ? "⏳ Simulando respuestas..." : totalReceived >= total ? "✓ Respuestas simuladas" : "▶ Simular más respuestas"}
-            </button>
-            <button onClick={() => setClosed(true)} style={{ padding: "11px 24px", borderRadius: 999, fontWeight: 800, fontSize: "0.88rem", cursor: "pointer", background: "rgba(249,115,22,0.12)", border: "1px solid rgba(249,115,22,0.3)", color: "#fb923c" }}>
-              Cerrar período
-            </button>
-          </>
-        ) : (
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: 12, padding: "10px 18px", display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ color: "#22c55e", fontWeight: 800 }}>✓ Período cerrado · {totalReceived} respuestas registradas</span>
-            </div>
-            <button onClick={onNext} style={{ padding: "11px 28px", background: "#d4af37", color: "#071b33", border: "none", borderRadius: 999, fontWeight: 800, fontSize: "0.88rem", cursor: "pointer" }}>
-              Enviar a validación →
-            </button>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+        {!closed ? (<>
+          <button onClick={()=>setSim(true)} disabled={sim||n>=target} style={{padding:"10px 22px",borderRadius:999,fontWeight:800,fontSize:"0.84rem",cursor:"pointer",background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.28)",color:"#38bdf8",opacity:sim||n>=target?0.5:1}}>
+            {sim?"⏳ Simulando...":n>=target?"✓ Simuladas":"▶ Simular respuestas"}
+          </button>
+          <button onClick={()=>setClosed(true)} style={{padding:"10px 22px",borderRadius:999,fontWeight:800,fontSize:"0.84rem",cursor:"pointer",background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.28)",color:"#fb923c"}}>Cerrar período</button>
+        </>) : (
+          <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+            <span style={{padding:"9px 16px",borderRadius:999,background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.28)",color:"#22c55e",fontWeight:800,fontSize:"0.84rem"}}>✓ Período cerrado · {n} respuestas</span>
+            <button onClick={onNext} style={{padding:"10px 26px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.84rem",cursor:"pointer"}}>Enviar a validación →</button>
           </div>
         )}
       </div>
@@ -435,283 +298,206 @@ function StepEncuesta({ onNext }: { onNext: () => void }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PASO 4 — VALIDACIÓN PSICÓLOGO LABORAL
-// ─────────────────────────────────────────────────────────────────────────────
-
-function StepValidacion({ onNext }: { onNext: () => void }) {
-  const [valState, setValState] = useState<"pending" | "reviewing" | "approved">("pending");
+function ValidationPanel({inline}: {inline?: boolean}) {
+  const [state, setState] = useState<"pending"|"reviewing"|"approved">("pending");
   const [notes, setNotes] = useState("");
-
-  const keyMetrics = [
-    { label: "Índice Global", value: `${_curPct}%`, sub: scoreLevelLabel(_curPct), color: scoreLevelColor(_curPct) },
-    { label: "Dimensión más alta", value: "T. en equipo", sub: "82% · Favorable", color: "#22c55e" },
-    { label: "Dimensión más baja", value: "Reconocimiento", sub: "58% · Crítico", color: "#f87171" },
-    { label: "Respuestas", value: "103 / 120", sub: "85.8% participación", color: "#38bdf8" },
-  ];
-
+  const km = [{l:"Índice Global",v:`${curPct}%`,s:scoreLevelLabel(curPct),c:scoreLevelColor(curPct)},{l:"Dim. más alta",v:"T. Equipo",s:"82% · Favorable",c:"#22c55e"},{l:"Dim. más baja",v:"Reconocim.",s:"58% · Crítico",c:"#f87171"},{l:"Participación",v:"103/120",s:"85.8%",c:"#38bdf8"}];
   return (
-    <div style={{ maxWidth: 720 }}>
-      <p style={{ color: "#94a3b8", fontSize: "0.88rem", marginBottom: 20, lineHeight: 1.6 }}>
-        Antes de liberar el informe al cliente, un <strong style={{ color: "#f8fafc" }}>Psicólogo Laboral certificado</strong> revisa los resultados, añade contexto profesional y valida que el análisis sea riguroso y ético.
-      </p>
-
-      {/* Métricas clave */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 20 }}>
-        {keyMetrics.map(m => (
-          <div key={m.label} style={{ background: "rgba(7,27,51,0.72)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: "16px 14px", textAlign: "center" }}>
-            <div style={{ fontSize: "0.64rem", fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", marginBottom: 6 }}>{m.label}</div>
-            <div style={{ fontSize: "1.3rem", fontWeight: 900, color: m.color, marginBottom: 3 }}>{m.value}</div>
-            <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>{m.sub}</div>
-          </div>
-        ))}
+    <div style={{maxWidth:inline?undefined:680}}>
+      {!inline&&<p style={{color:"#94a3b8",fontSize:"0.85rem",marginBottom:18,lineHeight:1.6}}>Un <strong style={{color:"#f8fafc"}}>Psicólogo Laboral certificado</strong> revisa los resultados antes de liberar el informe al cliente.</p>}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+        {km.map(m=><div key={m.l} style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,padding:"14px 12px",textAlign:"center"}}>
+          <div style={{fontSize:"0.62rem",fontWeight:900,letterSpacing:"0.11em",textTransform:"uppercase",color:"#94a3b8",marginBottom:5}}>{m.l}</div>
+          <div style={{fontSize:"1.2rem",fontWeight:900,color:m.c,marginBottom:2}}>{m.v}</div>
+          <div style={{fontSize:"0.7rem",color:"#94a3b8"}}>{m.s}</div>
+        </div>)}
       </div>
-
-      {/* Estado de validación */}
-      <div style={{ background: "rgba(7,27,51,0.72)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 20, padding: "24px 28px", marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-          <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(212,175,55,0.12)", border: "2px solid rgba(212,175,55,0.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem", flexShrink: 0 }}>👨‍🔬</div>
-          <div>
-            <div style={{ fontWeight: 800, color: "#f8fafc" }}>Psic. Iván Viteri, MSc.</div>
-            <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>Psicólogo Laboral · Reg. SENESCYT · CENVIT GTH</div>
+      <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:18,padding:"20px 24px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+          <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(212,175,55,0.1)",border:"2px solid rgba(212,175,55,0.3)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>👨‍🔬</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:800,color:"#f8fafc",marginBottom:1}}>Psic. Iván Viteri, MSc.</div>
+            <div style={{fontSize:"0.75rem",color:"#94a3b8"}}>Psicólogo Laboral · Reg. SENESCYT · CENVIT GTH</div>
           </div>
-          <div style={{ marginLeft: "auto" }}>
-            <span style={{
-              padding: "6px 14px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 800,
-              background: valState === "approved" ? "rgba(34,197,94,0.15)" : valState === "reviewing" ? "rgba(56,189,248,0.15)" : "rgba(249,115,22,0.15)",
-              border: `1px solid ${valState === "approved" ? "rgba(34,197,94,0.4)" : valState === "reviewing" ? "rgba(56,189,248,0.4)" : "rgba(249,115,22,0.4)"}`,
-              color: valState === "approved" ? "#22c55e" : valState === "reviewing" ? "#38bdf8" : "#fb923c",
-            }}>
-              {valState === "approved" ? "✓ Validado" : valState === "reviewing" ? "⏳ En revisión" : "🕐 Pendiente"}
-            </span>
-          </div>
+          <span style={{padding:"5px 13px",borderRadius:999,fontSize:"0.72rem",fontWeight:800,background:state==="approved"?"rgba(34,197,94,0.14)":state==="reviewing"?"rgba(56,189,248,0.14)":"rgba(249,115,22,0.14)",border:`1px solid ${state==="approved"?"rgba(34,197,94,0.38)":state==="reviewing"?"rgba(56,189,248,0.38)":"rgba(249,115,22,0.38)"}`,color:state==="approved"?"#22c55e":state==="reviewing"?"#38bdf8":"#fb923c"}}>
+            {state==="approved"?"✓ Validado":state==="reviewing"?"⏳ En revisión":"🕐 Pendiente"}
+          </span>
         </div>
-
-        {valState !== "approved" && (
+        {state!=="approved"&&(
           <>
-            <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", color: "#94a3b8", marginBottom: 8 }}>
-              Observaciones y contexto profesional
-            </label>
-            <textarea
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="El psicólogo laboral añade contexto, observaciones cualitativas y recomendaciones especializadas antes de liberar el informe..."
-              rows={4}
-              style={{ width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#f8fafc", fontSize: "0.88rem", lineHeight: 1.6, resize: "vertical" }}
-            />
-            <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-              {valState === "pending" && (
-                <button onClick={() => setValState("reviewing")} style={{ padding: "10px 22px", borderRadius: 999, fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.3)", color: "#38bdf8" }}>
-                  Iniciar revisión
-                </button>
-              )}
-              {valState === "reviewing" && (
-                <button onClick={() => setValState("approved")} style={{ padding: "10px 22px", borderRadius: 999, fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", background: "#22c55e", color: "#071b33", border: "none" }}>
-                  Validar y publicar resultados ✓
-                </button>
-              )}
+            <label style={{display:"block",fontSize:"0.68rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:7}}>Observaciones profesionales</label>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Añade contexto, hallazgos cualitativos y recomendaciones especializadas antes de publicar..." rows={3} style={{width:"100%",padding:"11px 13px",borderRadius:12,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.85rem",lineHeight:1.6,resize:"vertical"}}/>
+            <div style={{display:"flex",gap:9,marginTop:12}}>
+              {state==="pending"&&<button onClick={()=>setState("reviewing")} style={{padding:"9px 20px",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer",background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.28)",color:"#38bdf8"}}>Iniciar revisión</button>}
+              {state==="reviewing"&&<button onClick={()=>setState("approved")} style={{padding:"9px 22px",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer",background:"#22c55e",color:"#071b33",border:"none"}}>Validar y publicar ✓</button>}
             </div>
           </>
         )}
-
-        {valState === "approved" && (
-          <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: 14, padding: "16px 18px" }}>
-            <div style={{ fontWeight: 800, color: "#22c55e", marginBottom: 6 }}>✓ Resultados validados y publicados</div>
-            {notes && <p style={{ fontSize: "0.84rem", color: "#94a3b8", lineHeight: 1.6, margin: 0 }}><em>"{notes}"</em></p>}
-            {!notes && <p style={{ fontSize: "0.84rem", color: "#94a3b8", margin: 0 }}>Los resultados han sido revisados y cumplen los estándares de calidad de CENVIT GTH. El informe está disponible para el cliente.</p>}
+        {state==="approved"&&(
+          <div style={{background:"rgba(34,197,94,0.07)",border:"1px solid rgba(34,197,94,0.22)",borderRadius:12,padding:"14px 16px"}}>
+            <div style={{fontWeight:800,color:"#22c55e",marginBottom:notes?6:0}}>✓ Resultados validados y publicados</div>
+            {notes&&<p style={{fontSize:"0.82rem",color:"#94a3b8",lineHeight:1.6,margin:0}}><em>"{notes}"</em></p>}
+            {!notes&&<p style={{fontSize:"0.82rem",color:"#94a3b8",margin:0}}>Revisados y aprobados. El informe está disponible para el cliente.</p>}
           </div>
         )}
       </div>
-
-      {valState === "approved" && (
-        <button onClick={onNext} style={{ padding: "12px 32px", background: "#d4af37", color: "#071b33", border: "none", borderRadius: 999, fontWeight: 800, fontSize: "0.9rem", cursor: "pointer" }}>
-          Ver resultados y generar informe →
-        </button>
-      )}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PASO 5 — RESULTADOS (dashboard + informe + encuesta)
-// ─────────────────────────────────────────────────────────────────────────────
+function StepValidacion({onNext}: {onNext:()=>void}) {
+  const [done, setDone] = useState(false);
+  return (
+    <div>
+      <ValidationPanel/>
+      {!done&&<button onClick={()=>setDone(true)} style={{marginTop:18,padding:"11px 28px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.88rem",cursor:"pointer"}}>Ver resultados y generar informe →</button>}
+      {done&&<button onClick={onNext} style={{marginTop:18,padding:"11px 28px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.88rem",cursor:"pointer"}}>Abrir dashboard de resultados →</button>}
+    </div>
+  );
+}
 
-const LIKERT_COLORS = ["#ef4444","#f97316","#eab308","#84cc16","#22c55e"];
-const LIKERT_LABELS_ES = ["Totalmente en desacuerdo","En desacuerdo","Neutral","De acuerdo","Totalmente de acuerdo"];
+const LL_ES = ["Totalmente en desacuerdo","En desacuerdo","Neutral","De acuerdo","Totalmente de acuerdo"];
+const LL_C  = ["#ef4444","#f97316","#eab308","#84cc16","#22c55e"];
 
 function SurveyPreview() {
-  const [dimIdx, setDimIdx] = useState(0);
-  const dim = DIMENSIONS[dimIdx];
-  const qs = QUESTIONS.filter(q => q.dimension === dim.key);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [di,setDi]=useState(0); const dim=DIMENSIONS[di]; const qs=QUESTIONS.filter(q=>q.dimension===dim.key);
+  const [ans,setAns]=useState<Record<number,number>>({});
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 0 40px" }}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
-        {DIMENSIONS.map((d, i) => (
-          <button key={d.key} onClick={() => setDimIdx(i)} style={{
-            padding: "6px 14px", borderRadius: 999, fontSize: "0.78rem", fontWeight: 700, cursor: "pointer",
-            border: `1.5px solid ${d.color}`, background: i === dimIdx ? d.color + "33" : "transparent",
-            color: i === dimIdx ? d.color : "rgba(148,163,184,0.7)",
-          }}>{d.label}</button>
-        ))}
+    <div style={{maxWidth:700,margin:"0 auto",paddingBottom:40}}>
+      <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:22}}>
+        {DIMENSIONS.map((d,i)=><button key={d.key} onClick={()=>setDi(i)} style={{padding:"5px 13px",borderRadius:999,fontSize:"0.77rem",fontWeight:700,cursor:"pointer",border:`1.5px solid ${d.color}`,background:i===di?d.color+"33":"transparent",color:i===di?d.color:"rgba(148,163,184,0.65)"}}>{d.label}</button>)}
       </div>
-      <div style={{ background: "rgba(7,27,51,0.72)", border: `1px solid ${dim.color}44`, borderRadius: 20, padding: "24px 28px", marginBottom: 16 }}>
-        <p style={{ fontSize: "0.68rem", fontWeight: 900, letterSpacing: "0.14em", textTransform: "uppercase", color: dim.color, marginBottom: 4 }}>Dimensión {dimIdx + 1} de {DIMENSIONS.length}</p>
-        <h2 style={{ color: dim.color, margin: "0 0 6px", fontSize: "1.25rem" }}>{dim.label}</h2>
-        <p style={{ color: "rgba(148,163,184,0.75)", fontSize: "0.82rem", margin: 0 }}>{dim.description}</p>
+      <div style={{background:"rgba(7,27,51,0.65)",border:`1px solid ${dim.color}44`,borderRadius:18,padding:"22px 26px",marginBottom:14}}>
+        <p style={{fontSize:"0.65rem",fontWeight:900,letterSpacing:"0.13em",textTransform:"uppercase",color:dim.color,marginBottom:3}}>Dimensión {di+1} / {DIMENSIONS.length}</p>
+        <h2 style={{color:dim.color,margin:"0 0 5px",fontSize:"1.2rem"}}>{dim.label}</h2>
+        <p style={{color:"rgba(148,163,184,0.72)",fontSize:"0.8rem",margin:0}}>{dim.description}</p>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {qs.map(q => (
-          <div key={q.id} style={{ background: "rgba(7,27,51,0.72)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, padding: "18px 20px" }}>
-            <p style={{ fontSize: "0.68rem", color: dim.color, fontWeight: 900, letterSpacing: "0.1em", marginBottom: 6 }}>Pregunta {qs.indexOf(q)+1}/{qs.length}</p>
-            <p style={{ fontSize: "0.95rem", color: "rgba(255,255,255,0.88)", margin: "0 0 14px", lineHeight: 1.5 }}>{q.text}</p>
-            <div style={{ display: "flex", gap: 6, justifyContent: "space-between" }}>
-              {LIKERT_LABELS_ES.map((lbl, li) => (
-                <button key={li} onClick={() => setAnswers(a => ({...a,[q.id]:li+1}))} title={lbl} style={{
-                  flex: 1, padding: "10px 4px", borderRadius: 10, border: `2px solid`,
-                  borderColor: answers[q.id]===li+1 ? LIKERT_COLORS[li] : "rgba(255,255,255,0.1)",
-                  background: answers[q.id]===li+1 ? LIKERT_COLORS[li]+"33" : "transparent",
-                  color: answers[q.id]===li+1 ? LIKERT_COLORS[li] : "rgba(148,163,184,0.5)",
-                  fontWeight: 900, fontSize: "0.95rem", cursor: "pointer",
-                }}>{li+1}</button>
-              ))}
-            </div>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {qs.map(q=><div key={q.id} style={{background:"rgba(7,27,51,0.65)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"16px 18px"}}>
+          <p style={{fontSize:"0.65rem",color:dim.color,fontWeight:900,letterSpacing:"0.09em",marginBottom:5}}>Pregunta {qs.indexOf(q)+1}/{qs.length}</p>
+          <p style={{fontSize:"0.92rem",color:"rgba(255,255,255,0.86)",margin:"0 0 12px",lineHeight:1.5}}>{q.text}</p>
+          <div style={{display:"flex",gap:5}}>
+            {LL_ES.map((lb,li)=><button key={li} onClick={()=>setAns(a=>({...a,[q.id]:li+1}))} title={lb} style={{flex:1,padding:"9px 3px",borderRadius:9,border:`2px solid ${ans[q.id]===li+1?LL_C[li]:"rgba(255,255,255,0.1)"}`,background:ans[q.id]===li+1?LL_C[li]+"33":"transparent",color:ans[q.id]===li+1?LL_C[li]:"rgba(148,163,184,0.45)",fontWeight:900,fontSize:"0.92rem",cursor:"pointer"}}>{li+1}</button>)}
           </div>
-        ))}
+        </div>)}
       </div>
-      {dimIdx < DIMENSIONS.length - 1 && (
-        <button onClick={() => setDimIdx(dimIdx+1)} style={{ marginTop: 20, padding: "12px 32px", background: dim.color, color: "white", border: "none", borderRadius: 999, fontWeight: 800, fontSize: "0.9rem", cursor: "pointer" }}>
-          Siguiente → {DIMENSIONS[dimIdx+1].label}
-        </button>
-      )}
+      {di<DIMENSIONS.length-1&&<button onClick={()=>setDi(di+1)} style={{marginTop:18,padding:"11px 28px",background:dim.color,color:"white",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.87rem",cursor:"pointer"}}>Siguiente → {DIMENSIONS[di+1].label}</button>}
     </div>
   );
 }
 
 function StepResultados() {
-  const [tab, setTab] = useState<ResultsTab>("dashboard");
-  const tabs: [ResultsTab, string][] = [["dashboard","📊 Dashboard"], ["report","📄 Informe 14 págs"], ["survey","📝 Vista Encuesta"]];
+  const [tab,setTab]=useState<ResultsTab>("dashboard");
   return (
     <div>
-      <div style={{ display: "flex", gap: 2, borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 24 }}>
-        {tabs.map(([t, lbl]) => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            padding: "10px 18px", background: "none", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "0.82rem",
-            color: tab === t ? "#38bdf8" : "rgba(148,163,184,0.6)",
-            borderBottom: `2px solid ${tab === t ? "#38bdf8" : "transparent"}`,
-          }}>{lbl}</button>
+      <div style={{display:"flex",gap:2,borderBottom:"1px solid rgba(255,255,255,0.07)",marginBottom:22}}>
+        {([["dashboard","📊 Dashboard"],["report","📄 Informe 14 págs"],["survey","📝 Vista Encuesta"]] as const).map(([t,l])=>(
+          <button key={t} onClick={()=>setTab(t)} style={{padding:"9px 17px",background:"none",border:"none",cursor:"pointer",fontWeight:700,fontSize:"0.8rem",color:tab===t?"#38bdf8":"rgba(148,163,184,0.55)",borderBottom:`2px solid ${tab===t?"#38bdf8":"transparent"}`}}>{l}</button>
         ))}
       </div>
-      {tab === "report" ? (
-        <ReportDocument
-          className="rp-screen"
-          empresaNombre="Empresa Demostración S.A."
-          periodoLabel="2026 · I Semestre"
-          prevLabel="2025 · II Semestre"
-          totalColaboradores={120}
-          responses={currentResponses}
-          prevResponses={prevResponses}
-          benchmark={{}} sectorLabel="General (Latinoamérica)"
-          plan={demoPlan} history={demoHistory}
-          logoCenvit={LOGO_CENVIT} logoIvan={LOGO_IVAN}
-        />
-      ) : tab === "survey" ? (
-        <SurveyPreview />
-      ) : (
-        <PeriodDashboard
-          responses={currentResponses} periodoLabel="2026 · I Semestre"
-          empresaNombre="Empresa Demostración S.A." totalColaboradores={120}
-          targets={demoTargets} sectorKey="general"
-          prevResponses={prevResponses} prevLabel="2025 · II Semestre"
-          savedPlan={demoPlan} history={demoHistory}
-        />
-      )}
+      {tab==="report"?<ReportDocument className="rp-screen" empresaNombre="Empresa Demostración S.A." periodoLabel="2026 · I Semestre" prevLabel="2025 · II Semestre" totalColaboradores={120} responses={curR} prevResponses={prevR} benchmark={{}} sectorLabel="General (Latinoamérica)" plan={demoPlan} history={demoHistory} logoCenvit={LOGO_CENVIT} logoIvan={LOGO_IVAN}/>
+        :tab==="survey"?<SurveyPreview/>
+        :<PeriodDashboard responses={curR} periodoLabel="2026 · I Semestre" empresaNombre="Empresa Demostración S.A." totalColaboradores={120} targets={demoTargets} sectorKey="general" prevResponses={prevR} prevLabel="2025 · II Semestre" savedPlan={demoPlan} history={demoHistory}/>}
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TARJETA DE EMPRESA (portfolio)
+// WORKFLOW EMPRESA
 // ─────────────────────────────────────────────────────────────────────────────
 
-function CompanyCard({ company, onOpen }: { company: DemoCompany; onOpen: () => void }) {
-  const sc = STATUS_CFG[company.status];
-  const tc = TIER_COLORS[company.subTier];
-  const daysLeft = Math.ceil((new Date(company.subExpiry).getTime() - Date.now()) / 86400000);
+function CompanyWorkflow({cid, onBack}: {cid: string; onBack: ()=>void}) {
+  const co = COMPANIES.find(c=>c.id===cid)??COMPANIES[0];
+  const init: WorkflowStep = co.status==="validated"?"resultados":co.status==="pending_validation"?"validacion":co.status==="collecting"?"encuesta":"empresa";
+  const [step, setStep] = useState<WorkflowStep>(init);
+  const [completed, setCompleted] = useState<WorkflowStep[]>(()=>{
+    if(co.status==="validated")return["empresa","periodo","encuesta","validacion","resultados"];
+    if(co.status==="pending_validation")return["empresa","periodo","encuesta"];
+    if(co.status==="collecting")return["empresa","periodo"];
+    return[];
+  });
+  function advance(next: WorkflowStep){setCompleted(p=>p.includes(step)?p:[...p,step]);setStep(next);}
+  const sc = STATUS_CFG[co.status];
   return (
-    <div style={{ background: "rgba(7,27,51,0.72)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 22, padding: "22px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-        <div>
-          <h3 style={{ fontSize: "1rem", fontWeight: 800, color: "#f8fafc", margin: "0 0 4px", lineHeight: 1.2 }}>{company.nombre}</h3>
-          <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>{company.sector} · {company.empleados} colaboradores</span>
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
+        <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 13px",borderRadius:10,background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"#94a3b8",fontSize:"0.8rem",fontWeight:700,cursor:"pointer"}}>← Volver</button>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:900,fontSize:"1rem",color:"#f8fafc"}}>{co.nombre}</div>
+          <div style={{fontSize:"0.72rem",color:"#94a3b8"}}>{co.sector} · {co.empleados} colaboradores · <span style={{color:sc.color}}>{sc.label}</span></div>
         </div>
-        <span style={{ padding: "4px 12px", borderRadius: 999, fontSize: "0.72rem", fontWeight: 800, background: tc + "18", border: `1px solid ${tc}44`, color: tc, whiteSpace: "nowrap", flexShrink: 0 }}>{company.subTier}</span>
+        <span style={{padding:"5px 14px",borderRadius:999,fontSize:"0.72rem",fontWeight:800,background:TIER_C[co.subTier]+"18",border:`1px solid ${TIER_C[co.subTier]}44`,color:TIER_C[co.subTier]}}>{co.subTier}</span>
       </div>
-
-      {company.lastPeriod && (
-        <div>
-          <div style={{ fontSize: "0.68rem", fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8", marginBottom: 6 }}>Última medición · {company.lastPeriod}</div>
-          {company.lastScore !== null ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ flex: 1, height: 6, borderRadius: 999, background: "rgba(255,255,255,0.07)" }}>
-                <div style={{ height: "100%", width: `${company.lastScore}%`, background: scoreLevelColor(company.lastScore), borderRadius: 999 }} />
-              </div>
-              <span style={{ fontSize: "0.88rem", fontWeight: 800, color: scoreLevelColor(company.lastScore) }}>{company.lastScore}%</span>
-            </div>
-          ) : (
-            <div style={{ fontSize: "0.84rem", color: "#38bdf8" }}>Recolectando respuestas...</div>
-          )}
-        </div>
-      )}
-
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <span style={{ padding: "5px 12px", borderRadius: 999, fontSize: "0.72rem", fontWeight: 800, background: sc.bg, border: `1px solid ${sc.color}44`, color: sc.color }}>{sc.label}</span>
-        <span style={{ fontSize: "0.7rem", color: daysLeft <= 30 ? "#fb923c" : "#94a3b8" }}>Vence: {company.subExpiry} {daysLeft <= 30 ? `(${daysLeft}d)` : ""}</span>
+      <WorkflowStepper current={step} onChange={setStep} completed={completed}/>
+      <div style={{background:"rgba(7,27,51,0.45)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:22,padding:"26px 30px"}}>
+        {step==="empresa"   &&<StepEmpresa co={co} onNext={()=>advance("periodo")}/>}
+        {step==="periodo"   &&<StepPeriodo co={co} onNext={()=>advance("encuesta")}/>}
+        {step==="encuesta"  &&<StepEncuesta onNext={()=>advance("validacion")}/>}
+        {step==="validacion"&&<StepValidacion onNext={()=>advance("resultados")}/>}
+        {step==="resultados"&&<StepResultados/>}
       </div>
-
-      <button onClick={onOpen} style={{ width: "100%", padding: "10px 0", borderRadius: 12, fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.3)", color: "#38bdf8" }}>
-        {company.status === "validated" ? "Ver resultados →" : company.status === "collecting" ? "Ver seguimiento →" : company.status === "pending_validation" ? "Validar →" : "Iniciar medición →"}
-      </button>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PORTFOLIO CONSULTOR
+// SECCIONES PRINCIPALES
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ConsultantPortfolio({ onSelectCompany }: { onSelectCompany: (id: string) => void }) {
-  const stats = [
-    { label: "Empresas cliente", value: "4", icon: "🏢" },
-    { label: "Mediciones activas", value: "3", icon: "📊" },
-    { label: "Pendientes validación", value: "1", icon: "⏳" },
-    { label: "Suscripciones activas", value: "4", icon: "💳" },
+function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
+  const kpis=[{icon:"🏢",label:"Empresas cliente",value:"4",sub:"+1 este semestre"},{icon:"📊",label:"Mediciones activas",value:"3",sub:"2026 · I Semestre"},{icon:"⏳",label:"Pend. validación",value:"1",sub:"Hospital del Valle",alert:true},{icon:"💳",label:"Suscripciones",value:"4",sub:"1 por vencer",warn:true}];
+  const activity=[
+    {icon:"✅",label:"Empresa Demostración S.A.",detail:"Validación aprobada · Informe liberado",time:"Hoy 09:42",color:"#22c55e"},
+    {icon:"📊",label:"Constructora Andina Cía.",detail:"55 de 85 respuestas recibidas (64.7%)",time:"Hoy 08:15",color:"#38bdf8"},
+    {icon:"🔔",label:"Hospital del Valle",detail:"Período cerrado · 187/210 respuestas · Pendiente validación",time:"Ayer 17:30",color:"#f97316"},
+    {icon:"💳",label:"Tech Solutions Ecuador",detail:"Suscripción Básico vence en 14 días",time:"Jun 5",color:"#f97316"},
+    {icon:"🆕",label:"Tech Solutions Ecuador",detail:"Suscripción creada · Básico · 45 colaboradores",time:"Dic 1, 2025",color:"#94a3b8"},
+  ];
+  const pending=[
+    {co:"Hospital del Valle",task:"Validar resultados 2026-I",cta:"Validar ahora",color:"#f97316",id:"hospital"},
+    {co:"Tech Solutions Ecuador",task:"Suscripción vence en 14 días",cta:"Renovar",color:"#fb923c",id:"tech"},
+    {co:"Constructora Andina",task:"64.7% de participación — recordatorio",cta:"Ver encuesta",color:"#38bdf8",id:"andina"},
   ];
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: "1.4rem", fontWeight: 900, color: "#f8fafc", marginBottom: 4 }}>Portfolio de Clientes</h2>
-        <p style={{ fontSize: "0.88rem", color: "#94a3b8" }}>Gestiona las mediciones de clima laboral de tus empresas cliente.</p>
+      <div style={{marginBottom:24}}>
+        <p style={{fontSize:"0.75rem",color:"#94a3b8",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase"}}>Jueves, 5 de junio de 2026</p>
+        <h2 style={{fontSize:"1.5rem",fontWeight:900,color:"#f8fafc",marginTop:4}}>Bienvenido, Iván 👋</h2>
+        <p style={{fontSize:"0.88rem",color:"#94a3b8",marginTop:3}}>Tienes <strong style={{color:"#f97316"}}>1 validación pendiente</strong> y 1 suscripción por vencer.</p>
       </div>
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
-        {stats.map(s => (
-          <div key={s.label} style={{ background: "rgba(7,27,51,0.72)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 16, padding: "18px 20px" }}>
-            <div style={{ fontSize: "1.6rem", marginBottom: 6 }}>{s.icon}</div>
-            <div style={{ fontSize: "1.8rem", fontWeight: 900, color: "#f8fafc", lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: 4 }}>{s.label}</div>
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:22}}>
+        {kpis.map(k=><div key={k.label} style={{background:"rgba(7,27,51,0.65)",border:`1px solid ${k.alert?"rgba(249,115,22,0.3)":k.warn?"rgba(249,115,22,0.2)":"rgba(255,255,255,0.08)"}`,borderRadius:18,padding:"18px 20px"}}>
+          <div style={{fontSize:"1.5rem",marginBottom:7}}>{k.icon}</div>
+          <div style={{fontSize:"1.9rem",fontWeight:900,color:k.alert?"#f97316":k.warn?"#fb923c":"#f8fafc",lineHeight:1}}>{k.value}</div>
+          <div style={{fontSize:"0.72rem",fontWeight:700,color:"#94a3b8",marginTop:4}}>{k.label}</div>
+          <div style={{fontSize:"0.68rem",color:k.alert||k.warn?"#f97316":"#64748b",marginTop:2}}>{k.sub}</div>
+        </div>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 360px",gap:16}}>
+        {/* Actividad */}
+        <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"20px 22px"}}>
+          <h3 style={{fontSize:"0.88rem",fontWeight:900,color:"#f8fafc",marginBottom:16}}>Actividad reciente</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:0}}>
+            {activity.map((a,i)=><div key={i} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"11px 0",borderBottom:i<activity.length-1?"1px solid rgba(255,255,255,0.06)":"none"}}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:a.color+"18",border:`1px solid ${a.color}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.85rem",flexShrink:0}}>{a.icon}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:"0.82rem",fontWeight:700,color:"#f8fafc",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.label}</div>
+                <div style={{fontSize:"0.75rem",color:"#94a3b8",lineHeight:1.4}}>{a.detail}</div>
+              </div>
+              <div style={{fontSize:"0.68rem",color:"#64748b",whiteSpace:"nowrap",marginTop:2,flexShrink:0}}>{a.time}</div>
+            </div>)}
           </div>
-        ))}
-      </div>
-      {/* Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
-        {DEMO_COMPANIES.map(c => <CompanyCard key={c.id} company={c} onOpen={() => onSelectCompany(c.id)} />)}
-        {/* Nueva empresa card */}
-        <div style={{ background: "rgba(7,27,51,0.4)", border: "2px dashed rgba(255,255,255,0.12)", borderRadius: 22, padding: "22px 24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, minHeight: 200, cursor: "pointer" }} onClick={() => onSelectCompany("new")}>
-          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(56,189,248,0.1)", border: "2px dashed rgba(56,189,248,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.5rem" }}>+</div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontWeight: 800, color: "#38bdf8", marginBottom: 4 }}>Nuevo cliente</div>
-            <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>Dar de alta una empresa y crear su primer período de medición</div>
+        </div>
+        {/* Pendientes */}
+        <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"20px 22px"}}>
+          <h3 style={{fontSize:"0.88rem",fontWeight:900,color:"#f8fafc",marginBottom:16}}>Tareas pendientes</h3>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {pending.map((p,i)=><div key={i} style={{background:`${p.color}0d`,border:`1px solid ${p.color}28`,borderRadius:12,padding:"12px 14px"}}>
+              <div style={{fontSize:"0.78rem",fontWeight:800,color:p.color,marginBottom:3}}>{p.co}</div>
+              <div style={{fontSize:"0.75rem",color:"#94a3b8",marginBottom:10,lineHeight:1.4}}>{p.task}</div>
+              <button onClick={()=>onGoCompany(p.id)} style={{padding:"6px 14px",borderRadius:999,background:p.color+"22",border:`1px solid ${p.color}44`,color:p.color,fontWeight:800,fontSize:"0.74rem",cursor:"pointer"}}>{p.cta} →</button>
+            </div>)}
           </div>
         </div>
       </div>
@@ -719,101 +505,85 @@ function ConsultantPortfolio({ onSelectCompany }: { onSelectCompany: (id: string
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GESTIÓN DE SUSCRIPCIONES
-// ─────────────────────────────────────────────────────────────────────────────
-
-function SubscriptionManager() {
-  const [showNew, setShowNew] = useState(false);
-  const statusColor = (s: string) => s === "activa" ? "#22c55e" : s === "por_vencer" ? "#f97316" : "#f87171";
-  const statusLabel = (s: string) => s === "activa" ? "Activa" : s === "por_vencer" ? "Por vencer" : "Expirada";
-
-  const plans = [
-    { tier: "Básico", price: "$299/año", features: ["1 medición/año","Hasta 100 colaboradores","Informe PDF automático","Soporte por correo"] },
-    { tier: "Profesional", price: "$599/año", features: ["2 mediciones/año","Hasta 300 colaboradores","Validación Psicólogo Laboral","Benchmarking sectorial","Soporte prioritario"] },
-    { tier: "Enterprise", price: "$1.299/año", features: ["Mediciones ilimitadas","Colaboradores ilimitados","Consultor dedicado","Acceso multi-empresa","API + integraciones"] },
-  ];
-
+function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <div>
-          <h2 style={{ fontSize: "1.4rem", fontWeight: 900, color: "#f8fafc", marginBottom: 4 }}>Suscripciones</h2>
-          <p style={{ fontSize: "0.88rem", color: "#94a3b8" }}>Empresas con acceso a la plataforma para realizar mediciones de forma independiente.</p>
-        </div>
-        <button onClick={() => setShowNew(!showNew)} style={{ padding: "10px 22px", background: "#d4af37", color: "#071b33", border: "none", borderRadius: 999, fontWeight: 800, fontSize: "0.85rem", cursor: "pointer" }}>
-          + Nueva suscripción
-        </button>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+        <div><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Empresas cliente</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Gestiona el ciclo completo de medición de cada cliente.</p></div>
+        <button style={{padding:"9px 20px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer"}}>+ Nuevo cliente</button>
       </div>
-
-      {/* Plans */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 28 }}>
-        {plans.map(p => {
-          const tc = TIER_COLORS[p.tier];
-          return (
-            <div key={p.tier} style={{ background: "rgba(7,27,51,0.72)", border: `1px solid ${tc}33`, borderRadius: 20, padding: "20px 22px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                <span style={{ fontWeight: 900, color: tc, fontSize: "1rem" }}>{p.tier}</span>
-                <span style={{ fontWeight: 900, color: "#f8fafc", fontSize: "1.05rem" }}>{p.price}</span>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:14}}>
+        {COMPANIES.map(co=>{
+          const sc=STATUS_CFG[co.status]; const tc=TIER_C[co.subTier];
+          const days=Math.ceil((new Date(co.subExpiry).getTime()-Date.now())/86400000);
+          return(
+            <div key={co.id} style={{background:"rgba(7,27,51,0.65)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:20,padding:"20px 22px",display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                <div><h3 style={{fontSize:"0.95rem",fontWeight:800,color:"#f8fafc",margin:"0 0 3px",lineHeight:1.2}}>{co.nombre}</h3><span style={{fontSize:"0.73rem",color:"#94a3b8"}}>{co.sector} · {co.empleados} colab.</span></div>
+                <span style={{padding:"3px 10px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:tc+"18",border:`1px solid ${tc}33`,color:tc,flexShrink:0}}>{co.subTier}</span>
               </div>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-                {p.features.map(f => <li key={f} style={{ fontSize: "0.78rem", color: "#94a3b8", display: "flex", gap: 7, alignItems: "flex-start" }}><span style={{ color: tc, flexShrink: 0, marginTop: 1 }}>✓</span>{f}</li>)}
-              </ul>
+              {co.lastPeriod&&<div>
+                <div style={{fontSize:"0.63rem",fontWeight:900,letterSpacing:"0.12em",textTransform:"uppercase",color:"#94a3b8",marginBottom:5}}>{co.lastPeriod}</div>
+                {co.lastScore!=null?(<div style={{display:"flex",alignItems:"center",gap:9}}>
+                  <div style={{flex:1,height:5,borderRadius:999,background:"rgba(255,255,255,0.07)"}}><div style={{height:"100%",width:`${co.lastScore}%`,background:scoreLevelColor(co.lastScore),borderRadius:999}}/></div>
+                  <span style={{fontSize:"0.85rem",fontWeight:800,color:scoreLevelColor(co.lastScore)}}>{co.lastScore}%</span>
+                </div>):<div style={{fontSize:"0.82rem",color:"#38bdf8"}}>Recolectando · {co.lastResponses}/{co.lastTotal}</div>}
+              </div>}
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                <span style={{padding:"4px 11px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:sc.bg,border:`1px solid ${sc.color}44`,color:sc.color}}>{sc.label}</span>
+                <span style={{fontSize:"0.67rem",color:days<=30?"#fb923c":"#64748b"}}>Vence {co.subExpiry}{days<=30?` (${days}d)`:""}</span>
+              </div>
+              <button onClick={()=>onOpenCompany(co.id)} style={{width:"100%",padding:"9px 0",borderRadius:11,fontWeight:800,fontSize:"0.82rem",cursor:"pointer",background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.28)",color:"#38bdf8"}}>
+                {co.status==="validated"?"Ver resultados →":co.status==="collecting"?"Ver seguimiento →":co.status==="pending_validation"?"Validar →":"Iniciar medición →"}
+              </button>
             </div>
           );
         })}
-      </div>
-
-      {/* New subscription form */}
-      {showNew && (
-        <div style={{ background: "rgba(7,27,51,0.85)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: 20, padding: "24px 28px", marginBottom: 24 }}>
-          <h3 style={{ marginBottom: 18, color: "#d4af37" }}>Nueva suscripción</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-            {["Empresa", "Plan", "Vigencia (meses)"].map(l => (
-              <div key={l}>
-                <label style={{ display: "block", fontSize: "0.7rem", fontWeight: 900, letterSpacing: "0.1em", textTransform: "uppercase", color: "#94a3b8", marginBottom: 6 }}>{l}</label>
-                <input placeholder={l === "Empresa" ? "Nombre de la empresa" : l === "Plan" ? "Básico / Profesional / Enterprise" : "12"} style={{ width: "100%", padding: "10px 13px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#f8fafc", fontSize: "0.9rem" }} />
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-            <button style={{ padding: "10px 24px", background: "#d4af37", color: "#071b33", border: "none", borderRadius: 999, fontWeight: 800, fontSize: "0.85rem", cursor: "pointer" }}>Crear suscripción</button>
-            <button onClick={() => setShowNew(false)} style={{ padding: "10px 20px", background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "#94a3b8", borderRadius: 999, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}>Cancelar</button>
-          </div>
+        <div style={{background:"rgba(7,27,51,0.35)",border:"2px dashed rgba(255,255,255,0.1)",borderRadius:20,padding:"22px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,minHeight:180,cursor:"pointer"}}>
+          <div style={{width:48,height:48,borderRadius:"50%",background:"rgba(56,189,248,0.08)",border:"2px dashed rgba(56,189,248,0.28)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.4rem",color:"#38bdf8"}}>+</div>
+          <div style={{textAlign:"center"}}><div style={{fontWeight:800,color:"#38bdf8",marginBottom:3}}>Nuevo cliente</div><div style={{fontSize:"0.76rem",color:"#94a3b8"}}>Dar de alta empresa y crear primer período</div></div>
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
 
-      {/* Table */}
-      <div style={{ background: "rgba(7,27,51,0.72)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 20, overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+function MedicionesSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
+  const meds=[
+    {co:"Empresa Demostración S.A.",periodo:"2026 · I Semestre",respuestas:103,total:120,score:curPct,status:"validated",  id:"demo"},
+    {co:"Empresa Demostración S.A.",periodo:"2025 · II Semestre",respuestas:109,total:120,score:prevPct,status:"validated", id:"demo"},
+    {co:"Constructora Andina Cía.",  periodo:"2026 · I Semestre",respuestas:55, total:85, score:null,   status:"collecting",id:"andina"},
+    {co:"Hospital del Valle",        periodo:"2026 · I Semestre",respuestas:187,total:210,score:68,     status:"pending_validation",id:"hospital"},
+  ];
+  return (
+    <div>
+      <div style={{marginBottom:22}}><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Mediciones</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Historial de todos los períodos de medición por empresa.</p></div>
+      <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,overflow:"hidden"}}>
+        <table style={{width:"100%",borderCollapse:"collapse"}}>
           <thead>
-            <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-              {["Empresa","Plan","Desde","Hasta","Colaboradores","Estado","Acciones"].map(h => (
-                <th key={h} style={{ padding: "14px 18px", textAlign: "left", fontSize: "0.68rem", fontWeight: 900, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>{h}</th>
-              ))}
+            <tr style={{borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
+              {["Empresa","Período","Respuestas","Participación","Puntaje","Estado","Acciones"].map(h=><th key={h} style={{padding:"13px 16px",textAlign:"left",fontSize:"0.65rem",fontWeight:900,letterSpacing:"0.11em",textTransform:"uppercase",color:"#94a3b8"}}>{h}</th>)}
             </tr>
           </thead>
           <tbody>
-            {SUBS_DATA.map((s, i) => {
-              const tc = TIER_COLORS[s.tier];
-              const sc = statusColor(s.status);
-              return (
-                <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                  <td style={{ padding: "14px 18px", fontSize: "0.88rem", fontWeight: 700, color: "#f8fafc" }}>{s.company}</td>
-                  <td style={{ padding: "14px 18px" }}><span style={{ padding: "4px 12px", borderRadius: 999, fontSize: "0.72rem", fontWeight: 800, background: tc + "18", color: tc }}>{s.tier}</span></td>
-                  <td style={{ padding: "14px 18px", fontSize: "0.82rem", color: "#94a3b8" }}>{s.inicio}</td>
-                  <td style={{ padding: "14px 18px", fontSize: "0.82rem", color: "#94a3b8" }}>{s.fin}</td>
-                  <td style={{ padding: "14px 18px", fontSize: "0.88rem", color: "#f8fafc", fontWeight: 600 }}>{s.empleados}</td>
-                  <td style={{ padding: "14px 18px" }}><span style={{ padding: "4px 12px", borderRadius: 999, fontSize: "0.72rem", fontWeight: 800, background: sc + "18", border: `1px solid ${sc}44`, color: sc }}>{statusLabel(s.status)}</span></td>
-                  <td style={{ padding: "14px 18px" }}>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button style={{ padding: "5px 12px", borderRadius: 8, background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.25)", color: "#38bdf8", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer" }}>Renovar</button>
-                      <button style={{ padding: "5px 12px", borderRadius: 8, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)", color: "#fca5a5", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {meds.map((m,i)=>{const sc=STATUS_CFG[m.status as keyof typeof STATUS_CFG];const pct=Math.round((m.respuestas/m.total)*100);return(
+              <tr key={i} style={{borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+                <td style={{padding:"13px 16px",fontSize:"0.84rem",fontWeight:700,color:"#f8fafc"}}>{m.co}</td>
+                <td style={{padding:"13px 16px",fontSize:"0.82rem",color:"#94a3b8"}}>{m.periodo}</td>
+                <td style={{padding:"13px 16px",fontSize:"0.84rem",color:"#f8fafc"}}>{m.respuestas}/{m.total}</td>
+                <td style={{padding:"13px 16px"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{width:60,height:5,borderRadius:999,background:"rgba(255,255,255,0.07)"}}><div style={{height:"100%",width:`${pct}%`,background:pct>=80?"#22c55e":pct>=65?"#d4af37":"#f97316",borderRadius:999}}/></div>
+                    <span style={{fontSize:"0.78rem",color:"#94a3b8"}}>{pct}%</span>
+                  </div>
+                </td>
+                <td style={{padding:"13px 16px",fontSize:"0.9rem",fontWeight:800,color:m.score!=null?scoreLevelColor(m.score):"#94a3b8"}}>{m.score!=null?`${m.score}%`:"—"}</td>
+                <td style={{padding:"13px 16px"}}><span style={{padding:"4px 11px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:sc.bg,border:`1px solid ${sc.color}44`,color:sc.color}}>{sc.label}</span></td>
+                <td style={{padding:"13px 16px"}}>
+                  <button onClick={()=>onOpenCompany(m.id)} style={{padding:"5px 13px",borderRadius:8,background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.24)",color:"#38bdf8",fontSize:"0.74rem",fontWeight:700,cursor:"pointer"}}>Ver →</button>
+                </td>
+              </tr>
+            );})}
           </tbody>
         </table>
       </div>
@@ -821,114 +591,224 @@ function SubscriptionManager() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// WORKFLOW COMPLETO DE LA EMPRESA
-// ─────────────────────────────────────────────────────────────────────────────
-
-function CompanyWorkflow({ companyId, onBack }: { companyId: string; onBack: () => void }) {
-  const company = DEMO_COMPANIES.find(c => c.id === companyId) ?? DEMO_COMPANIES[0];
-  const initialStep: WorkflowStep = company.status === "validated" ? "resultados"
-    : company.status === "pending_validation" ? "validacion"
-    : company.status === "collecting" ? "encuesta" : "empresa";
-  const [step, setStep] = useState<WorkflowStep>(initialStep);
-  const [completed, setCompleted] = useState<WorkflowStep[]>(() => {
-    if (company.status === "validated")          return ["empresa","periodo","encuesta","validacion","resultados"];
-    if (company.status === "pending_validation") return ["empresa","periodo","encuesta"];
-    if (company.status === "collecting")         return ["empresa","periodo"];
-    return [];
-  });
-
-  function advance(next: WorkflowStep) {
-    setCompleted(prev => prev.includes(step) ? prev : [...prev, step]);
-    setStep(next);
-  }
-
-  const stepsSeq: WorkflowStep[] = ["empresa","periodo","encuesta","validacion","resultados"];
-
+function ValidacionesSection() {
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-        <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>← Portfolio</button>
+      <div style={{marginBottom:22}}><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Cola de validaciones</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Resultados que esperan revisión y firma del Psicólogo Laboral.</p></div>
+      <div style={{background:"rgba(249,115,22,0.06)",border:"1px solid rgba(249,115,22,0.22)",borderRadius:18,padding:"20px 24px",marginBottom:18,display:"flex",alignItems:"center",gap:14}}>
+        <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(249,115,22,0.14)",border:"1px solid rgba(249,115,22,0.35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>⏳</div>
         <div>
-          <h2 style={{ fontSize: "1.1rem", fontWeight: 900, color: "#f8fafc", margin: 0 }}>{company.nombre}</h2>
-          <p style={{ fontSize: "0.75rem", color: "#94a3b8", margin: 0 }}>{company.sector} · {company.empleados} colaboradores · Suscripción {company.subTier}</p>
+          <div style={{fontWeight:800,color:"#f8fafc",marginBottom:2}}>Hospital del Valle · 2026 · I Semestre</div>
+          <div style={{fontSize:"0.78rem",color:"#94a3b8"}}>187/210 respuestas · 89.0% participación · Período cerrado: 4 jun. 2026</div>
         </div>
+        <span style={{marginLeft:"auto",padding:"5px 14px",borderRadius:999,fontSize:"0.72rem",fontWeight:800,background:"rgba(249,115,22,0.14)",border:"1px solid rgba(249,115,22,0.35)",color:"#fb923c",flexShrink:0}}>Pendiente</span>
       </div>
-      <WorkflowStepper current={step} onChange={setStep} completed={completed} />
-      <div style={{ background: "rgba(7,27,51,0.55)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 24, padding: "28px 32px" }}>
-        {step === "empresa"    && <StepEmpresa company={company} onNext={() => advance("periodo")} />}
-        {step === "periodo"    && <StepPeriodo company={company} onNext={() => advance("encuesta")} />}
-        {step === "encuesta"   && <StepEncuesta onNext={() => advance("validacion")} />}
-        {step === "validacion" && <StepValidacion onNext={() => advance("resultados")} />}
-        {step === "resultados" && <StepResultados />}
+      <ValidationPanel inline/>
+      <div style={{marginTop:22,padding:"16px 20px",background:"rgba(34,197,94,0.05)",border:"1px solid rgba(34,197,94,0.15)",borderRadius:14}}>
+        <p style={{fontSize:"0.8rem",color:"#94a3b8",margin:0}}>No hay más mediciones pendientes de validación.</p>
+      </div>
+    </div>
+  );
+}
+
+function SubscriptionsSection() {
+  const [showNew,setShowNew]=useState(false);
+  const plans=[
+    {tier:"Básico",    price:"$299/año",  tc:"#38bdf8", f:["1 medición/año","Hasta 100 colaboradores","Informe PDF automático","Soporte por correo"]},
+    {tier:"Profesional",price:"$599/año", tc:"#d4af37", f:["2 mediciones/año","Hasta 300 colaboradores","Validación Psicólogo Laboral","Benchmarking sectorial","Soporte prioritario"]},
+    {tier:"Enterprise",price:"$1.299/año",tc:"#a855f7", f:["Mediciones ilimitadas","Colaboradores ilimitados","Consultor dedicado","API + integraciones","Informes personalizados"]},
+  ];
+  const sc=(s:string)=>s==="activa"?"#22c55e":s==="por_vencer"?"#f97316":"#f87171";
+  const sl=(s:string)=>s==="activa"?"Activa":s==="por_vencer"?"Por vencer":"Expirada";
+  return (
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+        <div><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Suscripciones</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Acceso de empresas para gestionar mediciones de forma autónoma.</p></div>
+        <button onClick={()=>setShowNew(!showNew)} style={{padding:"9px 20px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer"}}>+ Nueva suscripción</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:13,marginBottom:24}}>
+        {plans.map(p=><div key={p.tier} style={{background:"rgba(7,27,51,0.6)",border:`1px solid ${p.tc}2a`,borderRadius:18,padding:"18px 20px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:11}}>
+            <span style={{fontWeight:900,color:p.tc,fontSize:"0.98rem"}}>{p.tier}</span>
+            <span style={{fontWeight:900,color:"#f8fafc",fontSize:"1rem"}}>{p.price}</span>
+          </div>
+          <ul style={{listStyle:"none",padding:0,margin:0,display:"flex",flexDirection:"column",gap:5}}>
+            {p.f.map(f=><li key={f} style={{fontSize:"0.76rem",color:"#94a3b8",display:"flex",gap:6,alignItems:"flex-start"}}><span style={{color:p.tc,flexShrink:0,marginTop:1}}>✓</span>{f}</li>)}
+          </ul>
+        </div>)}
+      </div>
+      {showNew&&(
+        <div style={{background:"rgba(7,27,51,0.8)",border:"1px solid rgba(212,175,55,0.22)",borderRadius:18,padding:"22px 26px",marginBottom:22}}>
+          <h3 style={{marginBottom:16,color:"#d4af37",fontSize:"1rem"}}>Nueva suscripción</h3>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:13}}>
+            {["Empresa","Plan","Vigencia (meses)"].map(l=><div key={l}><label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:6}}>{l}</label><input placeholder={l==="Empresa"?"Nombre":"Básico / Profesional / Enterprise"} style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem"}}/></div>)}
+          </div>
+          <div style={{display:"flex",gap:9,marginTop:14}}>
+            <button style={{padding:"9px 22px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer"}}>Crear suscripción</button>
+            <button onClick={()=>setShowNew(false)} style={{padding:"9px 18px",background:"transparent",border:"1px solid rgba(255,255,255,0.13)",color:"#94a3b8",borderRadius:999,fontWeight:700,fontSize:"0.83rem",cursor:"pointer"}}>Cancelar</button>
+          </div>
+        </div>
+      )}
+      <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,overflow:"hidden"}}>
+        <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <thead><tr style={{borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
+            {["Empresa","Plan","Desde","Hasta","Colaboradores","Estado","Acciones"].map(h=><th key={h} style={{padding:"13px 16px",textAlign:"left",fontSize:"0.65rem",fontWeight:900,letterSpacing:"0.11em",textTransform:"uppercase",color:"#94a3b8"}}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {SUBS.map((s,i)=>{const tc=TIER_C[s.tier];const c=sc(s.status);return(
+              <tr key={i} style={{borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+                <td style={{padding:"13px 16px",fontSize:"0.84rem",fontWeight:700,color:"#f8fafc"}}>{s.company}</td>
+                <td style={{padding:"13px 16px"}}><span style={{padding:"3px 11px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:tc+"18",color:tc}}>{s.tier}</span></td>
+                <td style={{padding:"13px 16px",fontSize:"0.8rem",color:"#94a3b8"}}>{s.inicio}</td>
+                <td style={{padding:"13px 16px",fontSize:"0.8rem",color:"#94a3b8"}}>{s.fin}</td>
+                <td style={{padding:"13px 16px",fontSize:"0.84rem",color:"#f8fafc",fontWeight:600}}>{s.empleados}</td>
+                <td style={{padding:"13px 16px"}}><span style={{padding:"3px 11px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:c+"18",border:`1px solid ${c}33`,color:c}}>{sl(s.status)}</span></td>
+                <td style={{padding:"13px 16px"}}><div style={{display:"flex",gap:7}}>
+                  <button style={{padding:"5px 11px",borderRadius:8,background:"rgba(56,189,248,0.09)",border:"1px solid rgba(56,189,248,0.22)",color:"#38bdf8",fontSize:"0.73rem",fontWeight:700,cursor:"pointer"}}>Renovar</button>
+                  <button style={{padding:"5px 11px",borderRadius:8,background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.2)",color:"#fca5a5",fontSize:"0.73rem",fontWeight:700,cursor:"pointer"}}>Cancelar</button>
+                </div></td>
+              </tr>
+            );})}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ConfigSection() {
+  return (
+    <div style={{maxWidth:600}}>
+      <div style={{marginBottom:22}}><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Configuración</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Perfil del consultor y preferencias de la plataforma.</p></div>
+      <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"24px 26px",marginBottom:14}}>
+        <h3 style={{fontSize:"0.88rem",fontWeight:800,color:"#d4af37",marginBottom:18}}>Perfil del consultor</h3>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {[["Nombre","Iván Viteri"],["Título","MSc. Psicología Laboral"],["Registro","SENESCYT-2018-XXXX"],["Institución","CENVIT GTH"],["Correo","iavip2018@gmail.com"],["Teléfono","+593 99 XXX XXXX"]].map(([l,v])=><div key={l}>
+            <label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:6}}>{l}</label>
+            <input defaultValue={v} style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem"}}/>
+          </div>)}
+        </div>
+        <button style={{marginTop:18,padding:"9px 22px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer"}}>Guardar cambios</button>
+      </div>
+      <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"20px 24px"}}>
+        <h3 style={{fontSize:"0.88rem",fontWeight:800,color:"#94a3b8",marginBottom:16}}>Notificaciones</h3>
+        {[["Nuevas respuestas recibidas","on"],["Período cerrado listo para validar","on"],["Suscripción próxima a vencer","on"],["Informes generados","off"]].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+          <span style={{fontSize:"0.84rem",color:"#f8fafc"}}>{l}</span>
+          <div style={{width:36,height:20,borderRadius:999,background:v==="on"?"#22c55e":"rgba(255,255,255,0.12)",position:"relative",cursor:"pointer"}}>
+            <div style={{width:14,height:14,borderRadius:"50%",background:"white",position:"absolute",top:3,left:v==="on"?19:3,transition:"left 0.2s"}}/>
+          </div>
+        </div>)}
       </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RAÍZ PRINCIPAL — DEMO DEL CONSULTOR
+// SIDEBAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NAV_ITEMS: {key: SideSection; icon: string; label: string; badge?: number}[] = [
+  {key:"dashboard",    icon:"⬡",  label:"Panel"},
+  {key:"empresas",     icon:"🏢", label:"Empresas"},
+  {key:"mediciones",   icon:"📅", label:"Mediciones"},
+  {key:"validaciones", icon:"✅", label:"Validaciones", badge:1},
+  {key:"subscriptions",icon:"💳", label:"Suscripciones"},
+  {key:"config",       icon:"⚙️", label:"Configuración"},
+];
+
+function Sidebar({active, onSelect}: {active: SideSection; onSelect:(s:SideSection)=>void}) {
+  return (
+    <aside style={{width:220,minWidth:220,background:"rgba(4,20,38,0.97)",borderRight:"1px solid rgba(212,175,55,0.15)",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,overflow:"hidden"}}>
+      {/* Logo */}
+      <div style={{padding:"20px 18px 16px",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <img src={LOGO_CENVIT} alt="CENVIT" style={{width:36,height:36,objectFit:"contain",background:"white",borderRadius:8,padding:3,border:"1px solid rgba(212,175,55,0.4)"}}/>
+          <div><div style={{fontWeight:900,fontSize:"0.9rem",color:"#d4af37",letterSpacing:"0.06em",lineHeight:1}}>CENVIT</div><div style={{fontSize:"0.62rem",color:"#64748b",marginTop:2}}>Panel Consultor</div></div>
+        </div>
+      </div>
+      {/* Nav */}
+      <nav style={{flex:1,padding:"12px 10px",overflowY:"auto"}}>
+        {NAV_ITEMS.map(item=>{const isA=active===item.key;return(
+          <button key={item.key} onClick={()=>onSelect(item.key)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,border:"none",cursor:"pointer",marginBottom:2,background:isA?"rgba(56,189,248,0.12)":"transparent",textAlign:"left"}}>
+            <span style={{fontSize:"1rem",width:20,textAlign:"center",lineHeight:1,flexShrink:0}}>{item.icon}</span>
+            <span style={{flex:1,fontSize:"0.84rem",fontWeight:700,color:isA?"#38bdf8":"#94a3b8"}}>{item.label}</span>
+            {item.badge&&<span style={{minWidth:18,height:18,borderRadius:999,background:"#f97316",color:"white",fontSize:"0.68rem",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px"}}>{item.badge}</span>}
+            {isA&&<div style={{width:3,height:22,borderRadius:999,background:"#38bdf8",flexShrink:0}}/>}
+          </button>
+        );})}
+      </nav>
+      {/* User */}
+      <div style={{padding:"14px 16px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <img src={LOGO_IVAN} alt="Iván Viteri" style={{width:34,height:34,objectFit:"contain",background:"white",borderRadius:8,padding:2,border:"1px solid rgba(56,189,248,0.3)",flexShrink:0}}/>
+          <div style={{minWidth:0}}>
+            <div style={{fontWeight:800,fontSize:"0.8rem",color:"#f8fafc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Iván Viteri</div>
+            <div style={{fontSize:"0.63rem",color:"#64748b"}}>Psicólogo Laboral</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RAÍZ PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
 function DemoRoot() {
-  const [navTab, setNavTab] = useState<"portfolio" | "subscriptions">("portfolio");
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [section, setSection] = useState<SideSection>("dashboard");
+  const [companyId, setCompanyId] = useState<string|null>(null);
 
-  const inCompany = selectedCompanyId !== null && selectedCompanyId !== "new";
+  function goCompany(id: string) { setCompanyId(id); setSection("empresas"); }
+
+  const sectionTitles: Record<SideSection,string> = {
+    dashboard:"Panel", empresas:"Empresas", mediciones:"Mediciones",
+    validaciones:"Validaciones", subscriptions:"Suscripciones", config:"Configuración"
+  };
 
   return (
-    <div className="shell">
+    <div style={{display:"flex",minHeight:"100vh"}}>
       <style>{css}</style>
-
       {/* Logo injection for print */}
-      <script dangerouslySetInnerHTML={{ __html: `window.addEventListener('beforeprint',function(){document.querySelectorAll('img').forEach(function(img){if(img.alt==='CENVIT'||img.alt==='Cenvit')img.src=${JSON.stringify(LOGO_CENVIT)};if(img.alt==='Iván Viteri')img.src=${JSON.stringify(LOGO_IVAN)};});});` }} />
+      <script dangerouslySetInnerHTML={{__html:`window.addEventListener('beforeprint',function(){document.querySelectorAll('img').forEach(function(i){if(i.alt==='CENVIT'||i.alt==='Cenvit')i.src=${JSON.stringify(LOGO_CENVIT)};if(i.alt==='Iván Viteri')i.src=${JSON.stringify(LOGO_IVAN)};});});`}}/>
 
-      {/* Header */}
-      <header style={{ background: "rgba(4,20,38,0.95)", borderBottom: "1px solid rgba(212,175,55,0.2)", padding: "10px 28px", display: "flex", alignItems: "center", gap: 16, position: "sticky", top: 0, zIndex: 100, backdropFilter: "blur(14px)" }}>
-        <img src={LOGO_CENVIT} alt="Cenvit" style={{ height: 44, width: 44, objectFit: "contain", background: "white", borderRadius: 8, padding: 4, border: "1px solid rgba(212,175,55,0.4)" }} />
-        <div style={{ width: 1, height: 32, background: "rgba(255,255,255,0.1)" }} />
-        <div>
-          <div style={{ fontWeight: 900, fontSize: "0.82rem", color: "#d4af37", letterSpacing: "0.08em" }}>CENVIT GTH</div>
-          <div style={{ fontSize: "0.65rem", color: "#94a3b8", marginTop: 1 }}>Panel del Consultor</div>
-        </div>
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: "0.7rem", color: "#94a3b8", fontStyle: "italic", background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.25)", padding: "4px 12px", borderRadius: 999 }}>⚠ Demo — datos simulados</span>
-        <div style={{ width: 1, height: 32, background: "rgba(255,255,255,0.1)" }} />
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontWeight: 800, fontSize: "0.82rem", color: "#f8fafc" }}>Iván Viteri</div>
-          <div style={{ fontSize: "0.63rem", color: "#94a3b8" }}>Psicólogo Laboral</div>
-        </div>
-        <img src={LOGO_IVAN} alt="Iván Viteri" style={{ height: 44, width: 44, objectFit: "contain", background: "white", borderRadius: 8, padding: 4, border: "1px solid rgba(56,189,248,0.3)" }} />
-      </header>
+      <Sidebar active={section} onSelect={s=>{setSection(s);setCompanyId(null);}}/>
 
-      {/* Nav bar */}
-      {!inCompany && (
-        <div style={{ background: "rgba(7,27,51,0.9)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "0 28px", display: "flex", gap: 2 }}>
-          {([["portfolio","🏠 Portfolio"], ["subscriptions","💳 Suscripciones"]] as const).map(([t, l]) => (
-            <button key={t} onClick={() => setNavTab(t)} style={{
-              padding: "12px 20px", background: "none", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "0.83rem",
-              color: navTab === t ? "#38bdf8" : "rgba(148,163,184,0.6)",
-              borderBottom: `2px solid ${navTab === t ? "#38bdf8" : "transparent"}`,
-            }}>{l}</button>
-          ))}
-        </div>
-      )}
+      <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,background:"linear-gradient(135deg,#041426,#071b33 42%,#0b2f56)"}}>
+        {/* Topbar */}
+        <header style={{background:"rgba(4,20,38,0.85)",borderBottom:"1px solid rgba(255,255,255,0.07)",padding:"0 28px",height:52,display:"flex",alignItems:"center",gap:12,backdropFilter:"blur(12px)",flexShrink:0}}>
+          {companyId&&<button onClick={()=>setCompanyId(null)} style={{background:"transparent",border:"none",color:"#94a3b8",fontSize:"0.8rem",cursor:"pointer",padding:"4px 0",fontWeight:700}}>Empresas</button>}
+          {companyId&&<span style={{color:"rgba(255,255,255,0.2)"}}>›</span>}
+          <span style={{fontSize:"0.88rem",fontWeight:700,color:"#f8fafc"}}>{companyId?COMPANIES.find(c=>c.id===companyId)?.nombre:sectionTitles[section]}</span>
+          <div style={{flex:1}}/>
+          <span style={{fontSize:"0.7rem",color:"#94a3b8",fontStyle:"italic",background:"rgba(249,115,22,0.08)",border:"1px solid rgba(249,115,22,0.2)",padding:"4px 12px",borderRadius:999}}>⚠ Demo — datos simulados</span>
+        </header>
 
-      <div className="container" style={{ paddingTop: 32 }}>
-        {inCompany ? (
-          <CompanyWorkflow companyId={selectedCompanyId!} onBack={() => setSelectedCompanyId(null)} />
-        ) : navTab === "subscriptions" ? (
-          <SubscriptionManager />
-        ) : (
-          <ConsultantPortfolio onSelectCompany={id => { if (id !== "new") setSelectedCompanyId(id); }} />
-        )}
+        {/* Content */}
+        <main style={{flex:1,padding:"28px 32px",overflowY:"auto"}}>
+          {companyId ? (
+            <CompanyWorkflow cid={companyId} onBack={()=>setCompanyId(null)}/>
+          ) : section==="dashboard" ? (
+            <DashboardHome onGoCompany={goCompany}/>
+          ) : section==="empresas" ? (
+            <EmpresasSection onOpenCompany={goCompany}/>
+          ) : section==="mediciones" ? (
+            <MedicionesSection onOpenCompany={goCompany}/>
+          ) : section==="validaciones" ? (
+            <ValidacionesSection/>
+          ) : section==="subscriptions" ? (
+            <SubscriptionsSection/>
+          ) : (
+            <ConfigSection/>
+          )}
+        </main>
       </div>
     </div>
   );
 }
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode><DemoRoot /></React.StrictMode>
+  <React.StrictMode><DemoRoot/></React.StrictMode>
 );
 
 void DIMENSIONS;
