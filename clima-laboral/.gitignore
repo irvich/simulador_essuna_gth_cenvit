@@ -1,6 +1,9 @@
 node_modules/
 dist/
+dist-app/
 demo-dist/
 demo-clima-laboral.html
 INFORME_ejemplo_14pags.pdf
 src/logoData.local.ts
+.env.local
+.env.*.local

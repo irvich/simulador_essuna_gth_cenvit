@@ -71,11 +71,26 @@
 //         Pégalos a continuación y vuelve a desplegar.
 //
 // ──────────────────────────────────────────────────────────────────────────────
+//
+// PASO 3: Las credenciales se leen de variables de entorno de Vite.
+//
+// Para desarrollo local, crea el archivo  clima-laboral/.env.local  con:
+//   VITE_SUPABASE_URL=https://xxxx.supabase.co
+//   VITE_SUPABASE_ANON_KEY=eyJhbGci...
+//   VITE_ADMIN_PASSWORD=tu-contraseña-segura
+//
+// Para Vercel: configura esas mismas variables en
+//   Project Settings → Environment Variables
+//
+// Para GitHub Pages: agrégalas como Secrets del repositorio y
+//   referéncialas en el workflow con  --env VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
+//
+// ──────────────────────────────────────────────────────────────────────────────
 
-export const SUPABASE_URL = "";
-export const SUPABASE_ANON_KEY = "";
+export const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL      ?? "";
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
 
-/** Contraseña para el panel administrativo de CENVIT. Cámbiala antes de desplegar. */
-export const ADMIN_PASSWORD = "cenvit2026";
+/** Contraseña para el panel administrativo de CENVIT. */
+export const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? "cenvit2026";
 
 export const IS_SUPABASE_ENABLED = SUPABASE_URL !== "" && SUPABASE_ANON_KEY !== "";
