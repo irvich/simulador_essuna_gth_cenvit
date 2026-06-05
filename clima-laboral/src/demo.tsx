@@ -4,7 +4,11 @@ import { PeriodDashboard } from "./PeriodDashboard";
 import { ReportDocument } from "./ReportDocument";
 import { QUESTIONS, DIMENSIONS } from "./questions";
 import { css } from "./styles";
-import { LOGO_CENVIT, LOGO_IVAN } from "./logoData";
+import { LOGO_CENVIT as _LC, LOGO_IVAN as _LI } from "./logoData";
+// Fallback a archivos /public si no hay base64 local (builds CI/CD sin logoData real)
+const _BASE = (typeof import.meta !== "undefined" && import.meta.env?.BASE_URL) || "/";
+const LOGO_CENVIT = _LC || `${_BASE}logo-cenvit.png`;
+const LOGO_IVAN = _LI || `${_BASE}logo-ivan-viteri.jpg`;
 import type { ActionRow, SurveyResponse, LikertValue } from "./types";
 import { scoreLevelColor, scoreLevelLabel } from "./shared";
 

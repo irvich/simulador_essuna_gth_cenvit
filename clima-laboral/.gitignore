@@ -3,4 +3,4 @@ dist/
 demo-dist/
 demo-clima-laboral.html
 INFORME_ejemplo_14pags.pdf
-src/logoData.ts
+src/logoData.local.ts
