@@ -5,7 +5,6 @@ import {
   DIMENSIONS,
   LIKERT_LABELS,
   QUESTIONS,
-  QUESTIONS_PER_DIMENSION,
 } from "./questions";
 import {
   BASE,
@@ -513,7 +512,7 @@ export default function App() {
                 return (
                   <div key={q.id} className="question-block">
                     <p className="q-number" style={{ color: currentDimension.color }}>
-                      Pregunta {dimensionIndex * QUESTIONS_PER_DIMENSION + qi + 1} / {QUESTIONS.length}
+                      Pregunta {QUESTIONS.indexOf(q) + 1} / {QUESTIONS.length}
                     </p>
                     <p className="q-text">{q.text}</p>
                     <div className="likert-scale">

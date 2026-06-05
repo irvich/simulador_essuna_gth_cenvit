@@ -407,272 +407,46 @@ export const css = `
 
   .print-only { display: none; }
   .pdf-cover { display: none; }
+  /* El informe formal sólo se muestra al imprimir (en pantalla se usa la pestaña dedicada del demo). */
+  .rp-print { display: none; }
 
   /* ══════════════════════════════════════════════════════════
      IMPRESIÓN / PDF — Diseño formal A4
      ══════════════════════════════════════════════════════════ */
   @media print {
-    /* ── Página base ─────────────────────────────────────── */
-    @page {
-      size: A4;
-      margin: 16mm 20mm 18mm;
-    }
-    @page :first { margin-top: 0; margin-bottom: 0; } /* portada ocupa la página entera */
+    /* Sólo se imprime el informe formal (.rp-print). Todo lo demás se oculta. */
+    @page { size: A4; margin: 0; }
 
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box !important; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
-    /* Variables de color para impresión */
-    :root {
-      --pr-ink: #0f172a;
-      --pr-muted: #475569;
-      --pr-faint: #94a3b8;
-      --pr-border: #cbd5e1;
-      --pr-bg: #f8fafc;
-      --pr-navy: #1e3a5f;
-      --pr-gold: #92722a;
-      --pr-red: #b91c1c;
-      --pr-green: #15803d;
-      --pr-amber: #b45309;
-    }
-
-    body { background: #fff !important; color: var(--pr-ink) !important; font-family: "Inter", sans-serif !important; font-size: 10pt !important; line-height: 1.5 !important; }
+    body { background: #fff !important; }
     .shell { background: #fff !important; }
-    .container { width: 100% !important; padding: 0 !important; margin: 0 !important; max-width: none !important; }
 
-    /* ── Ocultar elementos de interfaz web ─────────────── */
-    .topbar,
-    .no-print,
-    .section-nav,
-    .alert-chips-row,
-    .results-actions,
-    .filter-bar,
-    .date-filter-wrap,
-    .dept-filter-pills,
-    .q-analysis-toggle,
-    .demo-banner,
-    .btn-export,
-    .btn-secondary,
-    .btn-primary,
-    .btn-whatsapp,
-    .dept-row-clickable .dept-expand-icon,
-    .forecast-chip,
-    .corr-table-wrap,
-    .word-cloud-wrap,
-    .sent-summary,
-    .enps-block,
-    .part-ring-wrap,
-    .next-meas-card,
-    .trend-chart-wrap,
-    .dim-trend-wrap { display: none !important; }
+    /* Ocultar toda la interfaz interactiva */
+    .topbar, .results-wrap, .section-nav, .no-print, .container > *:not(.rp-print) { display: none !important; }
 
-    .print-only { display: block !important; }
+    /* Mostrar el informe formal */
+    .rp-print, .rp-document { display: block !important; }
+    .container { width: 100% !important; max-width: none !important; padding: 0 !important; margin: 0 !important; }
 
-    /* ── Portada — página completa ──────────────────────── */
-    .pdf-cover {
-      display: flex !important; flex-direction: column; justify-content: space-between;
-      width: 210mm; min-height: 297mm; padding: 22mm 24mm 18mm;
-      break-after: page; page-break-after: always;
-      background: white !important; color: var(--pr-ink) !important;
+    /* Cada página del informe ocupa exactamente una hoja A4, sin sombras ni márgenes externos */
+    .rp-page {
+      width: 210mm !important;
+      min-height: 297mm !important;
+      margin: 0 !important;
+      box-shadow: none !important;
+      break-after: page !important;
+      page-break-after: always !important;
+      break-inside: avoid !important;
     }
-    /* Logos en portada */
-    .pdf-cover-logos { display: flex !important; align-items: center; justify-content: space-between; margin-bottom: 0; }
-    .pdf-cover-logo-left, .pdf-cover-logo-right { display: flex !important; align-items: center; gap: 10px; }
-    .pdf-cover-logo-img { height: 44px; width: auto; object-fit: contain; }
-    .pdf-cover-logo-text { display: flex !important; flex-direction: column; gap: 1px; }
-    .pdf-cover-logo-name { font-size: 9pt; font-weight: 900; color: var(--pr-navy) !important; }
-    .pdf-cover-logo-sub { font-size: 6pt; color: var(--pr-faint) !important; max-width: 180px; line-height: 1.3; }
-    .pdf-cover-logos-sep { height: 1px; background: var(--pr-border) !important; margin: 10px 0 20px; }
+    .rp-page:last-child { break-after: auto !important; page-break-after: auto !important; }
+    .rp-document.rp-screen { background: #fff !important; padding: 0 !important; }
 
-    .pdf-cover-eyebrow { font-size: 7pt; letter-spacing: 0.28em; text-transform: uppercase; color: var(--pr-faint) !important; margin-bottom: 14px; }
-    .pdf-cover-company { font-size: 26pt; font-weight: 900; color: var(--pr-navy) !important; margin-bottom: 6px; line-height: 1.1; }
-    .pdf-cover-period { font-size: 13pt; color: var(--pr-muted) !important; margin-bottom: 4px; font-weight: 600; }
-    .pdf-cover-date { font-size: 8pt; color: var(--pr-faint) !important; }
-    .pdf-cover-score-wrap { display: flex; align-items: center; gap: 32px; margin: 36px 0; }
-    .pdf-cover-score-circle {
-      width: 110px; height: 110px; border-radius: 50%; border: 4px solid;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; background: white !important;
-    }
-    .pdf-cover-score-num { font-size: 22pt; font-weight: 900; line-height: 1; }
-    .pdf-cover-score-sub { font-size: 5.5pt; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pr-faint) !important; margin-top: 3px; }
-    .pdf-cover-level { display: inline-block; padding: 4px 14px; border-radius: 4px; border: 1.5px solid; font-weight: 800; font-size: 8.5pt; letter-spacing: 0.06em; text-transform: uppercase; background: white !important; }
-    .pdf-cover-participants { font-size: 9pt; color: var(--pr-muted) !important; }
-    .pdf-cover-sector { font-size: 8pt; color: var(--pr-faint) !important; }
-    .pdf-cover-dims { display: flex; flex-direction: column; gap: 9px; }
-    .pdf-cover-dims-title { font-size: 6.5pt; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pr-faint) !important; margin-bottom: 6px; }
-    .pdf-cover-dim-row { display: flex; align-items: center; gap: 12px; }
-    .pdf-cover-dim-name { flex: 0 0 160px; font-size: 8.5pt; font-weight: 600; color: var(--pr-ink) !important; }
-    .pdf-cover-dim-bar-track { flex: 1; height: 8px; background: #e2e8f0 !important; border-radius: 3px; overflow: visible; position: relative; }
-    .pdf-cover-dim-bar-fill { height: 100%; border-radius: 3px; }
-    .pdf-cover-dim-bm-line { position: absolute; top: -3px; bottom: -3px; width: 0; border-left: 1.5px dotted var(--pr-faint); }
-    .pdf-cover-dim-pct { flex: 0 0 34px; text-align: right; font-size: 8.5pt; font-weight: 700; color: var(--pr-ink) !important; }
-    .pdf-cover-bm-note { font-size: 6.5pt; color: var(--pr-faint) !important; margin-top: 6px; font-style: italic; }
-    .pdf-cover-footer { }
-    .pdf-cover-footer-sep { height: 1px; background: var(--pr-border) !important; margin-bottom: 10px; }
-    .pdf-cover-footer p { font-size: 7.5pt; color: var(--pr-muted) !important; text-align: center; }
-    .pdf-cover-confidential { font-size: 6pt !important; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pr-faint) !important; margin-top: 3px; }
-
-    /* ── Tipografía base ──────────────────────────────────── */
-    h1, .results-title { font-size: 16pt !important; color: var(--pr-navy) !important; margin: 0 0 4px !important; }
-    h2 { font-size: 11pt !important; color: var(--pr-navy) !important; margin: 0 0 8px !important; font-weight: 800 !important; }
-    h3 { font-size: 9.5pt !important; color: var(--pr-navy) !important; margin: 0 0 6px !important; font-weight: 700 !important; }
-    p { margin: 0 0 4px !important; color: var(--pr-muted) !important; }
-    .eyebrow, .gold { color: var(--pr-gold) !important; font-size: 7.5pt !important; letter-spacing: 0.14em !important; }
-    .results-meta { font-size: 8.5pt !important; color: var(--pr-muted) !important; }
-
-    /* ── Cabecera del informe ─────────────────────────────── */
-    .results-header {
-      background: white !important; border: none !important; border-bottom: 2px solid var(--pr-navy) !important;
-      padding: 12px 0 10px !important; margin-bottom: 14px !important;
-      box-shadow: none !important; backdrop-filter: none !important;
-    }
-
-    /* ── Contenedores (cards) ─────────────────────────────── */
-    .global-card, .radar-card, .breakdown-card, .recs-section, .matrix-section,
-    .stat-card, .results-footer, .composite-card {
-      background: white !important; border: 1px solid var(--pr-border) !important;
-      border-radius: 6px !important; backdrop-filter: none !important; box-shadow: none !important;
-      padding: 14px 16px !important; margin-bottom: 12px !important;
-    }
-    /* Importante: NO poner break-inside:avoid en cards grandes — dejar que fluyan */
-    .breakdown-card, .recs-section, .matrix-section, .global-card { break-inside: auto !important; }
-
-    /* ── Barra de estadísticas ───────────────────────────── */
-    .statsbar { display: flex !important; gap: 8px !important; margin-bottom: 12px !important; flex-wrap: wrap !important; }
-    .stat-card { flex: 1 1 130px !important; padding: 10px 12px !important; }
-    .stat-num { font-size: 16pt !important; font-weight: 900 !important; color: var(--pr-navy) !important; }
-    .stat-label { font-size: 6.5pt !important; color: var(--pr-faint) !important; text-transform: uppercase !important; letter-spacing: 0.1em !important; }
-
-    /* ── Indicadores globales ────────────────────────────── */
-    .global-label { font-size: 7.5pt !important; color: var(--pr-faint) !important; text-transform: uppercase !important; letter-spacing: 0.12em !important; }
-    .global-score { font-size: 40pt !important; line-height: 1 !important; color: var(--pr-navy) !important; }
-    .global-bar-track { background: #e2e8f0 !important; }
-    .level-badge { border-width: 1.5px !important; font-size: 8pt !important; }
-
-    /* ── Indicadores compuestos (tabla compacta en print) ─ */
-    .composite-wrap { margin-bottom: 10px !important; }
-    .composite-row { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; gap: 8px !important; }
-    .composite-card {
-      background: var(--pr-bg) !important; border: 1px solid var(--pr-border) !important;
-      padding: 8px 10px !important; border-radius: 5px !important; break-inside: avoid !important;
-    }
-    .composite-score { font-size: 14pt !important; }
-    .composite-label { font-size: 7.5pt !important; }
-    .composite-desc { font-size: 6pt !important; }
-    .composite-level { font-size: 6pt !important; }
-    .composite-icon { font-size: 14pt !important; }
-
-    /* ── Gráfico radar + barras dimensiones ─────────────── */
-    .chart-grid {
-      display: grid !important; grid-template-columns: 220px 1fr !important;
-      gap: 14px !important; align-items: start !important; break-inside: avoid !important;
-    }
-    .radar-card { padding: 10px !important; }
-    .radar-wrap svg { width: 220px !important; height: 220px !important; }
-
-    /* ── Barras de dimensiones ───────────────────────────── */
-    .score-bar-track { background: #e2e8f0 !important; height: 7px !important; }
-    .breakdown-name { font-size: 8.5pt !important; }
-    .breakdown-pct { font-size: 8pt !important; }
-    .breakdown-header { margin-bottom: 4px !important; }
-    .breakdown-item { padding: 8px 0 !important; border-bottom: 1px solid var(--pr-border) !important; break-inside: avoid !important; }
-    .breakdown-item:last-child { border-bottom: none !important; }
-    .target-gap { font-size: 7pt !important; }
-    .benchmark-summary { font-size: 8pt !important; color: var(--pr-muted) !important; }
-
-    /* ── Distribución Likert ─────────────────────────────── */
-    .dim-dist-wrap { margin-top: 5px !important; }
-    .dist-bar-track { height: 5px !important; }
-    .dist-align-badge { font-size: 6.5pt !important; padding: 1px 5px !important; }
-
-    /* ── Mapa de riesgo (scatter) ────────────────────────── */
-    .matrix-section { break-before: page !important; page-break-before: always !important; }
-    svg text { fill: var(--pr-muted) !important; }
-
-    /* ── Tabla de departamentos ──────────────────────────── */
-    .dept-table { width: 100% !important; border-collapse: collapse !important; font-size: 8.5pt !important; }
-    .dept-table th { background: var(--pr-bg) !important; color: var(--pr-ink) !important; border: 1px solid var(--pr-border) !important; padding: 6px 8px !important; font-size: 7.5pt !important; text-transform: uppercase !important; letter-spacing: 0.06em !important; }
-    .dept-table td { border: 1px solid var(--pr-border) !important; padding: 6px 8px !important; color: var(--pr-ink) !important; }
-    .dept-table tr { break-inside: avoid !important; }
-
-    /* ── Heatmap departamentos ───────────────────────────── */
-    .heatmap-table th, .heatmap-table td { font-size: 7pt !important; border: 1px solid var(--pr-border) !important; padding: 4px 6px !important; color: var(--pr-ink) !important; }
-
-    /* ── Ranking de prioridades ──────────────────────────── */
-    .priority-list { break-inside: auto !important; }
-    .priority-row { background: var(--pr-bg) !important; border: 1px solid var(--pr-border) !important; padding: 7px 10px !important; break-inside: avoid !important; border-radius: 4px !important; }
-    .priority-dim { font-size: 8.5pt !important; color: var(--pr-ink) !important; }
-    .priority-meta { font-size: 7.5pt !important; color: var(--pr-muted) !important; }
-    .priority-rank { border-radius: 4px !important; font-size: 9pt !important; }
-
-    /* ── Recomendaciones ─────────────────────────────────── */
-    .recs-grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
-    .rec-card { background: var(--pr-bg) !important; border: 1px solid var(--pr-border) !important; break-inside: avoid !important; padding: 10px 12px !important; border-radius: 4px !important; }
-    .rec-header { margin-bottom: 5px !important; }
-    .rec-dim { font-size: 8pt !important; font-weight: 800 !important; }
-    .rec-badge { font-size: 7pt !important; }
-    .rec-text { font-size: 8pt !important; color: var(--pr-ink) !important; line-height: 1.45 !important; }
-
-    /* ── Preguntas críticas / fortalezas ─────────────────── */
-    .top-q-grid { grid-template-columns: 1fr 1fr !important; gap: 12px !important; break-inside: avoid !important; }
-    .top-q-card { background: var(--pr-bg) !important; border: 1px solid var(--pr-border) !important; break-inside: avoid !important; padding: 8px 10px !important; border-radius: 4px !important; }
-    .top-q-text { font-size: 8pt !important; color: var(--pr-ink) !important; }
-    .top-q-score, .top-q-num { font-size: 8pt !important; }
-
-    /* ── Análisis por pregunta ───────────────────────────── */
-    .q-analysis-body { break-inside: auto !important; margin-top: 10px !important; }
-    .q-dim-section { break-inside: auto !important; margin-bottom: 10px !important; }
-    .q-row { break-inside: avoid !important; padding: 4px 0 !important; border-bottom: 1px solid #f1f5f9 !important; }
-    .q-row-num { font-size: 7pt !important; }
-    .q-row-text { font-size: 7.5pt !important; color: var(--pr-ink) !important; }
-    .q-row-bars { flex: 0 0 110px !important; }
-    .q-row-score { font-size: 7.5pt !important; }
-    .q-dist-bar { height: 4px !important; }
-
-    /* ── Plan de acción (nueva página) ──────────────────── */
-    .matrix-section { break-before: page !important; }
-    table.matrix { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; table-layout: fixed !important; }
-    table.matrix th { background: #eff6ff !important; color: var(--pr-navy) !important; border: 1px solid var(--pr-border) !important; padding: 5px 6px !important; font-size: 7pt !important; text-transform: uppercase !important; letter-spacing: 0.05em !important; }
-    table.matrix td { border: 1px solid var(--pr-border) !important; padding: 5px 6px !important; color: var(--pr-ink) !important; vertical-align: top !important; word-break: break-word !important; }
-    table.matrix tr { break-inside: avoid !important; }
-    .matrix-input, .matrix-textarea, .matrix-select {
-      color: var(--pr-ink) !important; background: transparent !important;
-      border: none !important; padding: 0 !important; font-size: 7.5pt !important;
-      resize: none !important; white-space: pre-wrap !important; word-break: break-word !important;
-    }
-    .matrix-section h2 { color: var(--pr-navy) !important; }
-    .plan-progress-inline, .plan-save-area { display: none !important; }
-    .status-badge { font-size: 6.5pt !important; padding: 1px 6px !important; }
-    .status-completada { background: #f0fdf4 !important; color: var(--pr-green) !important; border-color: #bbf7d0 !important; }
-    .status-en-progreso { background: #fffbeb !important; color: var(--pr-amber) !important; border-color: #fde68a !important; }
-    .status-pendiente { background: var(--pr-bg) !important; color: var(--pr-faint) !important; border-color: var(--pr-border) !important; }
-
-    /* ── Resumen ejecutivo ───────────────────────────────── */
-    .exec-summary-box { background: var(--pr-bg) !important; border: 1px solid var(--pr-border) !important; color: var(--pr-ink) !important; break-inside: avoid !important; }
-    .exec-kpi { background: white !important; border: 1px solid var(--pr-border) !important; break-inside: avoid !important; }
-    .exec-narrative { font-size: 8.5pt !important; color: var(--pr-ink) !important; line-height: 1.55 !important; }
-
-    /* ── Comentarios ─────────────────────────────────────── */
-    .comments-list { max-height: none !important; overflow: visible !important; break-inside: auto !important; }
-    .comment-item { background: var(--pr-bg) !important; border-left-color: var(--pr-border) !important; break-inside: avoid !important; padding: 8px 12px !important; margin-bottom: 6px !important; }
-    .comment-text { font-size: 8.5pt !important; color: var(--pr-ink) !important; font-style: italic !important; }
-    .comment-meta { font-size: 7.5pt !important; color: var(--pr-faint) !important; }
-
-    /* ── Colores de nivel ────────────────────────────────── */
-    .cdelta-up, .delta-up { color: var(--pr-green) !important; }
-    .cdelta-down, .delta-down { color: var(--pr-red) !important; }
-    .cdelta-same, .delta-same { color: var(--pr-faint) !important; }
-
-    /* ── Pie de página del informe ───────────────────────── */
-    .results-footer { background: white !important; border-top: 1px solid var(--pr-border) !important; border-left: none !important; border-right: none !important; border-bottom: none !important; border-radius: 0 !important; margin-top: 14px !important; }
-    .footer-logo-name { color: var(--pr-ink) !important; }
-    .footer-logo-sub { color: var(--pr-faint) !important; }
-    .topbar-logo, .footer-logo { background: white !important; }
-
-    /* ── Márgenes entre secciones ────────────────────────── */
-    .breakdown-card + .breakdown-card,
-    .breakdown-card + .recs-section,
-    .chart-grid + .breakdown-card { margin-top: 10px !important; }
-
+    /* Evitar cortes feos dentro de bloques clave */
+    .rp-callout, .rp-mini-callout, .rp-note, .rp-kpi, .rp-dim-card,
+    .rp-bar-row, .rp-table tr, .rp-prio, .rp-route-step, .rp-milestone,
+    .rp-concl-item, .rp-cycle-step, .rp-hist-kpi { break-inside: avoid !important; }
+    .rp-table thead { display: table-header-group; }
   }
 
   /* ── LANDING (multi-empresa) ─────────────────────────── */

@@ -1,10 +1,14 @@
 export type DimensionKey =
   | "liderazgo"
   | "comunicacion"
-  | "trabajo_en_equipo"
+  | "reconocimiento"
   | "motivacion"
+  | "trabajo_en_equipo"
   | "condiciones_seguridad"
-  | "desarrollo_crecimiento";
+  | "desarrollo_crecimiento"
+  | "equidad"
+  | "cultura"
+  | "bienestar";
 
 export interface Question {
   id: number;

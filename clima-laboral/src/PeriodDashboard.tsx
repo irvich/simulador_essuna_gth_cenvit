@@ -10,6 +10,7 @@ import {
   type DimScore,
 } from "./shared";
 import { ActionMatrix } from "./ActionMatrix";
+import { ReportDocument } from "./ReportDocument";
 import type { ActionRow, SurveyResponse } from "./types";
 
 // ── Participation trend chart ──────────────────────────────────────────────────
@@ -1106,14 +1107,14 @@ function TopQuestions({ responses }: { responses: SurveyResponse[] }) {
 
 // Valores de referencia por sector (LATAM, fuentes: SHRM, Aon, Gallup adaptado)
 const SECTOR_BENCHMARKS: Record<string, { label: string; values: Record<string, number> }> = {
-  general:      { label: "General (Latinoamérica)",      values: { liderazgo: 67, comunicacion: 63, trabajo_en_equipo: 70, motivacion: 62, condiciones_seguridad: 69, desarrollo_crecimiento: 58 } },
-  manufactura:  { label: "Manufactura",                  values: { liderazgo: 64, comunicacion: 59, trabajo_en_equipo: 68, motivacion: 60, condiciones_seguridad: 72, desarrollo_crecimiento: 55 } },
-  retail:       { label: "Comercio / Retail",            values: { liderazgo: 65, comunicacion: 65, trabajo_en_equipo: 71, motivacion: 63, condiciones_seguridad: 67, desarrollo_crecimiento: 57 } },
-  tecnologia:   { label: "Tecnología",                   values: { liderazgo: 72, comunicacion: 68, trabajo_en_equipo: 74, motivacion: 70, condiciones_seguridad: 71, desarrollo_crecimiento: 69 } },
-  salud:        { label: "Salud",                        values: { liderazgo: 66, comunicacion: 62, trabajo_en_equipo: 69, motivacion: 64, condiciones_seguridad: 75, desarrollo_crecimiento: 60 } },
-  educacion:    { label: "Educación",                    values: { liderazgo: 68, comunicacion: 66, trabajo_en_equipo: 72, motivacion: 65, condiciones_seguridad: 68, desarrollo_crecimiento: 62 } },
-  servicios:    { label: "Servicios profesionales",      values: { liderazgo: 66, comunicacion: 64, trabajo_en_equipo: 70, motivacion: 62, condiciones_seguridad: 68, desarrollo_crecimiento: 57 } },
-  construccion: { label: "Construcción",                 values: { liderazgo: 63, comunicacion: 58, trabajo_en_equipo: 66, motivacion: 59, condiciones_seguridad: 65, desarrollo_crecimiento: 53 } },
+  general:      { label: "General (Latinoamérica)", values: { liderazgo: 67, comunicacion: 63, reconocimiento: 58, motivacion: 65, trabajo_en_equipo: 72, condiciones_seguridad: 69, desarrollo_crecimiento: 60, equidad: 61, cultura: 71, bienestar: 64 } },
+  manufactura:  { label: "Manufactura",            values: { liderazgo: 64, comunicacion: 59, reconocimiento: 55, motivacion: 62, trabajo_en_equipo: 70, condiciones_seguridad: 72, desarrollo_crecimiento: 56, equidad: 58, cultura: 68, bienestar: 60 } },
+  retail:       { label: "Comercio / Retail",      values: { liderazgo: 65, comunicacion: 64, reconocimiento: 57, motivacion: 64, trabajo_en_equipo: 71, condiciones_seguridad: 67, desarrollo_crecimiento: 58, equidad: 60, cultura: 70, bienestar: 61 } },
+  tecnologia:   { label: "Tecnología",             values: { liderazgo: 72, comunicacion: 68, reconocimiento: 64, motivacion: 71, trabajo_en_equipo: 74, condiciones_seguridad: 71, desarrollo_crecimiento: 69, equidad: 66, cultura: 73, bienestar: 67 } },
+  salud:        { label: "Salud",                  values: { liderazgo: 66, comunicacion: 62, reconocimiento: 58, motivacion: 65, trabajo_en_equipo: 70, condiciones_seguridad: 75, desarrollo_crecimiento: 60, equidad: 61, cultura: 71, bienestar: 58 } },
+  educacion:    { label: "Educación",              values: { liderazgo: 68, comunicacion: 66, reconocimiento: 60, motivacion: 67, trabajo_en_equipo: 72, condiciones_seguridad: 68, desarrollo_crecimiento: 63, equidad: 63, cultura: 74, bienestar: 64 } },
+  servicios:    { label: "Servicios profesionales", values: { liderazgo: 66, comunicacion: 64, reconocimiento: 58, motivacion: 64, trabajo_en_equipo: 70, condiciones_seguridad: 68, desarrollo_crecimiento: 59, equidad: 61, cultura: 70, bienestar: 62 } },
+  construccion: { label: "Construcción",           values: { liderazgo: 63, comunicacion: 58, reconocimiento: 54, motivacion: 60, trabajo_en_equipo: 66, condiciones_seguridad: 65, desarrollo_crecimiento: 54, equidad: 56, cultura: 66, bienestar: 57 } },
 };
 
 function ScoreBarWithTarget({ pct, color, target, benchmark }: {
@@ -1147,6 +1148,7 @@ export function PeriodDashboard({
   savedPlan,
   onSavePlan,
   onBack,
+  history,
 }: {
   responses: SurveyResponse[];
   periodoLabel: string;
@@ -1159,6 +1161,7 @@ export function PeriodDashboard({
   savedPlan?: ActionRow[] | null;
   onSavePlan?: (rows: ActionRow[]) => Promise<void>;
   onBack?: () => void;
+  history?: Array<{ label: string; pct: number }>;
 }) {
   const [expandedDept, setExpandedDept] = useState<string | null>(null);
   const [filterDept, setFilterDept] = useState<string>("");
@@ -1253,81 +1256,29 @@ export function PeriodDashboard({
   const weakest = useMemo(() => [...scores].sort((a, b) => a.pct - b.pct)[0], [scores]);
 
   return (
+    <>
+      {/* ── Informe formal de 14 páginas — destino de impresión / PDF ─────── */}
+      {responses.length > 0 && (
+        <ReportDocument
+          className="rp-print"
+          empresaNombre={empresaNombre}
+          periodoLabel={periodoLabel}
+          prevLabel={prevLabel}
+          totalColaboradores={totalColaboradores}
+          responses={responses}
+          prevResponses={prevResponses}
+          benchmark={sectorBenchmark}
+          sectorLabel={sectorData.label}
+          plan={savedPlan}
+          history={history}
+        />
+      )}
+
     <div className="results-wrap">
       {onBack && (
         <button className="btn-secondary no-print" onClick={onBack} style={{ marginBottom: 20 }}>
           ← Volver
         </button>
-      )}
-
-      {/* ── Portada PDF (print-only cover page) ─────────────── */}
-      {responses.length > 0 && (
-        <div className="pdf-cover">
-          {/* Logos encabezado portada */}
-          <div className="pdf-cover-logos">
-            <div className="pdf-cover-logo-left">
-              <img src={`${BASE}logo-cenvit.png`} alt="Cenvit" className="pdf-cover-logo-img" />
-              <div className="pdf-cover-logo-text">
-                <span className="pdf-cover-logo-name">CENVIT GTH</span>
-                <span className="pdf-cover-logo-sub">Centro Educativo y de Negocios con Visión Integral del Talento Humano</span>
-              </div>
-            </div>
-            <div className="pdf-cover-logo-right">
-              <div className="pdf-cover-logo-text" style={{ textAlign: "right" }}>
-                <span className="pdf-cover-logo-name">Iván Viteri</span>
-                <span className="pdf-cover-logo-sub">Psicología Laboral en acción</span>
-              </div>
-              <img src={`${BASE}logo-ivan-viteri.jpg`} alt="Iván Viteri" className="pdf-cover-logo-img" />
-            </div>
-          </div>
-          <div className="pdf-cover-logos-sep" />
-
-          <div className="pdf-cover-top">
-            <p className="pdf-cover-eyebrow">INFORME DE CLIMA LABORAL</p>
-            <h1 className="pdf-cover-company">{empresaNombre || "Empresa"}</h1>
-            <p className="pdf-cover-period">{periodoLabel}</p>
-            <p className="pdf-cover-date">
-              Generado el {new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })}
-            </p>
-          </div>
-
-          <div className="pdf-cover-score-wrap">
-            <div className="pdf-cover-score-circle" style={{ borderColor: scoreLevelColor(globalPct) }}>
-              <span className="pdf-cover-score-num" style={{ color: scoreLevelColor(globalPct) }}>{globalPct}%</span>
-              <span className="pdf-cover-score-sub">ÍNDICE GLOBAL</span>
-            </div>
-            <div className="pdf-cover-score-meta">
-              <span className="pdf-cover-level" style={{ color: scoreLevelColor(globalPct), borderColor: scoreLevelColor(globalPct) }}>
-                {scoreLevelLabel(globalPct)}
-              </span>
-              <p className="pdf-cover-participants">{responses.length} participante(s) encuestado(s)</p>
-              {(sectorKey && sectorKey !== "general") && (
-                <p className="pdf-cover-sector">Sector de referencia: {sectorData.label}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="pdf-cover-dims">
-            <p className="pdf-cover-dims-title">Resultados por dimensión</p>
-            {scores.map(({ dim, pct }) => (
-              <div key={dim.key} className="pdf-cover-dim-row">
-                <span className="pdf-cover-dim-name">{dim.label}</span>
-                <div className="pdf-cover-dim-bar-track">
-                  <div className="pdf-cover-dim-bar-fill" style={{ width: `${pct}%`, background: dim.color }} />
-                  <div className="pdf-cover-dim-bm-line" style={{ left: `${sectorBenchmark[dim.key] ?? 65}%` }} />
-                </div>
-                <span className="pdf-cover-dim-pct">{pct}%</span>
-              </div>
-            ))}
-            <p className="pdf-cover-bm-note">La línea vertical en cada barra indica el benchmark sectorial de referencia.</p>
-          </div>
-
-          <div className="pdf-cover-footer">
-            <div className="pdf-cover-footer-sep" />
-            <p>Diagnóstico elaborado con <strong>Simulador de Clima Laboral · Cenvit GTH</strong></p>
-            <p className="pdf-cover-confidential">DOCUMENTO CONFIDENCIAL · Uso exclusivo del área de Recursos Humanos</p>
-          </div>
-        </div>
       )}
 
       <div className="results-header" id="sec-resumen">
@@ -1913,5 +1864,6 @@ export function PeriodDashboard({
         </>
       )}
     </div>
+    </>
   );
 }

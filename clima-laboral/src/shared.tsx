@@ -3,22 +3,58 @@ import type { DimensionConfig } from "./types";
 
 export const BASE = import.meta.env.BASE_URL;
 
+// Niveles de recomendación (3 tramos) — usados para textos de mejora por dimensión.
 export function scoreLevel(pct: number): "high" | "medium" | "low" {
   if (pct >= 80) return "high";
-  if (pct >= 60) return "medium";
+  if (pct >= 65) return "medium";
   return "low";
 }
 
-export function scoreLevelLabel(pct: number): string {
-  if (pct >= 80) return "Bueno";
-  if (pct >= 60) return "Regular";
-  return "Crítico";
+// ── Escala de interpretación CENVIT (5 tramos) ────────────────────────────────
+//   90–100 · Excelente
+//   80–89  · Favorable
+//   70–79  · Medio favorable
+//   65–69  · Preventivo
+//   < 65   · Crítico / intervención prioritaria
+export type ScoreTier = "excelente" | "favorable" | "medio" | "preventivo" | "critico";
+
+export function scoreTier(pct: number): ScoreTier {
+  if (pct >= 90) return "excelente";
+  if (pct >= 80) return "favorable";
+  if (pct >= 70) return "medio";
+  if (pct >= 65) return "preventivo";
+  return "critico";
 }
 
+export function scoreLevelLabel(pct: number): string {
+  switch (scoreTier(pct)) {
+    case "excelente": return "Excelente";
+    case "favorable": return "Favorable";
+    case "medio": return "Medio favorable";
+    case "preventivo": return "Preventivo";
+    default: return "Crítico";
+  }
+}
+
+// Color para la interfaz web (oscuro) — tonos saturados sobre fondo navy.
 export function scoreLevelColor(pct: number): string {
-  if (pct >= 80) return "#22c55e";
-  if (pct >= 60) return "#d4af37";
-  return "#f87171";
+  switch (scoreTier(pct)) {
+    case "excelente": return "#22c55e";
+    case "favorable": return "#4ade80";
+    case "medio": return "#d4af37";
+    case "preventivo": return "#fb923c";
+    default: return "#f87171";
+  }
+}
+
+// Color para impresión / PDF (institucional navy + ámbar, alto contraste sobre blanco).
+export function scoreTierPrintColor(pct: number): string {
+  switch (scoreTier(pct)) {
+    case "excelente":
+    case "favorable":
+    case "medio": return "#1e3a5f";   // navy institucional para niveles aceptables
+    default: return "#c89b2c";         // ámbar para preventivo / crítico
+  }
 }
 
 export interface DimScore {
