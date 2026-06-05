@@ -394,9 +394,9 @@ function StepResultados() {
   const [tab,setTab]=useState<ResultsTab>("dashboard");
   return (
     <div>
-      <div style={{display:"flex",gap:2,borderBottom:"1px solid rgba(255,255,255,0.07)",marginBottom:22}}>
+      <div style={{display:"flex",gap:4,marginBottom:22,background:"rgba(255,255,255,0.04)",borderRadius:12,padding:4,width:"fit-content",border:"1px solid rgba(255,255,255,0.07)"}}>
         {([["dashboard","📊 Dashboard"],["report","📄 Informe 14 págs"],["survey","📝 Vista Encuesta"]] as const).map(([t,l])=>(
-          <button key={t} onClick={()=>setTab(t)} style={{padding:"9px 17px",background:"none",border:"none",cursor:"pointer",fontWeight:700,fontSize:"0.8rem",color:tab===t?"#38bdf8":"rgba(148,163,184,0.55)",borderBottom:`2px solid ${tab===t?"#38bdf8":"transparent"}`}}>{l}</button>
+          <button key={t} onClick={()=>setTab(t)} style={{padding:"8px 16px",background:tab===t?"rgba(56,189,248,0.18)":"transparent",border:`1px solid ${tab===t?"rgba(56,189,248,0.35)":"transparent"}`,borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:"0.8rem",color:tab===t?"#38bdf8":"rgba(148,163,184,0.55)",transition:"all 0.15s"}}>{l}</button>
         ))}
       </div>
       {tab==="report"?<ReportDocument className="rp-screen" empresaNombre="Empresa Demostración S.A." periodoLabel="2026 · I Semestre" prevLabel="2025 · II Semestre" totalColaboradores={120} responses={curR} prevResponses={prevR} benchmark={{}} sectorLabel="General (Latinoamérica)" plan={demoPlan} history={demoHistory} logoCenvit={LOGO_CENVIT} logoIvan={LOGO_IVAN}/>
@@ -422,15 +422,30 @@ function CompanyWorkflow({cid, onBack}: {cid: string; onBack: ()=>void}) {
   });
   function advance(next: WorkflowStep){setCompleted(p=>p.includes(step)?p:[...p,step]);setStep(next);}
   const sc = STATUS_CFG[co.status];
+  const initials = co.nombre.split(" ").slice(0,2).map((w:string)=>w[0]).join("").toUpperCase();
   return (
     <div>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18}}>
-        <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 13px",borderRadius:10,background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"#94a3b8",fontSize:"0.8rem",fontWeight:700,cursor:"pointer"}}>← Volver</button>
-        <div style={{flex:1}}>
-          <div style={{fontWeight:900,fontSize:"1rem",color:"#f8fafc"}}>{co.nombre}</div>
-          <div style={{fontSize:"0.72rem",color:"#94a3b8"}}>{co.sector} · {co.empleados} colaboradores · <span style={{color:sc.color}}>{sc.label}</span></div>
+      <div style={{background:"rgba(7,27,51,0.6)",border:`1px solid ${sc.color}28`,borderRadius:20,padding:"18px 22px",marginBottom:22,boxShadow:`inset 0 3px 0 ${sc.color}80`}}>
+        <div style={{display:"flex",alignItems:"center",gap:16}}>
+          <div style={{width:56,height:56,borderRadius:16,background:`${sc.color}18`,border:`2px solid ${sc.color}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:"1.3rem",color:sc.color,flexShrink:0}}>{initials}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:900,fontSize:"1.1rem",color:"#f8fafc",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{co.nombre}</div>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <span style={{fontSize:"0.75rem",color:"#94a3b8"}}>{co.sector} · {co.empleados} colaboradores</span>
+              <span style={{padding:"2px 10px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:sc.bg,border:`1px solid ${sc.color}44`,color:sc.color}}>{sc.label}</span>
+              <span style={{padding:"2px 9px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:TIER_C[co.subTier]+"18",border:`1px solid ${TIER_C[co.subTier]}33`,color:TIER_C[co.subTier]}}>{co.subTier}</span>
+            </div>
+          </div>
+          {co.lastScore!=null&&<ScoreGauge score={co.lastScore} size={84}/>}
+          {co.lastScore==null&&co.lastResponses!=null&&(
+            <div style={{textAlign:"center",flexShrink:0}}>
+              <div style={{fontSize:"1.6rem",fontWeight:900,color:"#38bdf8",lineHeight:1}}>{Math.round(co.lastResponses/co.lastTotal!*100)}%</div>
+              <div style={{fontSize:"0.65rem",color:"#94a3b8",marginTop:3}}>{co.lastResponses}/{co.lastTotal}</div>
+              <div style={{fontSize:"0.63rem",color:"#94a3b8"}}>respuestas</div>
+            </div>
+          )}
+          <button onClick={onBack} style={{display:"flex",alignItems:"center",gap:5,padding:"7px 14px",borderRadius:10,background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"#94a3b8",fontSize:"0.8rem",fontWeight:700,cursor:"pointer",flexShrink:0,alignSelf:"flex-start"}}>← Volver</button>
         </div>
-        <span style={{padding:"5px 14px",borderRadius:999,fontSize:"0.72rem",fontWeight:800,background:TIER_C[co.subTier]+"18",border:`1px solid ${TIER_C[co.subTier]}44`,color:TIER_C[co.subTier]}}>{co.subTier}</span>
       </div>
       <WorkflowStepper current={step} onChange={setStep} completed={completed}/>
       <div style={{background:"rgba(7,27,51,0.45)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:22,padding:"26px 30px"}}>
@@ -670,7 +685,7 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
         <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"20px 22px"}}>
           <h3 style={{fontSize:"0.88rem",fontWeight:900,color:"#f8fafc",marginBottom:16}}>Tareas pendientes</h3>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {pending.map((p,i)=><div key={i} style={{background:`${p.color}0d`,border:`1px solid ${p.color}28`,borderRadius:12,padding:"12px 14px"}}>
+            {pending.map((p,i)=><div key={i} style={{background:`${p.color}0d`,border:`1px solid ${p.color}28`,borderRadius:12,padding:"12px 14px",boxShadow:`inset 3px 0 0 ${p.color}`}}>
               <div style={{fontSize:"0.78rem",fontWeight:800,color:p.color,marginBottom:3}}>{p.co}</div>
               <div style={{fontSize:"0.75rem",color:"#94a3b8",marginBottom:10,lineHeight:1.4}}>{p.task}</div>
               <button onClick={()=>onGoCompany(p.id)} style={{padding:"6px 14px",borderRadius:999,background:p.color+"22",border:`1px solid ${p.color}44`,color:p.color,fontWeight:800,fontSize:"0.74rem",cursor:"pointer"}}>{p.cta} →</button>
@@ -684,14 +699,31 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
 
 function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
   const [hovId,setHovId]=useState<string|null>(null);
+  const [q,setQ]=useState("");
+  const [sf,setSf]=useState("all");
+  const FILT=[["all","Todas"],["validated","Validadas"],["collecting","Recolectando"],["pending_validation","Pend. validación"],["new","Sin medición"]];
+  const filtered=COMPANIES.filter(co=>{
+    const mq=!q||co.nombre.toLowerCase().includes(q.toLowerCase())||co.sector.toLowerCase().includes(q.toLowerCase());
+    const mf=sf==="all"||co.status===sf;
+    return mq&&mf;
+  });
   return (
     <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Empresas cliente</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Gestiona el ciclo completo de medición de cada cliente.</p></div>
         <button style={{padding:"9px 20px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer"}}>+ Nuevo cliente</button>
       </div>
+      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:18,flexWrap:"wrap"}}>
+        <div style={{position:"relative",flex:"1 1 220px",maxWidth:320}}>
+          <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:"0.88rem",pointerEvents:"none",color:"#64748b"}}>🔍</span>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Buscar empresa o sector..." style={{width:"100%",padding:"9px 12px 9px 33px",borderRadius:12,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.84rem",boxSizing:"border-box",outline:"none"}}/>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {FILT.map(([v,l])=><button key={v} onClick={()=>setSf(v)} style={{padding:"6px 13px",borderRadius:999,fontSize:"0.73rem",fontWeight:700,cursor:"pointer",background:sf===v?"rgba(56,189,248,0.14)":"rgba(255,255,255,0.04)",border:`1px solid ${sf===v?"rgba(56,189,248,0.35)":"rgba(255,255,255,0.09)"}`,color:sf===v?"#38bdf8":"#94a3b8",transition:"all 0.14s"}}>{l}</button>)}
+        </div>
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:14}}>
-        {COMPANIES.map(co=>{
+        {filtered.map(co=>{
           const sc=STATUS_CFG[co.status]; const tc=TIER_C[co.subTier];
           const days=Math.ceil((new Date(co.subExpiry).getTime()-Date.now())/86400000);
           return(
@@ -721,6 +753,7 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
             </div>
           );
         })}
+        {filtered.length===0&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:"48px 0",color:"#475569",fontSize:"0.88rem"}}>Sin resultados para la búsqueda actual.</div>}
         <div style={{background:"rgba(7,27,51,0.35)",border:"2px dashed rgba(255,255,255,0.1)",borderRadius:20,padding:"22px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,minHeight:180,cursor:"pointer"}}>
           <div style={{width:48,height:48,borderRadius:"50%",background:"rgba(56,189,248,0.08)",border:"2px dashed rgba(56,189,248,0.28)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.4rem",color:"#38bdf8"}}>+</div>
           <div style={{textAlign:"center"}}><div style={{fontWeight:800,color:"#38bdf8",marginBottom:3}}>Nuevo cliente</div><div style={{fontSize:"0.76rem",color:"#94a3b8"}}>Dar de alta empresa y crear primer período</div></div>
@@ -1006,6 +1039,7 @@ function DemoRoot() {
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const [section, setSection] = useState<SideSection>("dashboard");
   const [companyId, setCompanyId] = useState<string|null>(null);
+  const [showBell, setShowBell] = useState(false);
 
   if (!loggedIn) return <LoginScreen onLogin={() => setLoggedIn(true)} />;
 
@@ -1033,9 +1067,23 @@ function DemoRoot() {
           <span style={{fontSize:"0.88rem",fontWeight:700,color:"#f8fafc"}}>{companyId?COMPANIES.find(c=>c.id===companyId)?.nombre:sectionTitles[section]}</span>
           <div style={{flex:1}}/>
           <span style={{fontSize:"0.7rem",color:"#94a3b8",fontStyle:"italic",background:"rgba(249,115,22,0.08)",border:"1px solid rgba(249,115,22,0.2)",padding:"4px 12px",borderRadius:999}}>⚠ Demo — datos simulados</span>
-          <div style={{position:"relative",cursor:"pointer",marginLeft:4,flexShrink:0}}>
-            <span style={{fontSize:"1rem",color:"#64748b"}}>🔔</span>
+          <div style={{position:"relative",cursor:"pointer",marginLeft:4,flexShrink:0}} onClick={()=>setShowBell(b=>!b)}>
+            <span style={{fontSize:"1rem",color:showBell?"#38bdf8":"#64748b",transition:"color 0.15s"}}>🔔</span>
             <span style={{position:"absolute",top:-3,right:-3,width:13,height:13,borderRadius:"50%",background:"#f97316",border:"2px solid rgba(4,20,38,0.95)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.54rem",fontWeight:900,color:"white",lineHeight:"1"}}>1</span>
+            {showBell&&(
+              <div style={{position:"absolute",top:"calc(100% + 10px)",right:-8,width:292,background:"rgba(4,20,38,0.97)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:16,padding:"14px",zIndex:200,boxShadow:"0 20px 48px rgba(0,0,0,0.55)",cursor:"default"}} onClick={e=>e.stopPropagation()}>
+                <div style={{fontSize:"0.63rem",fontWeight:900,letterSpacing:"0.12em",textTransform:"uppercase",color:"#475569",marginBottom:10,padding:"0 2px"}}>Notificaciones</div>
+                <div style={{background:"rgba(249,115,22,0.07)",border:"1px solid rgba(249,115,22,0.22)",borderRadius:11,padding:"11px 12px",display:"flex",gap:10,alignItems:"flex-start",cursor:"pointer"}} onClick={()=>{setShowBell(false);goCompany("hospital");}}>
+                  <div style={{width:32,height:32,borderRadius:"50%",background:"rgba(249,115,22,0.14)",border:"1px solid rgba(249,115,22,0.35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.9rem",flexShrink:0}}>⏳</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:"0.8rem",fontWeight:700,color:"#f8fafc",marginBottom:2}}>Hospital del Valle</div>
+                    <div style={{fontSize:"0.72rem",color:"#94a3b8",lineHeight:1.4}}>Período cerrado · Pend. validación · 187/210 resp.</div>
+                    <div style={{fontSize:"0.67rem",color:"#64748b",marginTop:3}}>Ayer 17:30</div>
+                  </div>
+                </div>
+                <div style={{marginTop:10,textAlign:"center",fontSize:"0.71rem",color:"#334155",padding:"4px 0"}}>No hay más notificaciones</div>
+              </div>
+            )}
           </div>
           <div style={{width:28,height:28,borderRadius:"50%",overflow:"hidden",border:"1.5px solid rgba(56,189,248,0.3)",cursor:"pointer",flexShrink:0}}>
             <img src={LOGO_IVAN} alt="avatar" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
