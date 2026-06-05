@@ -480,6 +480,38 @@ function HistoryChart({data,h=72}:{data:{label:string;pct:number}[];h?:number}) 
   );
 }
 
+function ScoreGauge({score,size=130}:{score:number;size?:number}) {
+  const c=size/2,r=size*0.37,sw=Math.max(6,size*0.076);
+  const clr=scoreLevelColor(score);
+  const p=(a:number)=>({x:+(c+r*Math.cos(a*Math.PI/180)).toFixed(2),y:+(c+r*Math.sin(a*Math.PI/180)).toFixed(2)});
+  const ts=p(135),te=p(45);
+  const trackD=`M${ts.x},${ts.y} A${r},${r} 0 1,1 ${te.x},${te.y}`;
+  const sweep=score/100*270,ea=(135+sweep)%360,ep=p(ea);
+  const scoreD=score>0?`M${ts.x},${ts.y} A${r},${r} 0 ${sweep>180?1:0},1 ${ep.x},${ep.y}`:null;
+  return(
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <path d={trackD} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={sw} strokeLinecap="round"/>
+      {scoreD&&<path d={scoreD} fill="none" stroke={clr} strokeWidth={sw} strokeLinecap="round"/>}
+      <text x={c} y={c-2} textAnchor="middle" dominantBaseline="middle" fill={clr} fontSize={size*0.21} fontWeight={900}>{score}%</text>
+      <text x={c} y={c+size*0.165} textAnchor="middle" dominantBaseline="middle" fill="rgba(148,163,184,0.65)" fontSize={size*0.082} fontWeight={600}>{scoreLevelLabel(score)}</text>
+    </svg>
+  );
+}
+
+function ScoreRing({score,size=52}:{score:number;size?:number}) {
+  const sw=size*0.115,r=(size-sw*2)/2,c=size/2;
+  const circ=2*Math.PI*r,clr=scoreLevelColor(score);
+  return(
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={c} cy={c} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={sw}/>
+      <circle cx={c} cy={c} r={r} fill="none" stroke={clr} strokeWidth={sw}
+        strokeDasharray={`${circ*score/100} ${circ}`} strokeLinecap="round"
+        transform={`rotate(-90 ${c} ${c})`}/>
+      <text x={c} y={c+1} textAnchor="middle" dominantBaseline="middle" fill={clr} fontSize={size*0.27} fontWeight={900}>{score}</text>
+    </svg>
+  );
+}
+
 function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
   const kpis=[{icon:"🏢",label:"Empresas cliente",value:"4",sub:"+1 este semestre",trend:[1,2,2,3,4],tColor:"#22c55e"},{icon:"📊",label:"Mediciones activas",value:"3",sub:"2026 · I Semestre",trend:[4,3,5,4,3],tColor:"#38bdf8"},{icon:"⏳",label:"Pend. validación",value:"1",sub:"Hospital del Valle",alert:true,trend:[0,1,0,2,1],tColor:"#f97316"},{icon:"💳",label:"Suscripciones",value:"4",sub:"1 por vencer",warn:true,trend:[2,3,3,4,4],tColor:"#fb923c"}];
   const activity=[
@@ -496,10 +528,24 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
   ];
   return (
     <div>
-      <div style={{marginBottom:24}}>
-        <p style={{fontSize:"0.75rem",color:"#94a3b8",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase"}}>Jueves, 5 de junio de 2026</p>
-        <h2 style={{fontSize:"1.5rem",fontWeight:900,color:"#f8fafc",marginTop:4}}>Bienvenido, Iván 👋</h2>
-        <p style={{fontSize:"0.88rem",color:"#94a3b8",marginTop:3}}>Tienes <strong style={{color:"#f97316"}}>1 validación pendiente</strong> y 1 suscripción por vencer.</p>
+      <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:18,marginBottom:22,alignItems:"center"}}>
+        <div>
+          <p style={{fontSize:"0.75rem",color:"#94a3b8",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase"}}>Jueves, 5 de junio de 2026</p>
+          <h2 style={{fontSize:"1.5rem",fontWeight:900,color:"#f8fafc",marginTop:4}}>Bienvenido, Iván 👋</h2>
+          <p style={{fontSize:"0.88rem",color:"#94a3b8",marginTop:3}}>Tienes <strong style={{color:"#f97316"}}>1 validación pendiente</strong> y 1 suscripción por vencer.</p>
+        </div>
+        <div style={{background:"rgba(7,27,51,0.65)",border:`1px solid ${scoreLevelColor(curPct)}28`,borderRadius:20,padding:"16px 22px",display:"flex",gap:18,alignItems:"center",flexShrink:0}}>
+          <ScoreGauge score={curPct} size={116}/>
+          <div>
+            <div style={{fontSize:"0.62rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#64748b",marginBottom:4}}>Clima laboral · 2026-I</div>
+            <div style={{fontSize:"0.76rem",color:"#94a3b8",marginBottom:8}}>Empresa Demostración S.A.</div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+              <span style={{fontSize:"0.82rem",fontWeight:800,color:"#4ade80"}}>▲ {curPct-prevPct}pts</span>
+              <span style={{fontSize:"0.74rem",color:"#64748b"}}>vs. semestre anterior</span>
+            </div>
+            <div style={{fontSize:"0.72rem",color:"#64748b"}}>103/120 respondieron · 85.8%</div>
+          </div>
+        </div>
       </div>
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:22}}>
@@ -577,10 +623,14 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
               </div>
               {co.lastPeriod&&<div>
                 <div style={{fontSize:"0.63rem",fontWeight:900,letterSpacing:"0.12em",textTransform:"uppercase",color:"#94a3b8",marginBottom:5}}>{co.lastPeriod}</div>
-                {co.lastScore!=null?(<div style={{display:"flex",alignItems:"center",gap:9}}>
-                  <div style={{flex:1,height:5,borderRadius:999,background:"rgba(255,255,255,0.07)"}}><div style={{height:"100%",width:`${co.lastScore}%`,background:scoreLevelColor(co.lastScore),borderRadius:999}}/></div>
-                  <span style={{fontSize:"0.85rem",fontWeight:800,color:scoreLevelColor(co.lastScore)}}>{co.lastScore}%</span>
-                </div>):<div style={{fontSize:"0.82rem",color:"#38bdf8"}}>Recolectando · {co.lastResponses}/{co.lastTotal}</div>}
+                {co.lastScore!=null?(<div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <ScoreRing score={co.lastScore} size={52}/>
+                  <div>
+                    <div style={{fontSize:"0.68rem",color:"#64748b",marginBottom:2}}>Índice global</div>
+                    <div style={{fontSize:"0.88rem",fontWeight:800,color:scoreLevelColor(co.lastScore)}}>{scoreLevelLabel(co.lastScore)}</div>
+                    <div style={{fontSize:"0.72rem",color:"#64748b",marginTop:1}}>{co.lastScore}%</div>
+                  </div>
+                </div>):<div style={{display:"flex",alignItems:"center",gap:7,fontSize:"0.82rem",color:"#38bdf8"}}><span>⏳</span>Recolectando · {co.lastResponses}/{co.lastTotal}</div>}
               </div>}
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
                 <span style={{padding:"4px 11px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:sc.bg,border:`1px solid ${sc.color}44`,color:sc.color}}>{sc.label}</span>
@@ -667,6 +717,7 @@ function ValidacionesSection() {
 
 function SubscriptionsSection() {
   const [showNew,setShowNew]=useState(false);
+  const [hovPlan,setHovPlan]=useState<string|null>(null);
   const plans=[
     {tier:"Básico",    price:"$299/año",  tc:"#38bdf8", f:["1 medición/año","Hasta 100 colaboradores","Informe PDF automático","Soporte por correo"]},
     {tier:"Profesional",price:"$599/año", tc:"#d4af37", f:["2 mediciones/año","Hasta 300 colaboradores","Validación Psicólogo Laboral","Benchmarking sectorial","Soporte prioritario"]},
@@ -681,7 +732,7 @@ function SubscriptionsSection() {
         <button onClick={()=>setShowNew(!showNew)} style={{padding:"9px 20px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer"}}>+ Nueva suscripción</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:13,marginBottom:24}}>
-        {plans.map(p=><div key={p.tier} style={{background:"rgba(7,27,51,0.6)",border:`1px solid ${p.tc}2a`,borderRadius:18,padding:"18px 20px"}}>
+        {plans.map(p=><div key={p.tier} onMouseEnter={()=>setHovPlan(p.tier)} onMouseLeave={()=>setHovPlan(null)} style={{background:hovPlan===p.tier?"rgba(12,40,72,0.8)":"rgba(7,27,51,0.6)",border:`1px solid ${hovPlan===p.tier?p.tc+"55":p.tc+"2a"}`,borderRadius:18,padding:"18px 20px",transition:"all 0.18s",transform:hovPlan===p.tier?"translateY(-3px)":"none",boxShadow:hovPlan===p.tier?`0 8px 24px rgba(0,0,0,0.3),0 0 0 1px ${p.tc}18`:"none",cursor:"pointer"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:11}}>
             <span style={{fontWeight:900,color:p.tc,fontSize:"0.98rem"}}>{p.tier}</span>
             <span style={{fontWeight:900,color:"#f8fafc",fontSize:"1rem"}}>{p.price}</span>
