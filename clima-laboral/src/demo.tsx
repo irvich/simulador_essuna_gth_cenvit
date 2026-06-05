@@ -455,6 +455,31 @@ function Sparkline({data,color,w=64,h=28}:{data:number[];color:string;w?:number;
   return(<svg width={w} height={h} style={{display:"block",overflow:"visible"}}><polyline points={pts} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" opacity={0.7}/><circle cx={last[0]} cy={last[1]} r={2.5} fill={color}/></svg>);
 }
 
+function HistoryChart({data,h=72}:{data:{label:string;pct:number}[];h?:number}) {
+  const W=500,PD=32,aW=W-PD*2,MN=50,MX=100,RNG=MX-MN;
+  const cx=(i:number)=>PD+(i/(data.length-1))*aW;
+  const cy=(v:number)=>h-((v-MN)/RNG)*(h-18)-9;
+  const lpts=data.map((_,i)=>`${cx(i)},${cy(data[i].pct)}`).join(" ");
+  const apts=[`${cx(0)},${h+2}`,lpts,`${cx(data.length-1)},${h+2}`].join(" ");
+  const lc=scoreLevelColor(data[data.length-1].pct);
+  return(
+    <svg viewBox={`0 0 ${W} ${h+26}`} width="100%" height={h+26} style={{display:"block"}} preserveAspectRatio="none">
+      <defs><linearGradient id="hcg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={lc} stopOpacity={0.2}/><stop offset="100%" stopColor={lc} stopOpacity={0.01}/></linearGradient></defs>
+      {[65,75,85].map(v=><line key={v} x1={PD} y1={cy(v)} x2={W-PD} y2={cy(v)} stroke="rgba(255,255,255,0.05)" strokeWidth={1}/>)}
+      {[65,75,85].map(v=><text key={v} x={PD-4} y={cy(v)+3} textAnchor="end" fill="rgba(148,163,184,0.3)" fontSize={8}>{v}</text>)}
+      <polygon points={apts} fill="url(#hcg)"/>
+      <polyline points={lpts} fill="none" stroke={lc} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+      {data.map((d,i)=>{const x=cx(i),y=cy(d.pct),last=i===data.length-1;return(
+        <g key={d.label}>
+          <circle cx={x} cy={y} r={last?4:2.5} fill={last?lc:"rgba(255,255,255,0.3)"} stroke={last?"rgba(0,0,0,0.2)":"none"} strokeWidth={1}/>
+          <text x={x} y={h+20} textAnchor="middle" fill="rgba(148,163,184,0.55)" fontSize={9} fontWeight={700}>{d.label}</text>
+          <text x={x} y={y-8} textAnchor="middle" fill={last?lc:"rgba(255,255,255,0.45)"} fontSize={last?11:9} fontWeight={last?900:600}>{d.pct}%</text>
+        </g>
+      );})}
+    </svg>
+  );
+}
+
 function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
   const kpis=[{icon:"🏢",label:"Empresas cliente",value:"4",sub:"+1 este semestre",trend:[1,2,2,3,4],tColor:"#22c55e"},{icon:"📊",label:"Mediciones activas",value:"3",sub:"2026 · I Semestre",trend:[4,3,5,4,3],tColor:"#38bdf8"},{icon:"⏳",label:"Pend. validación",value:"1",sub:"Hospital del Valle",alert:true,trend:[0,1,0,2,1],tColor:"#f97316"},{icon:"💳",label:"Suscripciones",value:"4",sub:"1 por vencer",warn:true,trend:[2,3,3,4,4],tColor:"#fb923c"}];
   const activity=[
@@ -492,6 +517,14 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
             <div style={{fontSize:"0.68rem",color:k.alert||k.warn?"#f97316":"#64748b",marginTop:2}}>{k.sub}</div>
           </div>
         );})}
+      </div>
+      {/* Trend chart */}
+      <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"18px 22px",marginBottom:16}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
+          <h3 style={{fontSize:"0.88rem",fontWeight:900,color:"#f8fafc",margin:0}}>Evolución del clima laboral</h3>
+          <span style={{fontSize:"0.72rem",color:"#94a3b8"}}>Empresa Demostración S.A. · últimos 5 períodos</span>
+        </div>
+        <HistoryChart data={demoHistory}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 360px",gap:16}}>
         {/* Actividad */}
@@ -569,6 +602,7 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
 }
 
 function MedicionesSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
+  const [hovRow,setHovRow]=useState<number|null>(null);
   const meds=[
     {co:"Empresa Demostración S.A.",periodo:"2026 · I Semestre",respuestas:103,total:120,score:curPct,status:"validated",  id:"demo"},
     {co:"Empresa Demostración S.A.",periodo:"2025 · II Semestre",respuestas:109,total:120,score:prevPct,status:"validated", id:"demo"},
@@ -587,7 +621,7 @@ function MedicionesSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
           </thead>
           <tbody>
             {meds.map((m,i)=>{const sc=STATUS_CFG[m.status as keyof typeof STATUS_CFG];const pct=Math.round((m.respuestas/m.total)*100);return(
-              <tr key={i} style={{borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+              <tr key={i} onMouseEnter={()=>setHovRow(i)} onMouseLeave={()=>setHovRow(null)} style={{borderBottom:"1px solid rgba(255,255,255,0.05)",background:hovRow===i?"rgba(56,189,248,0.04)":"transparent",transition:"background 0.12s",cursor:"default"}}>
                 <td style={{padding:"13px 16px",fontSize:"0.84rem",fontWeight:700,color:"#f8fafc"}}>{m.co}</td>
                 <td style={{padding:"13px 16px",fontSize:"0.82rem",color:"#94a3b8"}}>{m.periodo}</td>
                 <td style={{padding:"13px 16px",fontSize:"0.84rem",color:"#f8fafc"}}>{m.respuestas}/{m.total}</td>
@@ -736,37 +770,42 @@ const NAV_ITEMS: {key: SideSection; icon: string; label: string; badge?: number}
   {key:"config",       icon:"⚙️", label:"Configuración"},
 ];
 
-function Sidebar({active, onSelect}: {active: SideSection; onSelect:(s:SideSection)=>void}) {
+function Sidebar({active, onSelect, collapsed, onToggle}: {active: SideSection; onSelect:(s:SideSection)=>void; collapsed:boolean; onToggle:()=>void}) {
   const [hovNav,setHovNav]=useState<string|null>(null);
+  const W=collapsed?56:220;
   return (
-    <aside style={{width:220,minWidth:220,background:"rgba(4,20,38,0.97)",borderRight:"1px solid rgba(212,175,55,0.15)",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,overflow:"hidden"}}>
+    <aside style={{width:W,minWidth:W,background:"rgba(4,20,38,0.97)",borderRight:"1px solid rgba(212,175,55,0.15)",display:"flex",flexDirection:"column",height:"100vh",position:"sticky",top:0,overflow:"hidden",transition:"width 0.22s ease,min-width 0.22s ease",flexShrink:0}}>
       {/* Logo */}
-      <div style={{padding:"20px 18px 16px",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <img src={LOGO_CENVIT} alt="CENVIT" style={{width:36,height:36,objectFit:"contain",background:"white",borderRadius:8,padding:3,border:"1px solid rgba(212,175,55,0.4)"}}/>
-          <div><div style={{fontWeight:900,fontSize:"0.9rem",color:"#d4af37",letterSpacing:"0.06em",lineHeight:1}}>CENVIT</div><div style={{fontSize:"0.62rem",color:"#64748b",marginTop:2}}>Panel Consultor</div></div>
-        </div>
+      <div style={{padding:collapsed?"18px 10px 14px":"20px 18px 16px",borderBottom:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"flex-start",gap:10,flexShrink:0}}>
+        <img src={LOGO_CENVIT} alt="CENVIT" style={{width:36,height:36,objectFit:"contain",background:"white",borderRadius:8,padding:3,border:"1px solid rgba(212,175,55,0.4)",flexShrink:0}}/>
+        {!collapsed&&<div><div style={{fontWeight:900,fontSize:"0.9rem",color:"#d4af37",letterSpacing:"0.06em",lineHeight:1}}>CENVIT</div><div style={{fontSize:"0.62rem",color:"#64748b",marginTop:2}}>Panel Consultor</div></div>}
       </div>
       {/* Nav */}
-      <nav style={{flex:1,padding:"12px 10px",overflowY:"auto"}}>
+      <nav style={{flex:1,padding:collapsed?"10px 6px":"12px 10px",overflowY:"auto"}}>
         {NAV_ITEMS.map(item=>{const isA=active===item.key;return(
-          <button key={item.key} onClick={()=>onSelect(item.key)} onMouseEnter={()=>setHovNav(item.key)} onMouseLeave={()=>setHovNav(null)} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,border:"none",cursor:"pointer",marginBottom:2,background:isA?"rgba(56,189,248,0.12)":hovNav===item.key?"rgba(255,255,255,0.05)":"transparent",textAlign:"left",transition:"background 0.15s"}}>
+          <button key={item.key} onClick={()=>onSelect(item.key)} onMouseEnter={()=>setHovNav(item.key)} onMouseLeave={()=>setHovNav(null)} title={collapsed?item.label:undefined} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"flex-start",gap:10,padding:collapsed?"10px 0":"10px 12px",borderRadius:12,border:"none",cursor:"pointer",marginBottom:2,background:isA?"rgba(56,189,248,0.12)":hovNav===item.key?"rgba(255,255,255,0.05)":"transparent",textAlign:"left",transition:"background 0.15s",position:"relative"}}>
             <span style={{fontSize:"1rem",width:20,textAlign:"center",lineHeight:1,flexShrink:0}}>{item.icon}</span>
-            <span style={{flex:1,fontSize:"0.84rem",fontWeight:700,color:isA?"#38bdf8":"#94a3b8"}}>{item.label}</span>
-            {item.badge&&<span style={{minWidth:18,height:18,borderRadius:999,background:"#f97316",color:"white",fontSize:"0.68rem",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px"}}>{item.badge}</span>}
-            {isA&&<div style={{width:3,height:22,borderRadius:999,background:"#38bdf8",flexShrink:0}}/>}
+            {!collapsed&&<span style={{flex:1,fontSize:"0.84rem",fontWeight:700,color:isA?"#38bdf8":"#94a3b8"}}>{item.label}</span>}
+            {!collapsed&&item.badge&&<span style={{minWidth:18,height:18,borderRadius:999,background:"#f97316",color:"white",fontSize:"0.68rem",fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 5px"}}>{item.badge}</span>}
+            {collapsed&&item.badge&&<span style={{position:"absolute",top:5,right:7,width:8,height:8,borderRadius:"50%",background:"#f97316",border:"1.5px solid rgba(4,20,38,0.95)"}}/>}
+            {!collapsed&&isA&&<div style={{width:3,height:22,borderRadius:999,background:"#38bdf8",flexShrink:0}}/>}
           </button>
         );})}
       </nav>
+      {/* Collapse toggle */}
+      <div style={{padding:collapsed?"8px 6px":"6px 10px",borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+        <button onClick={onToggle} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"flex-end",gap:6,padding:"7px 10px",borderRadius:10,border:"none",cursor:"pointer",background:"transparent",color:"#475569",fontSize:"0.8rem",fontWeight:900,transition:"color 0.15s"}} onMouseEnter={e=>(e.currentTarget.style.color="#94a3b8")} onMouseLeave={e=>(e.currentTarget.style.color="#475569")}>
+          {collapsed?"›":"‹"}
+          {!collapsed&&<span style={{fontSize:"0.68rem",fontWeight:700,color:"#475569"}}>Contraer</span>}
+        </button>
+      </div>
       {/* User */}
-      <div style={{padding:"14px 16px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <img src={LOGO_IVAN} alt="Iván Viteri" style={{width:34,height:34,objectFit:"contain",background:"white",borderRadius:8,padding:2,border:"1px solid rgba(56,189,248,0.3)",flexShrink:0}}/>
-          <div style={{minWidth:0}}>
-            <div style={{fontWeight:800,fontSize:"0.8rem",color:"#f8fafc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Iván Viteri</div>
-            <div style={{fontSize:"0.63rem",color:"#64748b"}}>Psicólogo Laboral</div>
-          </div>
-        </div>
+      <div style={{padding:collapsed?"10px 6px":"14px 16px",borderTop:"1px solid rgba(255,255,255,0.07)",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"flex-start",gap:10}}>
+        <img src={LOGO_IVAN} alt="Iván Viteri" style={{width:34,height:34,objectFit:"contain",background:"white",borderRadius:8,padding:2,border:"1px solid rgba(56,189,248,0.3)",flexShrink:0}}/>
+        {!collapsed&&<div style={{minWidth:0}}>
+          <div style={{fontWeight:800,fontSize:"0.8rem",color:"#f8fafc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Iván Viteri</div>
+          <div style={{fontSize:"0.63rem",color:"#64748b"}}>Psicólogo Laboral</div>
+        </div>}
       </div>
     </aside>
   );
@@ -822,6 +861,7 @@ function LoginScreen({onLogin}: {onLogin:()=>void}) {
 
 function DemoRoot() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [sideCollapsed, setSideCollapsed] = useState(false);
   const [section, setSection] = useState<SideSection>("dashboard");
   const [companyId, setCompanyId] = useState<string|null>(null);
 
@@ -840,7 +880,7 @@ function DemoRoot() {
       {/* Logo injection for print */}
       <script dangerouslySetInnerHTML={{__html:`window.addEventListener('beforeprint',function(){document.querySelectorAll('img').forEach(function(i){if(i.alt==='CENVIT'||i.alt==='Cenvit')i.src=${JSON.stringify(LOGO_CENVIT)};if(i.alt==='Iván Viteri')i.src=${JSON.stringify(LOGO_IVAN)};});});`}}/>
 
-      <Sidebar active={section} onSelect={s=>{setSection(s);setCompanyId(null);}}/>
+      <Sidebar active={section} onSelect={s=>{setSection(s);setCompanyId(null);}} collapsed={sideCollapsed} onToggle={()=>setSideCollapsed(c=>!c)}/>
 
       <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,background:"linear-gradient(135deg,#041426,#071b33 42%,#0b2f56)"}}>
         {/* Topbar */}
