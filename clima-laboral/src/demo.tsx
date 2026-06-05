@@ -536,6 +536,45 @@ function DimBreakdown({responses}:{responses:SurveyResponse[]}) {
   );
 }
 
+function CountUp({to,duration=600}:{to:number;duration?:number}) {
+  const [n,setN]=useState(0);
+  useEffect(()=>{
+    if(to===0)return;
+    const start=Date.now();let raf=0;
+    const step=()=>{const p=Math.min((Date.now()-start)/duration,1);setN(Math.round((1-Math.pow(1-p,3))*to));if(p<1)raf=requestAnimationFrame(step);};
+    raf=requestAnimationFrame(step);
+    return()=>cancelAnimationFrame(raf);
+  },[to,duration]);
+  return <>{n}</>;
+}
+
+function RadarChart({responses,size=218}:{responses:SurveyResponse[];size?:number}) {
+  const n=DIMENSIONS.length,cx=size/2,cy=size/2,R=size*0.32;
+  const scores=DIMENSIONS.map(d=>{
+    const qs=QUESTIONS.filter(q=>q.dimension===d.key);
+    let sum=0,count=0;
+    for(const r of responses)for(const q of qs){const v=r.answers[q.id];if(v!==undefined){sum+=v;count++;}}
+    return count===0?0:Math.round(sum/count/5*100);
+  });
+  const avg=Math.round(scores.reduce((a,b)=>a+b,0)/n);
+  const clr=scoreLevelColor(avg);
+  const pt=(i:number,pct:number)=>{const a=(i/n)*2*Math.PI-Math.PI/2,rr=R*pct/100;return{x:+(cx+rr*Math.cos(a)).toFixed(1),y:+(cy+rr*Math.sin(a)).toFixed(1)};};
+  const lpt=(i:number)=>{const a=(i/n)*2*Math.PI-Math.PI/2,rr=R*1.32;return{x:+(cx+rr*Math.cos(a)).toFixed(1),y:+(cy+rr*Math.sin(a)).toFixed(1)};};
+  const poly=(pct:number)=>Array.from({length:n},(_,i)=>{const p=pt(i,pct);return`${p.x},${p.y}`;}).join(" ");
+  const dpts=scores.map((_,i)=>pt(i,scores[i]));
+  const path=dpts.map((p,i)=>`${i===0?"M":"L"}${p.x},${p.y}`).join(" ")+"Z";
+  const SHORT:Record<string,string>={liderazgo:"Liderazgo",comunicacion:"Comunic.",reconocimiento:"Reconoc.",motivacion:"Motivac.",trabajo_en_equipo:"T.Equipo",condiciones_seguridad:"Condic.",desarrollo_crecimiento:"Desarro.",equidad:"Equidad",cultura:"Cultura",bienestar:"Bienestar"};
+  return(
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} overflow="visible" style={{display:"block",margin:"0 auto"}}>
+      {[25,50,75,100].map(p=><polygon key={p} points={poly(p)} fill={p===100?"rgba(255,255,255,0.015)":"none"} stroke="rgba(255,255,255,0.06)" strokeWidth={1}/>)}
+      {Array.from({length:n},(_,i)=>{const p=pt(i,100);return<line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="rgba(255,255,255,0.05)" strokeWidth={1}/>;})}
+      <path d={path} fill={clr} fillOpacity={0.13} stroke={clr} strokeWidth={1.5} strokeLinejoin="round"/>
+      {dpts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={2.5} fill={scoreLevelColor(scores[i])} stroke="rgba(4,20,38,0.7)" strokeWidth={1}/>)}
+      {DIMENSIONS.map((d,i)=>{const lp=lpt(i);return(<text key={d.key} x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle" fill="rgba(148,163,184,0.62)" fontSize={7} fontWeight={600}>{SHORT[d.key]||d.label.split(" ")[0]}</text>);})}
+    </svg>
+  );
+}
+
 function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
   const kpis=[{icon:"🏢",label:"Empresas cliente",value:"4",sub:"+1 este semestre",trend:[1,2,2,3,4],tColor:"#22c55e"},{icon:"📊",label:"Mediciones activas",value:"3",sub:"2026 · I Semestre",trend:[4,3,5,4,3],tColor:"#38bdf8"},{icon:"⏳",label:"Pend. validación",value:"1",sub:"Hospital del Valle",alert:true,trend:[0,1,0,2,1],tColor:"#f97316"},{icon:"💳",label:"Suscripciones",value:"4",sub:"1 por vencer",warn:true,trend:[2,3,3,4,4],tColor:"#fb923c"}];
   const activity=[
@@ -550,6 +589,7 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
     {co:"Tech Solutions Ecuador",task:"Suscripción vence en 14 días",cta:"Renovar",color:"#fb923c",id:"tech"},
     {co:"Constructora Andina",task:"64.7% de participación — recordatorio",cta:"Ver encuesta",color:"#38bdf8",id:"andina"},
   ];
+  const [dimView,setDimView]=useState<"bars"|"radar">("bars");
   return (
     <div>
       <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:18,marginBottom:22,alignItems:"center"}}>
@@ -580,7 +620,7 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
               <Sparkline data={k.trend} color={k.tColor}/>
             </div>
             <div style={{display:"flex",alignItems:"baseline",gap:6}}>
-              <div style={{fontSize:"1.9rem",fontWeight:900,color:vc,lineHeight:1}}>{k.value}</div>
+              <div style={{fontSize:"1.9rem",fontWeight:900,color:vc,lineHeight:1}}><CountUp to={parseInt(k.value)}/></div>
               {delta!==0&&<span style={{fontSize:"0.7rem",fontWeight:800,color:delta>0?"#4ade80":"#f87171"}}>{delta>0?"▲":"▼"}{Math.abs(delta)}</span>}
             </div>
             <div style={{fontSize:"0.72rem",fontWeight:700,color:"#94a3b8",marginTop:4}}>{k.label}</div>
@@ -599,15 +639,24 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
       <div style={{display:"grid",gridTemplateColumns:"260px 1fr 300px",gap:16}}>
         {/* Dimensiones */}
         <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"18px 20px"}}>
-          <h3 style={{fontSize:"0.88rem",fontWeight:900,color:"#f8fafc",marginBottom:4}}>Dimensiones · 2026-I</h3>
-          <p style={{fontSize:"0.7rem",color:"#94a3b8",marginBottom:13}}>Empresa Demostración S.A.</p>
-          <DimBreakdown responses={curR}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+            <h3 style={{fontSize:"0.88rem",fontWeight:900,color:"#f8fafc",margin:0}}>Dimensiones · 2026-I</h3>
+            <div style={{display:"flex",gap:2}}>
+              {(["bars","radar"] as const).map(v=>(
+                <button key={v} onClick={()=>setDimView(v)} style={{padding:"3px 9px",borderRadius:7,border:"none",cursor:"pointer",background:dimView===v?"rgba(56,189,248,0.15)":"transparent",color:dimView===v?"#38bdf8":"#475569",fontSize:"0.88rem",lineHeight:1,transition:"all 0.15s"}}>
+                  {v==="bars"?"≡":"◎"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p style={{fontSize:"0.7rem",color:"#94a3b8",marginBottom:dimView==="radar"?6:13}}>Empresa Demostración S.A.</p>
+          {dimView==="bars"?<DimBreakdown responses={curR}/>:<RadarChart responses={curR} size={214}/>}
         </div>
         {/* Actividad */}
         <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"20px 22px"}}>
           <h3 style={{fontSize:"0.88rem",fontWeight:900,color:"#f8fafc",marginBottom:16}}>Actividad reciente</h3>
           <div style={{display:"flex",flexDirection:"column",gap:0}}>
-            {activity.map((a,i)=><div key={i} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"11px 0",borderBottom:i<activity.length-1?"1px solid rgba(255,255,255,0.06)":"none"}}>
+            {activity.map((a,i)=><div key={i} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"11px 0 11px 10px",borderBottom:i<activity.length-1?"1px solid rgba(255,255,255,0.06)":"none",borderLeft:`2px solid ${a.color}55`}}>
               <div style={{width:32,height:32,borderRadius:"50%",background:a.color+"18",border:`1px solid ${a.color}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.85rem",flexShrink:0}}>{a.icon}</div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:"0.82rem",fontWeight:700,color:"#f8fafc",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.label}</div>
@@ -970,6 +1019,7 @@ function DemoRoot() {
   return (
     <div style={{display:"flex",minHeight:"100vh"}}>
       <style>{css}</style>
+      <style>{"@keyframes _fsIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}"}</style>
       {/* Logo injection for print */}
       <script dangerouslySetInnerHTML={{__html:`window.addEventListener('beforeprint',function(){document.querySelectorAll('img').forEach(function(i){if(i.alt==='CENVIT'||i.alt==='Cenvit')i.src=${JSON.stringify(LOGO_CENVIT)};if(i.alt==='Iván Viteri')i.src=${JSON.stringify(LOGO_IVAN)};});});`}}/>
 
@@ -994,6 +1044,7 @@ function DemoRoot() {
 
         {/* Content */}
         <main style={{flex:1,padding:"28px 32px",overflowY:"auto"}}>
+          <div key={section+(companyId||"")} style={{animation:"_fsIn 0.2s ease both"}}>
           {companyId ? (
             <CompanyWorkflow cid={companyId} onBack={()=>setCompanyId(null)}/>
           ) : section==="dashboard" ? (
@@ -1009,6 +1060,7 @@ function DemoRoot() {
           ) : (
             <ConfigSection/>
           )}
+          </div>
         </main>
       </div>
     </div>
