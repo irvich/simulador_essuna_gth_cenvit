@@ -666,6 +666,17 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
           </div>
         );})}
       </div>
+      {/* Quick access */}
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:16,overflowX:"auto",paddingBottom:2}}>
+        <span style={{fontSize:"0.63rem",fontWeight:900,letterSpacing:"0.12em",textTransform:"uppercase",color:"#475569",flexShrink:0,whiteSpace:"nowrap"}}>Acceso rápido</span>
+        {COMPANIES.map(co=>{const sc=STATUS_CFG[co.status];return(
+          <button key={co.id} onClick={()=>onGoCompany(co.id)} style={{display:"flex",alignItems:"center",gap:7,padding:"6px 13px",borderRadius:12,background:"rgba(7,27,51,0.7)",border:`1px solid ${sc.color}28`,color:"#e2e8f0",fontSize:"0.79rem",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,transition:"border-color 0.14s"}}>
+            <span style={{width:7,height:7,borderRadius:"50%",background:sc.color,flexShrink:0}}/>
+            <span>{co.nombre.split(" ")[0]}</span>
+            {co.lastScore!=null&&<span style={{fontSize:"0.72rem",color:scoreLevelColor(co.lastScore),fontWeight:900}}>{co.lastScore}%</span>}
+          </button>
+        );})}
+      </div>
       {/* Trend chart */}
       <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"18px 22px",marginBottom:16}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10}}>
@@ -853,17 +864,40 @@ function MedicionesSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
 function ValidacionesSection() {
   return (
     <div>
-      <div style={{marginBottom:22}}><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Cola de validaciones</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Resultados que esperan revisión y firma del Psicólogo Laboral.</p></div>
-      <div style={{background:"rgba(249,115,22,0.06)",border:"1px solid rgba(249,115,22,0.22)",borderRadius:18,padding:"20px 24px",marginBottom:18,display:"flex",alignItems:"center",gap:14}}>
-        <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(249,115,22,0.14)",border:"1px solid rgba(249,115,22,0.35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>⏳</div>
-        <div>
-          <div style={{fontWeight:800,color:"#f8fafc",marginBottom:2}}>Hospital del Valle · 2026 · I Semestre</div>
-          <div style={{fontSize:"0.78rem",color:"#94a3b8"}}>187/210 respuestas · 89.0% participación · Período cerrado: 4 jun. 2026</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:20}}>
+        <div><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Cola de validaciones</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Resultados que esperan revisión y firma del Psicólogo Laboral.</p></div>
+        <div style={{background:"rgba(249,115,22,0.1)",border:"1px solid rgba(249,115,22,0.3)",borderRadius:14,padding:"10px 20px",textAlign:"center",flexShrink:0}}>
+          <div style={{fontSize:"0.6rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:2}}>Pendientes</div>
+          <div style={{fontSize:"1.7rem",fontWeight:900,color:"#f97316",lineHeight:1}}>1</div>
         </div>
-        <span style={{marginLeft:"auto",padding:"5px 14px",borderRadius:999,fontSize:"0.72rem",fontWeight:800,background:"rgba(249,115,22,0.14)",border:"1px solid rgba(249,115,22,0.35)",color:"#fb923c",flexShrink:0}}>Pendiente</span>
+      </div>
+      <div style={{background:"rgba(249,115,22,0.06)",border:"1px solid rgba(249,115,22,0.22)",borderRadius:18,padding:"20px 24px",marginBottom:18}}>
+        <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
+          <div style={{width:46,height:46,borderRadius:"50%",background:"rgba(249,115,22,0.14)",border:"1px solid rgba(249,115,22,0.35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",flexShrink:0}}>⏳</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:800,fontSize:"1rem",color:"#f8fafc",marginBottom:5}}>Hospital del Valle · 2026 · I Semestre</div>
+            <div style={{display:"flex",gap:14,marginBottom:10,flexWrap:"wrap"}}>
+              <span style={{fontSize:"0.76rem",color:"#94a3b8"}}>187/210 respuestas</span>
+              <span style={{fontSize:"0.76rem",color:"#94a3b8"}}>89.0% participación</span>
+              <span style={{fontSize:"0.76rem",color:"#94a3b8"}}>Cerrado: 4 jun. 2026</span>
+            </div>
+            <div style={{display:"flex",gap:9,alignItems:"center",flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,padding:"5px 13px",borderRadius:999,background:"rgba(249,115,22,0.12)",border:"1px solid rgba(249,115,22,0.28)"}}>
+                <span style={{width:7,height:7,borderRadius:"50%",background:"#f97316",flexShrink:0,animation:"_pulse 1.5s ease-in-out infinite"}}/>
+                <span style={{fontSize:"0.73rem",fontWeight:800,color:"#fb923c"}}>En espera hace 16h 24min</span>
+              </div>
+              <span style={{padding:"5px 13px",borderRadius:999,fontSize:"0.72rem",fontWeight:800,background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.25)",color:"#f87171"}}>Prioridad Alta</span>
+            </div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:7,flexShrink:0}}>
+            <ScoreRing score={68} size={52}/>
+            <span style={{fontSize:"0.64rem",color:"#64748b",textAlign:"center"}}>Índice</span>
+          </div>
+        </div>
       </div>
       <ValidationPanel inline/>
-      <div style={{marginTop:22,padding:"16px 20px",background:"rgba(34,197,94,0.05)",border:"1px solid rgba(34,197,94,0.15)",borderRadius:14}}>
+      <div style={{marginTop:22,padding:"14px 18px",background:"rgba(34,197,94,0.05)",border:"1px solid rgba(34,197,94,0.15)",borderRadius:12,display:"flex",alignItems:"center",gap:10}}>
+        <span style={{fontSize:"1rem",color:"#22c55e"}}>✓</span>
         <p style={{fontSize:"0.8rem",color:"#94a3b8",margin:0}}>No hay más mediciones pendientes de validación.</p>
       </div>
     </div>
@@ -873,6 +907,7 @@ function ValidacionesSection() {
 function SubscriptionsSection() {
   const [showNew,setShowNew]=useState(false);
   const [hovPlan,setHovPlan]=useState<string|null>(null);
+  const [hovSub,setHovSub]=useState<number|null>(null);
   const plans=[
     {tier:"Básico",    price:"$299/año",  tc:"#38bdf8", f:["1 medición/año","Hasta 100 colaboradores","Informe PDF automático","Soporte por correo"]},
     {tier:"Profesional",price:"$599/año", tc:"#d4af37", f:["2 mediciones/año","Hasta 300 colaboradores","Validación Psicólogo Laboral","Benchmarking sectorial","Soporte prioritario"]},
@@ -916,7 +951,7 @@ function SubscriptionsSection() {
           </tr></thead>
           <tbody>
             {SUBS.map((s,i)=>{const tc=TIER_C[s.tier];const c=sc(s.status);return(
-              <tr key={i} style={{borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
+              <tr key={i} onMouseEnter={()=>setHovSub(i)} onMouseLeave={()=>setHovSub(null)} style={{borderBottom:"1px solid rgba(255,255,255,0.05)",background:hovSub===i?"rgba(56,189,248,0.04)":"transparent",transition:"background 0.12s"}}>
                 <td style={{padding:"13px 16px",fontSize:"0.84rem",fontWeight:700,color:"#f8fafc"}}>{s.company}</td>
                 <td style={{padding:"13px 16px"}}><span style={{padding:"3px 11px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:tc+"18",color:tc}}>{s.tier}</span></td>
                 <td style={{padding:"13px 16px",fontSize:"0.8rem",color:"#94a3b8"}}>{s.inicio}</td>
@@ -939,6 +974,8 @@ function SubscriptionsSection() {
 function ConfigSection() {
   const [notifs,setNotifs]=useState<Record<string,boolean>>({"Nuevas respuestas recibidas":true,"Período cerrado listo para validar":true,"Suscripción próxima a vencer":true,"Informes generados":false});
   const toggle=(k:string)=>setNotifs(n=>({...n,[k]:!n[k]}));
+  const [twofa,setTwofa]=useState(false);
+  const [pwSaved,setPwSaved]=useState(false);
   return (
     <div style={{maxWidth:620}}>
       <div style={{marginBottom:22}}><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Configuración</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Perfil del consultor y preferencias de la plataforma.</p></div>
@@ -970,6 +1007,34 @@ function ConfigSection() {
             </div>
           </div>
         ))}
+      </div>
+      {/* Seguridad */}
+      <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"20px 24px",marginTop:14}}>
+        <h3 style={{fontSize:"0.88rem",fontWeight:800,color:"#94a3b8",marginBottom:16}}>Seguridad</h3>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
+          {[["Nueva contraseña","••••••••"],["Confirmar contraseña","••••••••"]].map(([l,ph])=>(
+            <div key={l}>
+              <label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:6}}>{l}</label>
+              <input type="password" placeholder={ph} style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem",boxSizing:"border-box"}}/>
+            </div>
+          ))}
+        </div>
+        {pwSaved?<div style={{padding:"8px 14px",borderRadius:10,background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.25)",color:"#22c55e",fontSize:"0.8rem",fontWeight:700,marginBottom:14}}>✓ Contraseña actualizada</div>
+        :<button onClick={()=>{setPwSaved(true);setTimeout(()=>setPwSaved(false),3000);}} style={{padding:"8px 20px",background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.28)",color:"#38bdf8",borderRadius:999,fontWeight:800,fontSize:"0.82rem",cursor:"pointer",marginBottom:14}}>Cambiar contraseña</button>}
+        <div style={{paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+          <div onClick={()=>setTwofa(v=>!v)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}}>
+            <div>
+              <div style={{fontSize:"0.84rem",fontWeight:700,color:"#f8fafc",marginBottom:2}}>Autenticación de dos pasos</div>
+              <div style={{fontSize:"0.74rem",color:"#64748b"}}>Código OTP por aplicación autenticadora</div>
+            </div>
+            <div style={{width:36,height:20,borderRadius:999,background:twofa?"#22c55e":"rgba(255,255,255,0.12)",position:"relative",transition:"background 0.2s",flexShrink:0,marginLeft:16}}>
+              <div style={{width:14,height:14,borderRadius:"50%",background:"white",position:"absolute",top:3,left:twofa?19:3,transition:"left 0.2s"}}/>
+            </div>
+          </div>
+          {twofa&&<div style={{marginTop:12,padding:"12px 14px",background:"rgba(34,197,94,0.07)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10,fontSize:"0.77rem",color:"#94a3b8"}}>
+            2FA activado · Escanea el QR en tu app autenticadora para completar la configuración
+          </div>}
+        </div>
       </div>
     </div>
   );
@@ -1106,7 +1171,7 @@ function DemoRoot() {
   return (
     <div style={{display:"flex",minHeight:"100vh"}}>
       <style>{css}</style>
-      <style>{"@keyframes _fsIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}"}</style>
+      <style>{"@keyframes _fsIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@keyframes _pulse{0%,100%{opacity:1}50%{opacity:0.35}}"}</style>
       {/* Logo injection for print */}
       <script dangerouslySetInnerHTML={{__html:`window.addEventListener('beforeprint',function(){document.querySelectorAll('img').forEach(function(i){if(i.alt==='CENVIT'||i.alt==='Cenvit')i.src=${JSON.stringify(LOGO_CENVIT)};if(i.alt==='Iván Viteri')i.src=${JSON.stringify(LOGO_IVAN)};});});`}}/>
 
