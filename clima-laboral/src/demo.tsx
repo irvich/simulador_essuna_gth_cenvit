@@ -512,6 +512,30 @@ function ScoreRing({score,size=52}:{score:number;size?:number}) {
   );
 }
 
+function DimBreakdown({responses}:{responses:SurveyResponse[]}) {
+  const scores=DIMENSIONS.map(d=>{
+    const qs=QUESTIONS.filter(q=>q.dimension===d.key);
+    let sum=0,count=0;
+    for(const r of responses)for(const q of qs){const v=r.answers[q.id];if(v!==undefined){sum+=v;count++;}}
+    return{key:d.key,label:d.label,pct:count===0?0:Math.round(sum/count/5*100)};
+  }).sort((a,b)=>b.pct-a.pct);
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:9}}>
+      {scores.map(s=>(
+        <div key={s.key}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+            <span style={{fontSize:"0.71rem",color:"#94a3b8",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"72%"}}>{s.label}</span>
+            <span style={{fontSize:"0.71rem",fontWeight:800,color:scoreLevelColor(s.pct),flexShrink:0}}>{s.pct}%</span>
+          </div>
+          <div style={{height:5,borderRadius:999,background:"rgba(255,255,255,0.06)"}}>
+            <div style={{height:"100%",width:`${s.pct}%`,background:scoreLevelColor(s.pct),borderRadius:999,transition:"width 0.4s"}}/>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
   const kpis=[{icon:"🏢",label:"Empresas cliente",value:"4",sub:"+1 este semestre",trend:[1,2,2,3,4],tColor:"#22c55e"},{icon:"📊",label:"Mediciones activas",value:"3",sub:"2026 · I Semestre",trend:[4,3,5,4,3],tColor:"#38bdf8"},{icon:"⏳",label:"Pend. validación",value:"1",sub:"Hospital del Valle",alert:true,trend:[0,1,0,2,1],tColor:"#f97316"},{icon:"💳",label:"Suscripciones",value:"4",sub:"1 por vencer",warn:true,trend:[2,3,3,4,4],tColor:"#fb923c"}];
   const activity=[
@@ -572,7 +596,13 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
         </div>
         <HistoryChart data={demoHistory}/>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 360px",gap:16}}>
+      <div style={{display:"grid",gridTemplateColumns:"260px 1fr 300px",gap:16}}>
+        {/* Dimensiones */}
+        <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"18px 20px"}}>
+          <h3 style={{fontSize:"0.88rem",fontWeight:900,color:"#f8fafc",marginBottom:4}}>Dimensiones · 2026-I</h3>
+          <p style={{fontSize:"0.7rem",color:"#94a3b8",marginBottom:13}}>Empresa Demostración S.A.</p>
+          <DimBreakdown responses={curR}/>
+        </div>
         {/* Actividad */}
         <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"20px 22px"}}>
           <h3 style={{fontSize:"0.88rem",fontWeight:900,color:"#f8fafc",marginBottom:16}}>Actividad reciente</h3>
@@ -616,7 +646,7 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
           const sc=STATUS_CFG[co.status]; const tc=TIER_C[co.subTier];
           const days=Math.ceil((new Date(co.subExpiry).getTime()-Date.now())/86400000);
           return(
-            <div key={co.id} onMouseEnter={()=>setHovId(co.id)} onMouseLeave={()=>setHovId(null)} style={{background:hovId===co.id?"rgba(10,36,65,0.8)":"rgba(7,27,51,0.65)",border:`1px solid ${hovId===co.id?"rgba(56,189,248,0.28)":"rgba(255,255,255,0.08)"}`,borderRadius:20,padding:"20px 22px",display:"flex",flexDirection:"column",gap:12,transition:"all 0.18s",transform:hovId===co.id?"translateY(-2px)":"none",boxShadow:hovId===co.id?"0 8px 24px rgba(0,0,0,0.28)":"none"}}>
+            <div key={co.id} onMouseEnter={()=>setHovId(co.id)} onMouseLeave={()=>setHovId(null)} style={{background:hovId===co.id?"rgba(10,36,65,0.8)":"rgba(7,27,51,0.65)",border:`1px solid ${hovId===co.id?"rgba(56,189,248,0.28)":"rgba(255,255,255,0.08)"}`,borderRadius:20,padding:"20px 22px",display:"flex",flexDirection:"column",gap:12,transition:"all 0.18s",transform:hovId===co.id?"translateY(-2px)":"none",boxShadow:`inset 0 3px 0 ${sc.color}99,${hovId===co.id?"0 8px 24px rgba(0,0,0,0.28)":"0 0 0 transparent"}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                 <div><h3 style={{fontSize:"0.95rem",fontWeight:800,color:"#f8fafc",margin:"0 0 3px",lineHeight:1.2}}>{co.nombre}</h3><span style={{fontSize:"0.73rem",color:"#94a3b8"}}>{co.sector} · {co.empleados} colab.</span></div>
                 <span style={{padding:"3px 10px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:tc+"18",border:`1px solid ${tc}33`,color:tc,flexShrink:0}}>{co.subTier}</span>
@@ -782,27 +812,39 @@ function SubscriptionsSection() {
 }
 
 function ConfigSection() {
+  const [notifs,setNotifs]=useState<Record<string,boolean>>({"Nuevas respuestas recibidas":true,"Período cerrado listo para validar":true,"Suscripción próxima a vencer":true,"Informes generados":false});
+  const toggle=(k:string)=>setNotifs(n=>({...n,[k]:!n[k]}));
   return (
-    <div style={{maxWidth:600}}>
+    <div style={{maxWidth:620}}>
       <div style={{marginBottom:22}}><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Configuración</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Perfil del consultor y preferencias de la plataforma.</p></div>
       <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"24px 26px",marginBottom:14}}>
         <h3 style={{fontSize:"0.88rem",fontWeight:800,color:"#d4af37",marginBottom:18}}>Perfil del consultor</h3>
+        <div style={{display:"flex",alignItems:"center",gap:18,marginBottom:22,padding:"16px",background:"rgba(255,255,255,0.03)",borderRadius:14,border:"1px solid rgba(255,255,255,0.06)"}}>
+          <img src={LOGO_IVAN} alt="Iván Viteri" style={{width:68,height:68,borderRadius:14,objectFit:"cover",border:"2px solid rgba(56,189,248,0.35)",background:"white",padding:2,flexShrink:0}}/>
+          <div>
+            <div style={{fontWeight:900,fontSize:"1.05rem",color:"#f8fafc",marginBottom:2}}>Iván Viteri, MSc.</div>
+            <div style={{fontSize:"0.78rem",color:"#94a3b8",marginBottom:8}}>Psicólogo Laboral · CENVIT GTH · Reg. SENESCYT</div>
+            <button style={{padding:"5px 14px",borderRadius:999,background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.28)",color:"#38bdf8",fontWeight:700,fontSize:"0.75rem",cursor:"pointer"}}>Cambiar foto</button>
+          </div>
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           {[["Nombre","Iván Viteri"],["Título","MSc. Psicología Laboral"],["Registro","SENESCYT-2018-XXXX"],["Institución","CENVIT GTH"],["Correo","iavip2018@gmail.com"],["Teléfono","+593 99 XXX XXXX"]].map(([l,v])=><div key={l}>
             <label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:6}}>{l}</label>
-            <input defaultValue={v} style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem"}}/>
+            <input defaultValue={v} style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem",boxSizing:"border-box"}}/>
           </div>)}
         </div>
         <button style={{marginTop:18,padding:"9px 22px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer"}}>Guardar cambios</button>
       </div>
       <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"20px 24px"}}>
         <h3 style={{fontSize:"0.88rem",fontWeight:800,color:"#94a3b8",marginBottom:16}}>Notificaciones</h3>
-        {[["Nuevas respuestas recibidas","on"],["Período cerrado listo para validar","on"],["Suscripción próxima a vencer","on"],["Informes generados","off"]].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
-          <span style={{fontSize:"0.84rem",color:"#f8fafc"}}>{l}</span>
-          <div style={{width:36,height:20,borderRadius:999,background:v==="on"?"#22c55e":"rgba(255,255,255,0.12)",position:"relative",cursor:"pointer"}}>
-            <div style={{width:14,height:14,borderRadius:"50%",background:"white",position:"absolute",top:3,left:v==="on"?19:3,transition:"left 0.2s"}}/>
+        {Object.entries(notifs).map(([label,on],i,arr)=>(
+          <div key={label} onClick={()=>toggle(label)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none",cursor:"pointer"}}>
+            <span style={{fontSize:"0.84rem",color:"#f8fafc"}}>{label}</span>
+            <div style={{width:36,height:20,borderRadius:999,background:on?"#22c55e":"rgba(255,255,255,0.12)",position:"relative",transition:"background 0.2s",flexShrink:0}}>
+              <div style={{width:14,height:14,borderRadius:"50%",background:"white",position:"absolute",top:3,left:on?19:3,transition:"left 0.2s"}}/>
+            </div>
           </div>
-        </div>)}
+        ))}
       </div>
     </div>
   );
