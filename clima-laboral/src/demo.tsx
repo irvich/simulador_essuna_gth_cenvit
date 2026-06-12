@@ -130,8 +130,9 @@ const WSTEPS: {key: WorkflowStep; label: string; icon: string}[] = [
 
 function WorkflowStepper({current, onChange, completed}: {current: WorkflowStep; onChange: (s: WorkflowStep) => void; completed: WorkflowStep[]}) {
   const ci = WSTEPS.findIndex(s => s.key === current);
+  const pct = Math.round((completed.length / WSTEPS.length) * 100);
   return (
-    <div style={{display:"flex",alignItems:"center",marginBottom:24,overflowX:"auto",padding:"2px 0"}}>
+    <div style={{display:"flex",alignItems:"center",marginBottom:24,overflowX:"auto",padding:"2px 0",gap:4}}>
       {WSTEPS.map((s,i)=>{const done=completed.includes(s.key),cur=s.key===current;return(
         <React.Fragment key={s.key}>
           <button onClick={()=>onChange(s.key)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,padding:"8px 12px",borderRadius:12,border:"none",cursor:"pointer",background:cur?"rgba(56,189,248,0.1)":"transparent",flexShrink:0}}>
@@ -143,6 +144,12 @@ function WorkflowStepper({current, onChange, completed}: {current: WorkflowStep;
           {i<WSTEPS.length-1&&<div style={{flex:1,height:2,minWidth:6,maxWidth:32,background:i<ci?"rgba(34,197,94,0.3)":"rgba(255,255,255,0.06)"}}/>}
         </React.Fragment>
       );})}
+      <div style={{marginLeft:"auto",paddingLeft:18,flexShrink:0,textAlign:"right"}}>
+        <div style={{fontSize:"0.66rem",color:"#64748b",fontWeight:700,marginBottom:5}}>Paso {ci+1} de {WSTEPS.length} · <span style={{color:pct===100?"#22c55e":"#38bdf8",fontWeight:900}}>{pct}%</span></div>
+        <div style={{width:110,height:4,borderRadius:999,background:"rgba(255,255,255,0.07)",overflow:"hidden"}}>
+          <div style={{height:"100%",width:`${pct}%`,background:pct===100?"#22c55e":"#38bdf8",borderRadius:999,transition:"width 0.3s ease"}}/>
+        </div>
+      </div>
     </div>
   );
 }
@@ -247,7 +254,12 @@ function StepEncuesta({onNext}: {onNext:()=>void}) {
             <div style={{flex:1,padding:"9px 13px",borderRadius:10,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.09)",color:"#38bdf8",fontSize:"0.85rem",fontFamily:"monospace",wordBreak:"break-all"}}>{SURVEY_URL}</div>
             <button onClick={copy} style={{padding:"9px 16px",borderRadius:10,background:copied?"rgba(34,197,94,0.18)":"rgba(56,189,248,0.13)",border:`1px solid ${copied?"rgba(34,197,94,0.38)":"rgba(56,189,248,0.28)"}`,color:copied?"#22c55e":"#38bdf8",fontWeight:800,fontSize:"0.8rem",cursor:"pointer",whiteSpace:"nowrap"}}>{copied?"✓ Copiado":"Copiar"}</button>
           </div>
-          <p style={{fontSize:"0.76rem",color:"#94a3b8",margin:0,lineHeight:1.55}}>Comparte por WhatsApp, correo o intranet · <strong style={{color:"#f8fafc"}}>52 preguntas</strong> · 10 dimensiones · ~8 min · anónimo</p>
+          <div style={{display:"flex",gap:7,marginBottom:11,flexWrap:"wrap"}}>
+            {[{icon:"💬",label:"WhatsApp",c:"#22c55e"},{icon:"✉️",label:"Correo",c:"#38bdf8"},{icon:"🌐",label:"Intranet",c:"#a855f7"}].map(ch=>(
+              <button key={ch.label} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:999,background:`${ch.c}10`,border:`1px solid ${ch.c}30`,color:ch.c,fontWeight:700,fontSize:"0.75rem",cursor:"pointer"}}>{ch.icon} {ch.label}</button>
+            ))}
+          </div>
+          <p style={{fontSize:"0.76rem",color:"#94a3b8",margin:0,lineHeight:1.55}}><strong style={{color:"#f8fafc"}}>52 preguntas</strong> · 10 dimensiones · ~8 min · anónimo</p>
         </div>
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:9}}>
           <QRCode size={148}/>
@@ -1158,6 +1170,8 @@ function DemoRoot() {
   const [section, setSection] = useState<SideSection>("dashboard");
   const [companyId, setCompanyId] = useState<string|null>(null);
   const [showBell, setShowBell] = useState(false);
+  const [search, setSearch] = useState("");
+  const found = search.trim() ? COMPANIES.filter(c=>c.nombre.toLowerCase().includes(search.toLowerCase())||c.sector.toLowerCase().includes(search.toLowerCase())) : [];
 
   if (!loggedIn) return <LoginScreen onLogin={() => setLoggedIn(true)} />;
 
@@ -1183,7 +1197,25 @@ function DemoRoot() {
           {companyId&&<button onClick={()=>setCompanyId(null)} style={{background:"transparent",border:"none",color:"#94a3b8",fontSize:"0.8rem",cursor:"pointer",padding:"4px 0",fontWeight:700}}>Empresas</button>}
           {companyId&&<span style={{color:"rgba(255,255,255,0.2)"}}>›</span>}
           <span style={{fontSize:"0.88rem",fontWeight:700,color:"#f8fafc"}}>{companyId?COMPANIES.find(c=>c.id===companyId)?.nombre:sectionTitles[section]}</span>
-          <div style={{flex:1}}/>
+          <div style={{flex:1,display:"flex",justifyContent:"center"}}>
+            <div style={{position:"relative",width:"100%",maxWidth:300}}>
+              <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:"0.78rem",pointerEvents:"none",color:"#475569"}}>🔍</span>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar empresa..." style={{width:"100%",padding:"6px 11px 6px 31px",borderRadius:999,border:`1px solid ${search?"rgba(56,189,248,0.35)":"rgba(255,255,255,0.09)"}`,background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.78rem",boxSizing:"border-box",outline:"none",transition:"border-color 0.15s"}}/>
+              {search.trim()&&(
+                <div style={{position:"absolute",top:"calc(100% + 8px)",left:0,right:0,background:"rgba(4,20,38,0.97)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:14,padding:6,zIndex:200,boxShadow:"0 20px 48px rgba(0,0,0,0.55)"}}>
+                  {found.length===0&&<div style={{padding:"10px 12px",fontSize:"0.76rem",color:"#475569"}}>Sin resultados para "{search}"</div>}
+                  {found.map(c=>{const fsc=STATUS_CFG[c.status];return(
+                    <button key={c.id} onClick={()=>{setSearch("");goCompany(c.id);}} style={{width:"100%",display:"flex",alignItems:"center",gap:9,padding:"8px 10px",borderRadius:9,border:"none",cursor:"pointer",background:"transparent",textAlign:"left"}} onMouseEnter={e=>(e.currentTarget.style.background="rgba(56,189,248,0.08)")} onMouseLeave={e=>(e.currentTarget.style.background="transparent")}>
+                      <span style={{width:7,height:7,borderRadius:"50%",background:fsc.color,flexShrink:0}}/>
+                      <span style={{flex:1,minWidth:0,fontSize:"0.79rem",fontWeight:700,color:"#f8fafc",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nombre}</span>
+                      <span style={{fontSize:"0.68rem",color:"#64748b",flexShrink:0}}>{c.sector}</span>
+                      {c.lastScore!=null&&<span style={{fontSize:"0.72rem",fontWeight:900,color:scoreLevelColor(c.lastScore),flexShrink:0}}>{c.lastScore}%</span>}
+                    </button>
+                  );})}
+                </div>
+              )}
+            </div>
+          </div>
           <span style={{fontSize:"0.7rem",color:"#94a3b8",fontStyle:"italic",background:"rgba(249,115,22,0.08)",border:"1px solid rgba(249,115,22,0.2)",padding:"4px 12px",borderRadius:999}}>⚠ Demo — datos simulados</span>
           <div style={{position:"relative",cursor:"pointer",marginLeft:4,flexShrink:0}} onClick={()=>setShowBell(b=>!b)}>
             <span style={{fontSize:"1rem",color:showBell?"#38bdf8":"#64748b",transition:"color 0.15s"}}>🔔</span>
