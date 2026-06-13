@@ -3,22 +3,58 @@ import type { DimensionConfig } from "./types";
 
 export const BASE = import.meta.env.BASE_URL;
 
+// Niveles de recomendación (3 tramos) — usados para textos de mejora por dimensión.
 export function scoreLevel(pct: number): "high" | "medium" | "low" {
   if (pct >= 80) return "high";
-  if (pct >= 60) return "medium";
+  if (pct >= 65) return "medium";
   return "low";
 }
 
-export function scoreLevelLabel(pct: number): string {
-  if (pct >= 80) return "Bueno";
-  if (pct >= 60) return "Regular";
-  return "Crítico";
+// ── Escala de interpretación CENVIT (5 tramos) ────────────────────────────────
+//   90–100 · Excelente
+//   80–89  · Favorable
+//   70–79  · Medio favorable
+//   65–69  · Preventivo
+//   < 65   · Crítico / intervención prioritaria
+export type ScoreTier = "excelente" | "favorable" | "medio" | "preventivo" | "critico";
+
+export function scoreTier(pct: number): ScoreTier {
+  if (pct >= 90) return "excelente";
+  if (pct >= 80) return "favorable";
+  if (pct >= 70) return "medio";
+  if (pct >= 65) return "preventivo";
+  return "critico";
 }
 
+export function scoreLevelLabel(pct: number): string {
+  switch (scoreTier(pct)) {
+    case "excelente": return "Excelente";
+    case "favorable": return "Favorable";
+    case "medio": return "Medio favorable";
+    case "preventivo": return "Preventivo";
+    default: return "Crítico";
+  }
+}
+
+// Color para la interfaz web (oscuro) — tonos saturados sobre fondo navy.
 export function scoreLevelColor(pct: number): string {
-  if (pct >= 80) return "#22c55e";
-  if (pct >= 60) return "#d4af37";
-  return "#f87171";
+  switch (scoreTier(pct)) {
+    case "excelente": return "#22c55e";
+    case "favorable": return "#4ade80";
+    case "medio": return "#d4af37";
+    case "preventivo": return "#fb923c";
+    default: return "#f87171";
+  }
+}
+
+// Color para impresión / PDF (institucional navy + ámbar, alto contraste sobre blanco).
+export function scoreTierPrintColor(pct: number): string {
+  switch (scoreTier(pct)) {
+    case "excelente":
+    case "favorable":
+    case "medio": return "#1e3a5f";   // navy institucional para niveles aceptables
+    default: return "#c89b2c";         // ámbar para preventivo / crítico
+  }
 }
 
 export interface DimScore {
@@ -29,7 +65,7 @@ export interface DimScore {
 // ──────────────────────────────────────────────────────────────────────────────
 // Gráfico radar SVG — soporta cualquier número de ejes
 // ──────────────────────────────────────────────────────────────────────────────
-export function RadarChart({ scores, overlay, size = 320 }: { scores: DimScore[]; overlay?: DimScore[]; size?: number }) {
+export function RadarChart({ scores, overlay, prevOverlay, benchmark, size = 320 }: { scores: DimScore[]; overlay?: DimScore[]; prevOverlay?: DimScore[]; benchmark?: DimScore[]; size?: number }) {
   const cx = size / 2;
   const cy = size / 2;
   const r = size * 0.32;
@@ -63,6 +99,20 @@ export function RadarChart({ scores, overlay, size = 320 }: { scores: DimScore[]
       }).join(" ") + " Z"
     : null;
 
+  const prevOverlayPath = prevOverlay
+    ? prevOverlay.map((s, i) => {
+        const p = polar(i, s.pct / 100);
+        return `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+      }).join(" ") + " Z"
+    : null;
+
+  const benchmarkPath = benchmark
+    ? benchmark.map((s, i) => {
+        const p = polar(i, s.pct / 100);
+        return `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+      }).join(" ") + " Z"
+    : null;
+
   const labelOffset = 26;
 
   return (
@@ -74,6 +124,12 @@ export function RadarChart({ scores, overlay, size = 320 }: { scores: DimScore[]
         const o = polar(i, 1);
         return <line key={i} x1={cx} y1={cy} x2={o.x} y2={o.y} stroke="rgba(255,255,255,0.10)" strokeWidth="1" />;
       })}
+      {benchmarkPath && (
+        <path d={benchmarkPath} fill="rgba(148,163,184,0.08)" stroke="rgba(148,163,184,0.55)" strokeWidth="1.5" strokeDasharray="3,3" />
+      )}
+      {prevOverlayPath && (
+        <path d={prevOverlayPath} fill="rgba(74,222,128,0.1)" stroke="rgba(74,222,128,0.6)" strokeWidth="1.5" strokeDasharray="5,3" />
+      )}
       <path d={dataPath} fill="rgba(56,189,248,0.18)" stroke="#38bdf8" strokeWidth="2" />
       {overlayPath && (
         <path d={overlayPath} fill="rgba(212,175,55,0.18)" stroke="#d4af37" strokeWidth="2" strokeDasharray="5,3" />
@@ -81,6 +137,14 @@ export function RadarChart({ scores, overlay, size = 320 }: { scores: DimScore[]
       {scores.map((s, i) => {
         const p = polar(i, s.pct / 100);
         return <circle key={i} cx={p.x} cy={p.y} r={5} fill={s.dim.color} stroke="white" strokeWidth="1.5" />;
+      })}
+      {benchmark && benchmark.map((s, i) => {
+        const p = polar(i, s.pct / 100);
+        return <circle key={i} cx={p.x} cy={p.y} r={3} fill="rgba(148,163,184,0.7)" stroke="rgba(7,27,51,0.8)" strokeWidth="1" />;
+      })}
+      {prevOverlay && prevOverlay.map((s, i) => {
+        const p = polar(i, s.pct / 100);
+        return <circle key={i} cx={p.x} cy={p.y} r={3} fill="rgba(74,222,128,0.8)" stroke="rgba(7,27,51,0.8)" strokeWidth="1" />;
       })}
       {overlay && overlay.map((s, i) => {
         const p = polar(i, s.pct / 100);
@@ -102,12 +166,22 @@ export function RadarChart({ scores, overlay, size = 320 }: { scores: DimScore[]
           {scale * 100}%
         </text>
       ))}
-      {overlay && (
-        <g transform={`translate(${cx - 60}, ${size - 14})`}>
+      {(overlay || prevOverlay || benchmark) && (
+        <g transform={`translate(${cx - 90}, ${size - 14})`}>
           <line x1="0" y1="6" x2="16" y2="6" stroke="#38bdf8" strokeWidth="2" />
-          <text x="20" y="10" fontSize="9" fill="rgba(255,255,255,0.55)" style={{ fontFamily: "Inter, sans-serif" }}>Empresa</text>
-          <line x1="60" y1="6" x2="76" y2="6" stroke="#d4af37" strokeWidth="2" strokeDasharray="4,2" />
-          <text x="80" y="10" fontSize="9" fill="rgba(255,255,255,0.55)" style={{ fontFamily: "Inter, sans-serif" }}>Depto.</text>
+          <text x="20" y="10" fontSize="9" fill="rgba(255,255,255,0.55)" style={{ fontFamily: "Inter, sans-serif" }}>Actual</text>
+          {overlay && <>
+            <line x1="54" y1="6" x2="70" y2="6" stroke="#d4af37" strokeWidth="2" strokeDasharray="4,2" />
+            <text x="74" y="10" fontSize="9" fill="rgba(255,255,255,0.55)" style={{ fontFamily: "Inter, sans-serif" }}>Depto.</text>
+          </>}
+          {prevOverlay && !overlay && <>
+            <line x1="54" y1="6" x2="70" y2="6" stroke="rgba(74,222,128,0.7)" strokeWidth="1.5" strokeDasharray="4,2" />
+            <text x="74" y="10" fontSize="9" fill="rgba(255,255,255,0.45)" style={{ fontFamily: "Inter, sans-serif" }}>Período ant.</text>
+          </>}
+          {benchmark && !overlay && <>
+            <line x1={prevOverlay ? 138 : 54} y1="6" x2={prevOverlay ? 154 : 70} y2="6" stroke="rgba(148,163,184,0.6)" strokeWidth="1.5" strokeDasharray="3,3" />
+            <text x={prevOverlay ? 158 : 74} y="10" fontSize="9" fill="rgba(255,255,255,0.45)" style={{ fontFamily: "Inter, sans-serif" }}>Benchmark</text>
+          </>}
         </g>
       )}
     </svg>

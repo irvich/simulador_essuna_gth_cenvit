@@ -1,15 +1,18 @@
 {
   "scripts": {
     "dev": "vite",
+    "dev:app": "vite --config vite.app.config.ts",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:app": "vite build --config vite.app.config.ts",
+    "build:demo": "vite build --config vite.demo.config.ts",
+    "preview": "vite preview",
+    "preview:app": "vite preview --config vite.app.config.ts"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "typescript": "latest"
-  },
-  "devDependencies": {}
+    "typescript": "latest",
+    "vite": "latest"
+  }
 }

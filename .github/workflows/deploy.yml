@@ -33,6 +33,11 @@ jobs:
           npm run build
 
       - name: Compilar medidor de clima laboral
+        env:
+          GITHUB_PAGES: "1"
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_ADMIN_PASSWORD: ${{ secrets.VITE_ADMIN_PASSWORD }}
         run: |
           cd clima-laboral
           npm install
