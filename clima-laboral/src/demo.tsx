@@ -573,6 +573,8 @@ function HistoryChart({data,h=72}:{data:{label:string;pct:number}[];h?:number}) 
       <defs><linearGradient id="hcg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={lc} stopOpacity={0.2}/><stop offset="100%" stopColor={lc} stopOpacity={0.01}/></linearGradient></defs>
       {[65,75,85].map(v=><line key={v} x1={PD} y1={cy(v)} x2={W-PD} y2={cy(v)} stroke="rgba(255,255,255,0.05)" strokeWidth={1}/>)}
       {[65,75,85].map(v=><text key={v} x={PD-4} y={cy(v)+3} textAnchor="end" fill="rgba(148,163,184,0.3)" fontSize={8}>{v}</text>)}
+      <line x1={PD} y1={cy(80)} x2={W-PD} y2={cy(80)} stroke="rgba(212,175,55,0.32)" strokeWidth={1.2} strokeDasharray="5 3"/>
+      <text x={W-PD+6} y={cy(80)+3} textAnchor="start" fill="rgba(212,175,55,0.5)" fontSize={8} fontWeight={700}>Obj 80%</text>
       <polygon points={apts} fill="url(#hcg)"/>
       <polyline points={lpts} fill="none" stroke={lc} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
       {data.map((d,i)=>{const x=cx(i),y=cy(d.pct),last=i===data.length-1;return(
@@ -830,6 +832,18 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
               <button onClick={()=>onGoCompany(p.id)} style={{padding:"6px 14px",borderRadius:999,background:p.color+"22",border:`1px solid ${p.color}44`,color:p.color,fontWeight:800,fontSize:"0.74rem",cursor:"pointer"}}>{p.cta} →</button>
             </div>)}
           </div>
+          {(()=>{const done=demoPlan.filter(r=>r.status==="completado").length,inProg=demoPlan.filter(r=>r.status==="en_progreso").length,total=demoPlan.length;const pctD=Math.round(done/total*100);return(
+            <div style={{marginTop:14,paddingTop:12,borderTop:"1px solid rgba(255,255,255,0.05)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                <span style={{fontSize:"0.69rem",fontWeight:700,color:"#64748b"}}>Plan de mejora</span>
+                <span style={{fontSize:"0.69rem",fontWeight:800,color:"#94a3b8"}}>{inProg} en prog. · {done}/{total} completadas</span>
+              </div>
+              <div style={{height:4,borderRadius:999,background:"rgba(255,255,255,0.06)",overflow:"hidden",position:"relative"}}>
+                <div style={{height:"100%",width:`${Math.round((done+inProg*0.5)/total*100)}%`,background:"linear-gradient(90deg,#22c55e,#38bdf8)",borderRadius:999,transition:"width 0.4s"}}/>
+              </div>
+              {pctD===0&&<div style={{fontSize:"0.65rem",color:"#475569",marginTop:4}}>Ninguna acción completada aún</div>}
+            </div>
+          );})()}
         </div>
       </div>
     </div>
@@ -912,7 +926,16 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
                     <div style={{fontSize:"0.88rem",fontWeight:800,color:scoreLevelColor(co.lastScore)}}>{scoreLevelLabel(co.lastScore)}</div>
                     <div style={{fontSize:"0.72rem",color:"#64748b",marginTop:1}}>{co.lastScore}%</div>
                   </div>
-                </div>):<div style={{display:"flex",alignItems:"center",gap:7,fontSize:"0.82rem",color:"#38bdf8"}}><span>⏳</span>Recolectando · {co.lastResponses}/{co.lastTotal}</div>}
+                </div>):<div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                    <div style={{display:"flex",alignItems:"center",gap:5}}><span style={{fontSize:"0.7rem",animation:"_pulse 1.5s ease-in-out infinite"}}>⏳</span><span style={{fontSize:"0.77rem",fontWeight:700,color:"#38bdf8"}}>Recolectando</span></div>
+                    <span style={{fontSize:"0.82rem",fontWeight:900,color:"#f8fafc"}}>{Math.round(co.lastResponses!/co.lastTotal!*100)}%</span>
+                  </div>
+                  <div style={{height:5,borderRadius:999,background:"rgba(255,255,255,0.07)",overflow:"hidden",marginBottom:3}}>
+                    <div style={{height:"100%",width:`${Math.round(co.lastResponses!/co.lastTotal!*100)}%`,background:"#38bdf8",borderRadius:999}}/>
+                  </div>
+                  <div style={{fontSize:"0.67rem",color:"#64748b"}}>{co.lastResponses} de {co.lastTotal} respuestas</div>
+                </div>}
               </div>}
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
                 <span style={{padding:"4px 11px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:sc.bg,border:`1px solid ${sc.color}44`,color:sc.color}}>{sc.label}</span>
@@ -988,7 +1011,10 @@ function MedicionesSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
                   {m.score!=null&&m.trend!=null?(
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <Sparkline data={m.trend} color={scoreLevelColor(m.score)} w={44} h={20}/>
-                      <span style={{fontSize:"0.9rem",fontWeight:800,color:scoreLevelColor(m.score)}}>{m.score}%</span>
+                      <div>
+                        <div style={{fontSize:"0.9rem",fontWeight:800,color:scoreLevelColor(m.score),lineHeight:1}}>{m.score}%</div>
+                        <div style={{fontSize:"0.62rem",color:"#64748b",marginTop:2}}>{scoreLevelLabel(m.score)}</div>
+                      </div>
                     </div>
                   ):<span style={{fontSize:"0.9rem",color:"#94a3b8"}}>—</span>}
                 </td>
@@ -1268,6 +1294,16 @@ function Sidebar({active, onSelect, collapsed, onToggle, onLogout}: {active: Sid
       </div>
       {/* Nav */}
       <nav style={{flex:1,padding:collapsed?"10px 6px":"12px 10px",overflowY:"auto"}}>
+        {!collapsed&&(
+          <div style={{display:"flex",gap:0,marginBottom:10,background:"rgba(255,255,255,0.03)",borderRadius:10,padding:"8px 10px",justifyContent:"space-around"}}>
+            {[{v:COMPANIES.length,l:"Empresas",c:"#38bdf8"},{v:COMPANIES.filter(c=>c.status==="pending_validation").length,l:"Pendientes",c:"#f97316"},{v:SUBS.filter(s=>s.status==="por_vencer").length,l:"Por vencer",c:"#fb923c"}].map((s,i,arr)=>(
+              <div key={s.l} style={{textAlign:"center",flex:1,borderRight:i<arr.length-1?"1px solid rgba(255,255,255,0.06)":"none"}}>
+                <div style={{fontSize:"0.92rem",fontWeight:900,color:s.c,lineHeight:1}}>{s.v}</div>
+                <div style={{fontSize:"0.58rem",color:"#475569",marginTop:2,whiteSpace:"nowrap"}}>{s.l}</div>
+              </div>
+            ))}
+          </div>
+        )}
         {NAV_ITEMS.map(item=>{const isA=active===item.key;return(
           <button key={item.key} onClick={()=>onSelect(item.key)} onMouseEnter={()=>setHovNav(item.key)} onMouseLeave={()=>setHovNav(null)} title={collapsed?item.label:undefined} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:collapsed?"center":"flex-start",gap:10,padding:collapsed?"10px 0":"10px 12px",borderRadius:12,border:"none",cursor:"pointer",marginBottom:2,background:isA?"rgba(56,189,248,0.12)":hovNav===item.key?"rgba(255,255,255,0.05)":"transparent",textAlign:"left",transition:"background 0.15s",position:"relative"}}>
             <span style={{fontSize:"1rem",width:20,textAlign:"center",lineHeight:1,flexShrink:0}}>{item.icon}</span>
