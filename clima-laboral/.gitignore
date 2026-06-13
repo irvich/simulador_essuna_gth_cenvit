@@ -3,6 +3,7 @@ dist/
 dist-app/
 demo-dist/
 demo-clima-laboral.html
+CENVIT-Panel-Demo.html
 INFORME_ejemplo_14pags.pdf
 src/logoData.local.ts
 .env.local
