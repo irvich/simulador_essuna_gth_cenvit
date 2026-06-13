@@ -280,8 +280,12 @@ function StepEncuesta({onNext}: {onNext:()=>void}) {
             <button onClick={copy} style={{padding:"9px 16px",borderRadius:10,background:copied?"rgba(34,197,94,0.18)":"rgba(56,189,248,0.13)",border:`1px solid ${copied?"rgba(34,197,94,0.38)":"rgba(56,189,248,0.28)"}`,color:copied?"#22c55e":"#38bdf8",fontWeight:800,fontSize:"0.8rem",cursor:"pointer",whiteSpace:"nowrap"}}>{copied?"✓ Copiado":"Copiar"}</button>
           </div>
           <div style={{display:"flex",gap:7,marginBottom:11,flexWrap:"wrap"}}>
-            {[{icon:"💬",label:"WhatsApp",c:"#22c55e"},{icon:"✉️",label:"Correo",c:"#38bdf8"},{icon:"🌐",label:"Intranet",c:"#a855f7"}].map(ch=>(
-              <button key={ch.label} style={{display:"flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:999,background:`${ch.c}10`,border:`1px solid ${ch.c}30`,color:ch.c,fontWeight:700,fontSize:"0.75rem",cursor:"pointer"}}>{ch.icon} {ch.label}</button>
+            {(()=>{const msg=`Hola, te invitamos a responder la encuesta de clima laboral (anónima, ~8 min): ${SURVEY_URL}`;return[
+              {icon:"💬",label:"WhatsApp",c:"#22c55e",href:`https://wa.me/?text=${encodeURIComponent(msg)}`},
+              {icon:"✉️",label:"Correo",c:"#38bdf8",href:`mailto:?subject=${encodeURIComponent("Encuesta de Clima Laboral")}&body=${encodeURIComponent(msg)}`},
+              {icon:"🌐",label:"Intranet",c:"#a855f7",href:SURVEY_URL},
+            ];})().map(ch=>(
+              <a key={ch.label} href={ch.href} target="_blank" rel="noopener noreferrer" style={{display:"flex",alignItems:"center",gap:6,padding:"6px 14px",borderRadius:999,background:`${ch.c}10`,border:`1px solid ${ch.c}30`,color:ch.c,fontWeight:700,fontSize:"0.75rem",cursor:"pointer",textDecoration:"none"}}>{ch.icon} {ch.label}</a>
             ))}
           </div>
           <p style={{fontSize:"0.76rem",color:"#94a3b8",margin:0,lineHeight:1.55}}><strong style={{color:"#f8fafc"}}>52 preguntas</strong> · 10 dimensiones · ~8 min · anónimo</p>
@@ -468,6 +472,60 @@ function SurveyPreview() {
   );
 }
 
+// Descargas reales (CSV / PNG) a partir de los datos del período
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function dimensionScores(responses: SurveyResponse[]) {
+  return DIMENSIONS.map(d=>{
+    const qs=QUESTIONS.filter(q=>q.dimension===d.key);
+    let sum=0,count=0;
+    for(const r of responses)for(const q of qs){const v=r.answers[q.id];if(v!==undefined){sum+=v;count++;}}
+    return {key:d.key,label:d.label,pct:count===0?0:Math.round(sum/count/5*100)};
+  });
+}
+function exportDashboardCSV() {
+  const rows=dimensionScores(curR);
+  const prev=dimensionScores(prevR);
+  const lines=["Dimensión,Puntaje 2026-I (%),Puntaje 2025-II (%),Variación (pts),Nivel"];
+  rows.forEach((r,i)=>{
+    const pv=prev[i].pct;
+    lines.push(`"${r.label}",${r.pct},${pv},${r.pct-pv},"${scoreLevelLabel(r.pct)}"`);
+  });
+  lines.push(`"ÍNDICE GLOBAL",${curPct},${prevPct},${curPct-prevPct},"${scoreLevelLabel(curPct)}"`);
+  triggerDownload(new Blob(["﻿"+lines.join("\n")],{type:"text/csv;charset=utf-8;"}),"clima-laboral-2026-I.csv");
+}
+function exportDashboardPNG() {
+  const rows=dimensionScores(curR).slice().sort((a,b)=>b.pct-a.pct);
+  const W=720,RH=34,PAD=24,TOP=70,BARX=210,BARW=W-BARX-90;
+  const H=TOP+rows.length*RH+PAD;
+  const hex=(p:number)=>scoreLevelColor(p);
+  const bars=rows.map((r,i)=>{const y=TOP+i*RH;const w=Math.max(2,BARW*r.pct/100);return(
+    `<rect x="${BARX}" y="${y}" width="${BARW}" height="16" rx="8" fill="#1e2f44"/>`+
+    `<rect x="${BARX}" y="${y}" width="${w}" height="16" rx="8" fill="${hex(r.pct)}"/>`+
+    `<text x="${BARX-10}" y="${y+13}" text-anchor="end" font-family="Inter,Arial" font-size="13" fill="#cbd5e1">${r.label}</text>`+
+    `<text x="${BARX+BARW+10}" y="${y+13}" font-family="Inter,Arial" font-size="13" font-weight="700" fill="${hex(r.pct)}">${r.pct}%</text>`
+  );}).join("");
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`+
+    `<rect width="${W}" height="${H}" fill="#041426"/>`+
+    `<text x="${PAD}" y="32" font-family="Inter,Arial" font-size="18" font-weight="900" fill="#f8fafc">Clima Laboral por Dimensión · 2026-I</text>`+
+    `<text x="${PAD}" y="52" font-family="Inter,Arial" font-size="12" fill="#64748b">Empresa Demostración S.A. · Índice global ${curPct}% · CENVIT GTH</text>`+
+    bars+`</svg>`;
+  const img=new Image();
+  const svgUrl="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);
+  img.onload=()=>{
+    const scale=2,canvas=document.createElement("canvas");
+    canvas.width=W*scale;canvas.height=H*scale;
+    const ctx=canvas.getContext("2d")!;ctx.scale(scale,scale);ctx.drawImage(img,0,0);
+    canvas.toBlob(b=>{if(b)triggerDownload(b,"clima-laboral-2026-I.png");},"image/png");
+  };
+  img.src=svgUrl;
+}
+
 function StepResultados() {
   const [tab,setTab]=useState<ResultsTab>("dashboard");
   return (
@@ -481,8 +539,8 @@ function StepResultados() {
         <div style={{display:"flex",gap:8,marginBottom:18,alignItems:"center"}}>
           {tab==="report"&&<button onClick={()=>window.print()} style={{padding:"7px 16px",borderRadius:999,background:"rgba(212,175,55,0.1)",border:"1px solid rgba(212,175,55,0.3)",color:"#d4af37",fontWeight:800,fontSize:"0.77rem",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>🖨 Imprimir informe</button>}
           {tab==="dashboard"&&<>
-            <button style={{padding:"7px 16px",borderRadius:999,background:"rgba(56,189,248,0.08)",border:"1px solid rgba(56,189,248,0.24)",color:"#38bdf8",fontWeight:800,fontSize:"0.77rem",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>⬇ Exportar CSV</button>
-            <button style={{padding:"7px 16px",borderRadius:999,background:"rgba(56,189,248,0.08)",border:"1px solid rgba(56,189,248,0.24)",color:"#38bdf8",fontWeight:800,fontSize:"0.77rem",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>📊 Exportar PNG</button>
+            <button onClick={exportDashboardCSV} style={{padding:"7px 16px",borderRadius:999,background:"rgba(56,189,248,0.08)",border:"1px solid rgba(56,189,248,0.24)",color:"#38bdf8",fontWeight:800,fontSize:"0.77rem",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>⬇ Exportar CSV</button>
+            <button onClick={exportDashboardPNG} style={{padding:"7px 16px",borderRadius:999,background:"rgba(56,189,248,0.08)",border:"1px solid rgba(56,189,248,0.24)",color:"#38bdf8",fontWeight:800,fontSize:"0.77rem",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>📊 Exportar PNG</button>
           </>}
           <span style={{fontSize:"0.73rem",color:"#475569",marginLeft:4}}>{tab==="report"?"Informe 14 págs · firma del Psicólogo Laboral":"Datos del período 2026 · I Semestre"}</span>
         </div>
@@ -855,9 +913,31 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
   const [q,setQ]=useState("");
   const [sf,setSf]=useState("all");
   const [showModal,setShowModal]=useState(false);
+  const [extra,setExtra]=useState<DemoCompany[]>([]);
+  const blankForm={nombre:"",sector:"Servicios",empleados:"",subTier:"Básico" as DemoCompany["subTier"],deptos:""};
+  const [form,setForm]=useState(blankForm);
+  const [toast,setToast]=useState<string|null>(null);
+  function crearEmpresa(){
+    if(!form.nombre.trim())return;
+    const nc:DemoCompany={
+      id:"new-"+Date.now(),
+      nombre:form.nombre.trim(),
+      sector:form.sector.trim()||"Servicios",
+      empleados:parseInt(form.empleados)||0,
+      departamentos:form.deptos.split(",").map(s=>s.trim()).filter(Boolean),
+      lastPeriod:null,lastScore:null,lastResponses:null,lastTotal:null,
+      status:"new",subTier:form.subTier,
+      subExpiry:new Date(Date.now()+365*86400000).toISOString().slice(0,10),
+    };
+    setExtra(e=>[nc,...e]);
+    setShowModal(false);setForm(blankForm);
+    setToast(`✓ "${nc.nombre}" creada como cliente`);
+    setTimeout(()=>setToast(null),3000);
+  }
   const FILT=[["all","Todas"],["validated","Validadas"],["collecting","Recolectando"],["pending_validation","Pend. validación"],["new","Sin medición"]];
   const SECTOR_ICO:Record<string,string>={Servicios:"🏢",Construcción:"🔨",Salud:"🏥",Tecnología:"💻"};
-  const filtered=COMPANIES.filter(co=>{
+  const ALL=[...extra,...COMPANIES];
+  const filtered=ALL.filter(co=>{
     const mq=!q||co.nombre.toLowerCase().includes(q.toLowerCase())||co.sector.toLowerCase().includes(q.toLowerCase());
     const mf=sf==="all"||co.status===sf;
     return mq&&mf;
@@ -868,6 +948,7 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
         <div><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Empresas cliente</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Gestiona el ciclo completo de medición de cada cliente.</p></div>
         <button onClick={()=>setShowModal(true)} style={{padding:"9px 20px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer"}}>+ Nuevo cliente</button>
       </div>
+      {toast&&<div style={{marginBottom:16,padding:"11px 16px",background:"rgba(34,197,94,0.1)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:12,color:"#22c55e",fontSize:"0.84rem",fontWeight:700,animation:"_fsIn 0.2s ease both"}}>{toast}</div>}
       {showModal&&(
         <div style={{position:"fixed",inset:0,zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(2,14,31,0.88)",backdropFilter:"blur(8px)"}} onClick={()=>setShowModal(false)}>
           <div style={{width:"100%",maxWidth:520,margin:"0 20px",background:"rgba(4,20,38,0.97)",border:"1px solid rgba(212,175,55,0.24)",borderRadius:24,padding:"32px 36px",boxShadow:"0 32px 64px rgba(0,0,0,0.65)",animation:"_fsIn 0.18s ease both"}} onClick={e=>e.stopPropagation()}>
@@ -876,21 +957,35 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
               <button onClick={()=>setShowModal(false)} style={{background:"transparent",border:"none",color:"#64748b",fontSize:"1.1rem",cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:13,marginBottom:14}}>
-              {[["Razón social","Nombre completo"],["Sector","Servicios, Salud..."],["Colaboradores","Ej: 120"],["Suscripción","Básico / Profesional"]].map(([l,ph])=>(
-                <div key={l}>
-                  <label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:6}}>{l}</label>
-                  <input placeholder={ph} style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem",boxSizing:"border-box",outline:"none"}}/>
-                </div>
-              ))}
+              <div>
+                <label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:6}}>Razón social</label>
+                <input value={form.nombre} onChange={e=>setForm(f=>({...f,nombre:e.target.value}))} placeholder="Nombre completo" style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem",boxSizing:"border-box",outline:"none"}}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:6}}>Sector</label>
+                <select value={form.sector} onChange={e=>setForm(f=>({...f,sector:e.target.value}))} style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem",boxSizing:"border-box",outline:"none"}}>
+                  {["Servicios","Construcción","Salud","Tecnología"].map(s=><option key={s} value={s} style={{background:"#041426"}}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:6}}>Colaboradores</label>
+                <input value={form.empleados} onChange={e=>setForm(f=>({...f,empleados:e.target.value.replace(/\D/g,"")}))} placeholder="Ej: 120" inputMode="numeric" style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem",boxSizing:"border-box",outline:"none"}}/>
+              </div>
+              <div>
+                <label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:6}}>Suscripción</label>
+                <select value={form.subTier} onChange={e=>setForm(f=>({...f,subTier:e.target.value as DemoCompany["subTier"]}))} style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem",boxSizing:"border-box",outline:"none"}}>
+                  {["Básico","Profesional","Enterprise"].map(s=><option key={s} value={s} style={{background:"#041426"}}>{s}</option>)}
+                </select>
+              </div>
             </div>
             <div style={{marginBottom:20}}>
               <label style={{display:"block",fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#94a3b8",marginBottom:6}}>Áreas / Departamentos</label>
-              <input placeholder="Gerencia, RRHH, Financiero, Operaciones..." style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem",boxSizing:"border-box",outline:"none"}}/>
+              <input value={form.deptos} onChange={e=>setForm(f=>({...f,deptos:e.target.value}))} placeholder="Gerencia, RRHH, Financiero, Operaciones..." style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem",boxSizing:"border-box",outline:"none"}}/>
               <div style={{fontSize:"0.69rem",color:"#475569",marginTop:4}}>Separa las áreas con comas</div>
             </div>
             <div style={{display:"flex",gap:10}}>
-              <button onClick={()=>setShowModal(false)} style={{flex:1,padding:"11px",background:"linear-gradient(135deg,#d4af37,#b8932a)",color:"#071b33",border:"none",borderRadius:999,fontWeight:900,fontSize:"0.87rem",cursor:"pointer"}}>Crear empresa →</button>
-              <button onClick={()=>setShowModal(false)} style={{padding:"11px 20px",background:"transparent",border:"1px solid rgba(255,255,255,0.13)",color:"#94a3b8",borderRadius:999,fontWeight:700,fontSize:"0.87rem",cursor:"pointer"}}>Cancelar</button>
+              <button onClick={crearEmpresa} disabled={!form.nombre.trim()} style={{flex:1,padding:"11px",background:form.nombre.trim()?"linear-gradient(135deg,#d4af37,#b8932a)":"rgba(212,175,55,0.25)",color:"#071b33",border:"none",borderRadius:999,fontWeight:900,fontSize:"0.87rem",cursor:form.nombre.trim()?"pointer":"default"}}>Crear empresa →</button>
+              <button onClick={()=>{setShowModal(false);setForm(blankForm);}} style={{padding:"11px 20px",background:"transparent",border:"1px solid rgba(255,255,255,0.13)",color:"#94a3b8",borderRadius:999,fontWeight:700,fontSize:"0.87rem",cursor:"pointer"}}>Cancelar</button>
             </div>
           </div>
         </div>
@@ -948,7 +1043,7 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
           );
         })}
         {filtered.length===0&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:"48px 0",color:"#475569",fontSize:"0.88rem"}}>Sin resultados para la búsqueda actual.</div>}
-        <div style={{background:"rgba(7,27,51,0.35)",border:"2px dashed rgba(255,255,255,0.1)",borderRadius:20,padding:"22px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,minHeight:180,cursor:"pointer"}}>
+        <div onClick={()=>setShowModal(true)} style={{background:"rgba(7,27,51,0.35)",border:"2px dashed rgba(255,255,255,0.1)",borderRadius:20,padding:"22px",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,minHeight:180,cursor:"pointer"}}>
           <div style={{width:48,height:48,borderRadius:"50%",background:"rgba(56,189,248,0.08)",border:"2px dashed rgba(56,189,248,0.28)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.4rem",color:"#38bdf8"}}>+</div>
           <div style={{textAlign:"center"}}><div style={{fontWeight:800,color:"#38bdf8",marginBottom:3}}>Nuevo cliente</div><div style={{fontSize:"0.76rem",color:"#94a3b8"}}>Dar de alta empresa y crear primer período</div></div>
         </div>
@@ -1170,6 +1265,7 @@ function ConfigSection() {
   const [pwSaved,setPwSaved]=useState(false);
   const [integs,setIntegs]=useState<Record<string,boolean>>({"Slack":true,"Correo SMTP":true,"Google Sheets":false,"API REST":false});
   const toggleInteg=(k:string)=>setIntegs(n=>({...n,[k]:!n[k]}));
+  const [profSaved,setProfSaved]=useState(false);
   return (
     <div style={{maxWidth:620}}>
       <div style={{marginBottom:22}}><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Configuración</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Perfil del consultor y preferencias de la plataforma.</p></div>
@@ -1189,7 +1285,10 @@ function ConfigSection() {
             <input defaultValue={v} style={{width:"100%",padding:"9px 12px",borderRadius:11,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"#f8fafc",fontSize:"0.88rem",boxSizing:"border-box"}}/>
           </div>)}
         </div>
-        <button style={{marginTop:18,padding:"9px 22px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer"}}>Guardar cambios</button>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginTop:18}}>
+          <button onClick={()=>{setProfSaved(true);setTimeout(()=>setProfSaved(false),2800);}} style={{padding:"9px 22px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer"}}>Guardar cambios</button>
+          {profSaved&&<span style={{fontSize:"0.82rem",fontWeight:700,color:"#22c55e",animation:"_fsIn 0.2s ease both"}}>✓ Cambios guardados</span>}
+        </div>
       </div>
       <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"20px 24px"}}>
         <h3 style={{fontSize:"0.88rem",fontWeight:800,color:"#94a3b8",marginBottom:16}}>Notificaciones</h3>
