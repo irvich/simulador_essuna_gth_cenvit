@@ -388,8 +388,23 @@ function ValidationPanel({inline}: {inline?: boolean}) {
 
 function StepValidacion({onNext}: {onNext:()=>void}) {
   const [done, setDone] = useState(false);
+  const dimScores=DIMENSIONS.map(d=>{const qs=QUESTIONS.filter(q=>q.dimension===d.key);let s=0,n=0;for(const r of curR)for(const q of qs){const v=r.answers[q.id];if(v!=null){s+=v;n++;}}return{...d,pct:n===0?0:Math.round((s/n/5)*100)};});
   return (
     <div>
+      <div style={{background:"rgba(7,27,51,0.55)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:16,padding:"18px 22px",marginBottom:20}}>
+        <div style={{fontSize:"0.64rem",fontWeight:900,letterSpacing:"0.12em",textTransform:"uppercase",color:"#64748b",marginBottom:12}}>Resumen por dimensión · 2026-I</div>
+        <div style={{display:"flex",flexDirection:"column",gap:7}}>
+          {dimScores.map(d=>{const c=scoreLevelColor(d.pct);return(
+            <div key={d.key} style={{display:"flex",alignItems:"center",gap:9}}>
+              <div style={{width:138,fontSize:"0.71rem",color:"#94a3b8",textAlign:"right",flexShrink:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.label}</div>
+              <div style={{flex:1,height:5,borderRadius:999,background:"rgba(255,255,255,0.06)",overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${d.pct}%`,background:c,borderRadius:999,transition:"width 0.4s ease"}}/>
+              </div>
+              <div style={{fontSize:"0.73rem",fontWeight:800,color:c,width:34,textAlign:"right",flexShrink:0}}>{d.pct}%</div>
+            </div>
+          );})}
+        </div>
+      </div>
       <ValidationPanel/>
       {!done&&<button onClick={()=>setDone(true)} style={{marginTop:18,padding:"11px 28px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.88rem",cursor:"pointer"}}>Ver resultados y generar informe →</button>}
       {done&&<button onClick={onNext} style={{marginTop:18,padding:"11px 28px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.88rem",cursor:"pointer"}}>Abrir dashboard de resultados →</button>}
@@ -438,7 +453,17 @@ function SurveyPreview() {
           </div>
         </div>);})}
       </div>
-      {di<DIMENSIONS.length-1&&<button onClick={()=>setDi(di+1)} style={{marginTop:18,padding:"11px 28px",background:dim.color,color:"white",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.87rem",cursor:"pointer"}}>Siguiente → {DIMENSIONS[di+1].label}</button>}
+      {(()=>{const dimComplete=qs.every(q=>ans[q.id]!=null);return dimComplete?(
+        <div style={{marginTop:14,padding:"14px 18px",background:"rgba(34,197,94,0.08)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:13,display:"flex",alignItems:"center",gap:12,animation:"_fsIn 0.25s ease both"}}>
+          <span style={{fontSize:"1.2rem",flexShrink:0}}>✅</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:"0.84rem",fontWeight:800,color:"#22c55e",marginBottom:1}}>{dim.label} — dimensión completa</div>
+            {di<DIMENSIONS.length-1&&<div style={{fontSize:"0.73rem",color:"#64748b"}}>Siguiente: {DIMENSIONS[di+1].label}</div>}
+          </div>
+          {di<DIMENSIONS.length-1&&<button onClick={()=>setDi(di+1)} style={{padding:"8px 18px",background:"#22c55e",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.8rem",cursor:"pointer",flexShrink:0}}>Continuar →</button>}
+          {di===DIMENSIONS.length-1&&<span style={{fontSize:"0.8rem",fontWeight:800,color:"#22c55e",flexShrink:0}}>¡Encuesta completada!</span>}
+        </div>
+      ):(di<DIMENSIONS.length-1&&<button onClick={()=>setDi(di+1)} style={{marginTop:18,padding:"11px 28px",background:dim.color,color:"white",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.87rem",cursor:"pointer"}}>Siguiente → {DIMENSIONS[di+1].label}</button>);})()}
     </div>
   );
 }
@@ -497,6 +522,9 @@ function CompanyWorkflow({cid, onBack}: {cid: string; onBack: ()=>void}) {
               <span style={{fontSize:"0.75rem",color:"#94a3b8"}}>{co.sector} · {co.empleados} colaboradores</span>
               <span style={{padding:"2px 10px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:sc.bg,border:`1px solid ${sc.color}44`,color:sc.color}}>{sc.label}</span>
               <span style={{padding:"2px 9px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:TIER_C[co.subTier]+"18",border:`1px solid ${TIER_C[co.subTier]}33`,color:TIER_C[co.subTier]}}>{co.subTier}</span>
+            </div>
+            <div style={{display:"flex",gap:5,marginTop:7,flexWrap:"wrap"}}>
+              {co.departamentos.map(d=><span key={d} style={{padding:"2px 9px",borderRadius:999,fontSize:"0.64rem",fontWeight:700,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.08)",color:"#64748b",whiteSpace:"nowrap"}}>{d}</span>)}
             </div>
           </div>
           {co.lastScore!=null&&<ScoreGauge score={co.lastScore} size={84}/>}
@@ -663,9 +691,9 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
     {icon:"🆕",label:"Tech Solutions Ecuador",detail:"Suscripción creada · Básico · 45 colaboradores",time:"Dic 1, 2025",color:"#94a3b8"},
   ];
   const pending=[
-    {co:"Hospital del Valle",task:"Validar resultados 2026-I",cta:"Validar ahora",color:"#f97316",id:"hospital"},
-    {co:"Tech Solutions Ecuador",task:"Suscripción vence en 14 días",cta:"Renovar",color:"#fb923c",id:"tech"},
-    {co:"Constructora Andina",task:"64.7% de participación — recordatorio",cta:"Ver encuesta",color:"#38bdf8",id:"andina"},
+    {co:"Hospital del Valle",task:"Validar resultados 2026-I",cta:"Validar ahora",color:"#f97316",id:"hospital",deadline:"Jun 15",priority:"Alta"},
+    {co:"Tech Solutions Ecuador",task:"Suscripción vence en 14 días",cta:"Renovar",color:"#fb923c",id:"tech",deadline:"Jun 19",priority:"Media"},
+    {co:"Constructora Andina",task:"64.7% de participación — recordatorio",cta:"Ver encuesta",color:"#38bdf8",id:"andina",deadline:"Jun 30",priority:"Normal"},
   ];
   const [dimView,setDimView]=useState<"bars"|"radar">("bars");
   return (
@@ -791,7 +819,13 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {pending.map((p,i)=><div key={i} style={{background:`${p.color}0d`,border:`1px solid ${p.color}28`,borderRadius:12,padding:"12px 14px",boxShadow:`inset 3px 0 0 ${p.color}`}}>
-              <div style={{fontSize:"0.78rem",fontWeight:800,color:p.color,marginBottom:3}}>{p.co}</div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:3}}>
+                <div style={{fontSize:"0.78rem",fontWeight:800,color:p.color}}>{p.co}</div>
+                <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                  {p.priority!=="Normal"&&<span style={{fontSize:"0.63rem",fontWeight:800,padding:"1px 7px",borderRadius:999,background:p.color+"18",border:`1px solid ${p.color}33`,color:p.color}}>{p.priority}</span>}
+                  <span style={{fontSize:"0.63rem",color:"#64748b",fontWeight:600}}>⏱ {p.deadline}</span>
+                </div>
+              </div>
               <div style={{fontSize:"0.75rem",color:"#94a3b8",marginBottom:10,lineHeight:1.4}}>{p.task}</div>
               <button onClick={()=>onGoCompany(p.id)} style={{padding:"6px 14px",borderRadius:999,background:p.color+"22",border:`1px solid ${p.color}44`,color:p.color,fontWeight:800,fontSize:"0.74rem",cursor:"pointer"}}>{p.cta} →</button>
             </div>)}
@@ -1168,6 +1202,19 @@ function ConfigSection() {
           {twofa&&<div style={{marginTop:12,padding:"12px 14px",background:"rgba(34,197,94,0.07)",border:"1px solid rgba(34,197,94,0.2)",borderRadius:10,fontSize:"0.77rem",color:"#94a3b8"}}>
             2FA activado · Escanea el QR en tu app autenticadora para completar la configuración
           </div>}
+        </div>
+        <div style={{marginTop:16,paddingTop:16,borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+          <div style={{fontSize:"0.67rem",fontWeight:900,letterSpacing:"0.11em",textTransform:"uppercase",color:"#475569",marginBottom:10}}>Últimas sesiones</div>
+          {[{when:"Hoy, 09:41",dev:"Chrome · macOS",ip:"186.42.x.x"},{when:"Ayer, 17:08",dev:"Firefox · Windows",ip:"186.42.x.x"},{when:"Jun 10, 22:15",dev:"Safari · iPhone",ip:"190.15.x.x"}].map((s,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<2?"1px solid rgba(255,255,255,0.04)":"none"}}>
+              <span style={{width:7,height:7,borderRadius:"50%",background:"#22c55e",flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:"0.77rem",color:"#f8fafc",fontWeight:600,marginBottom:1}}>{s.dev}</div>
+                <div style={{fontSize:"0.67rem",color:"#64748b"}}>{s.when} · IP {s.ip}</div>
+              </div>
+              <span style={{fontSize:"0.68rem",color:"#22c55e",fontWeight:800,flexShrink:0}}>✓</span>
+            </div>
+          ))}
         </div>
       </div>
       {/* Integraciones */}
