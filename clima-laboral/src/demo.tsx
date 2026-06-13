@@ -159,16 +159,28 @@ function WorkflowStepper({current, onChange, completed}: {current: WorkflowStep;
 // ─────────────────────────────────────────────────────────────────────────────
 
 function StepEmpresa({co, onNext}: {co: DemoCompany; onNext: ()=>void}) {
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
+  function save() { setSaved(true); setEditing(false); setTimeout(()=>setSaved(false),2500); }
   const F = ({label,value}: {label:string;value:string}) => (
     <div style={{marginBottom:14}}>
-      <div style={{fontSize:"0.65rem",fontWeight:900,letterSpacing:"0.14em",textTransform:"uppercase",color:"#94a3b8",marginBottom:3}}>{label}</div>
-      <div style={{fontSize:"0.95rem",color:"#f8fafc",fontWeight:600}}>{value}</div>
+      <div style={{fontSize:"0.65rem",fontWeight:900,letterSpacing:"0.14em",textTransform:"uppercase",color:"#94a3b8",marginBottom:4}}>{label}</div>
+      {editing
+        ? <input defaultValue={value} style={{width:"100%",padding:"8px 11px",borderRadius:10,border:"1px solid rgba(56,189,248,0.35)",background:"rgba(56,189,248,0.05)",color:"#f8fafc",fontSize:"0.9rem",boxSizing:"border-box",outline:"none"}}/>
+        : <div style={{fontSize:"0.95rem",color:"#f8fafc",fontWeight:600}}>{value}</div>}
     </div>
   );
   return (
     <div style={{maxWidth:640}}>
-      <p style={{color:"#94a3b8",fontSize:"0.85rem",marginBottom:18,lineHeight:1.6}}>Datos de la empresa registrados en la plataforma. El consultor puede actualizar esta información en cualquier momento.</p>
-      <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:18,padding:"22px 26px",marginBottom:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+        <p style={{color:"#94a3b8",fontSize:"0.85rem",margin:0,flex:1,lineHeight:1.6}}>Datos de la empresa registrados en la plataforma. El consultor puede actualizar esta información en cualquier momento.</p>
+        <button onClick={editing?save:()=>setEditing(true)} style={{padding:"7px 15px",borderRadius:999,fontWeight:800,fontSize:"0.78rem",cursor:"pointer",background:editing?"#22c55e":"rgba(56,189,248,0.1)",color:editing?"#071b33":"#38bdf8",border:editing?"none":"1px solid rgba(56,189,248,0.28)",flexShrink:0}}>
+          {editing?"✓ Guardar":"✎ Editar"}
+        </button>
+        {editing&&<button onClick={()=>setEditing(false)} style={{padding:"7px 13px",borderRadius:999,fontWeight:700,fontSize:"0.78rem",cursor:"pointer",background:"transparent",color:"#94a3b8",border:"1px solid rgba(255,255,255,0.12)",flexShrink:0}}>Cancelar</button>}
+      </div>
+      {saved&&<div style={{padding:"9px 14px",background:"rgba(34,197,94,0.09)",border:"1px solid rgba(34,197,94,0.28)",borderRadius:10,marginBottom:14,fontSize:"0.8rem",fontWeight:700,color:"#22c55e"}}>✓ Datos actualizados correctamente</div>}
+      <div style={{background:"rgba(7,27,51,0.6)",border:`1px solid ${editing?"rgba(56,189,248,0.22)":"rgba(255,255,255,0.1)"}`,borderRadius:18,padding:"22px 26px",marginBottom:16,transition:"border-color 0.2s"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 28px"}}>
           <F label="Razón social" value={co.nombre}/>
           <F label="Sector" value={co.sector}/>
@@ -669,9 +681,20 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
           <div>
             <div style={{fontSize:"0.62rem",fontWeight:900,letterSpacing:"0.1em",textTransform:"uppercase",color:"#64748b",marginBottom:4}}>Clima laboral · 2026-I</div>
             <div style={{fontSize:"0.76rem",color:"#94a3b8",marginBottom:8}}>Empresa Demostración S.A.</div>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
               <span style={{fontSize:"0.82rem",fontWeight:800,color:"#4ade80"}}>▲ {curPct-prevPct}pts</span>
               <span style={{fontSize:"0.74rem",color:"#64748b"}}>vs. semestre anterior</span>
+            </div>
+            <div style={{display:"flex",gap:5,alignItems:"flex-end",marginBottom:6}}>
+              {[{label:"2025-II",pct:prevPct,c:"#64748b"},{label:"2026-I",pct:curPct,c:"#38bdf8"}].map(b=>(
+                <div key={b.label} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:"0.58rem",fontWeight:800,color:b.c}}>{b.pct}%</span>
+                  <div style={{width:22,height:Math.round(b.pct/100*40),background:b.c+"55",border:`1px solid ${b.c}88`,borderRadius:"4px 4px 2px 2px",position:"relative",overflow:"hidden"}}>
+                    <div style={{position:"absolute",bottom:0,left:0,right:0,height:`${b.pct}%`,background:`linear-gradient(to top,${b.c},${b.c}44)`}}/>
+                  </div>
+                  <span style={{fontSize:"0.56rem",color:"#475569",whiteSpace:"nowrap"}}>{b.label}</span>
+                </div>
+              ))}
             </div>
             <div style={{fontSize:"0.72rem",color:"#64748b"}}>103/120 respondieron · 85.8%</div>
             <button onClick={()=>onGoCompany("demo")} style={{marginTop:10,padding:"5px 14px",borderRadius:999,background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.28)",color:"#38bdf8",fontSize:"0.74rem",fontWeight:700,cursor:"pointer"}}>Ver empresa →</button>
@@ -785,6 +808,7 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
   const [sf,setSf]=useState("all");
   const [showModal,setShowModal]=useState(false);
   const FILT=[["all","Todas"],["validated","Validadas"],["collecting","Recolectando"],["pending_validation","Pend. validación"],["new","Sin medición"]];
+  const SECTOR_ICO:Record<string,string>={Servicios:"🏢",Construcción:"🔨",Salud:"🏥",Tecnología:"💻"};
   const filtered=COMPANIES.filter(co=>{
     const mq=!q||co.nombre.toLowerCase().includes(q.toLowerCase())||co.sector.toLowerCase().includes(q.toLowerCase());
     const mf=sf==="all"||co.status===sf;
@@ -839,7 +863,10 @@ function EmpresasSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
           return(
             <div key={co.id} onMouseEnter={()=>setHovId(co.id)} onMouseLeave={()=>setHovId(null)} style={{background:hovId===co.id?"rgba(10,36,65,0.8)":"rgba(7,27,51,0.65)",border:`1px solid ${hovId===co.id?"rgba(56,189,248,0.28)":"rgba(255,255,255,0.08)"}`,borderRadius:20,padding:"20px 22px",display:"flex",flexDirection:"column",gap:12,transition:"all 0.18s",transform:hovId===co.id?"translateY(-2px)":"none",boxShadow:`inset 0 3px 0 ${sc.color}99,${hovId===co.id?"0 8px 24px rgba(0,0,0,0.28)":"0 0 0 transparent"}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                <div><h3 style={{fontSize:"0.95rem",fontWeight:800,color:"#f8fafc",margin:"0 0 3px",lineHeight:1.2}}>{co.nombre}</h3><span style={{fontSize:"0.73rem",color:"#94a3b8"}}>{co.sector} · {co.empleados} colab.</span></div>
+                <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
+                  <div style={{width:38,height:38,borderRadius:11,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.09)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.2rem",flexShrink:0}}>{SECTOR_ICO[co.sector]??""}</div>
+                  <div><h3 style={{fontSize:"0.95rem",fontWeight:800,color:"#f8fafc",margin:"0 0 3px",lineHeight:1.2}}>{co.nombre}</h3><span style={{fontSize:"0.73rem",color:"#94a3b8"}}>{co.sector} · {co.empleados} colab.</span></div>
+                </div>
                 <span style={{padding:"3px 10px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:tc+"18",border:`1px solid ${tc}33`,color:tc,flexShrink:0}}>{co.subTier}</span>
               </div>
               {co.lastPeriod&&<div>
@@ -1000,10 +1027,32 @@ function SubscriptionsSection() {
   const sl=(s:string)=>s==="activa"?"Activa":s==="por_vencer"?"Por vencer":"Expirada";
   return (
     <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
         <div><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Suscripciones</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Acceso de empresas para gestionar mediciones de forma autónoma.</p></div>
         <button onClick={()=>setShowNew(!showNew)} style={{padding:"9px 20px",background:"#d4af37",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.83rem",cursor:"pointer"}}>+ Nueva suscripción</button>
       </div>
+      {/* Revenue metrics */}
+      {(()=>{
+        const arr=SUBS.reduce((a,s)=>{const p=s.tier==="Básico"?299:s.tier==="Profesional"?599:1299;return a+p;},0);
+        const colab=SUBS.reduce((a,s)=>a+s.empleados,0);
+        const activas=SUBS.filter(s=>s.status==="activa").length;
+        return(
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+            {[
+              {label:"ARR total",value:`$${arr.toLocaleString()}`,sub:"ingresos anuales",color:"#d4af37"},
+              {label:"Clientes activos",value:String(activas),sub:`${SUBS.length} total`,color:"#22c55e"},
+              {label:"Colaboradores",value:String(colab),sub:"en plataforma",color:"#38bdf8"},
+              {label:"MRR estimado",value:`$${Math.round(arr/12).toLocaleString()}`,sub:"promedio mensual",color:"#a855f7"},
+            ].map(m=>(
+              <div key={m.label} style={{background:"rgba(7,27,51,0.6)",border:`1px solid ${m.color}18`,borderRadius:16,padding:"14px 16px"}}>
+                <div style={{fontSize:"0.6rem",fontWeight:900,letterSpacing:"0.11em",textTransform:"uppercase",color:"#64748b",marginBottom:5}}>{m.label}</div>
+                <div style={{fontSize:"1.35rem",fontWeight:900,color:m.color,marginBottom:2,lineHeight:1}}>{m.value}</div>
+                <div style={{fontSize:"0.68rem",color:"#64748b"}}>{m.sub}</div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:13,marginBottom:24}}>
         {plans.map(p=><div key={p.tier} onMouseEnter={()=>setHovPlan(p.tier)} onMouseLeave={()=>setHovPlan(null)} style={{background:hovPlan===p.tier?"rgba(12,40,72,0.8)":"rgba(7,27,51,0.6)",border:`1px solid ${hovPlan===p.tier?p.tc+"55":p.tc+"2a"}`,borderRadius:18,padding:"18px 20px",transition:"all 0.18s",transform:hovPlan===p.tier?"translateY(-3px)":"none",boxShadow:hovPlan===p.tier?`0 8px 24px rgba(0,0,0,0.3),0 0 0 1px ${p.tc}18`:"none",cursor:"pointer"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:11}}>
@@ -1217,14 +1266,16 @@ function Sidebar({active, onSelect, collapsed, onToggle, onLogout}: {active: Sid
 function LoginScreen({onLogin}: {onLogin:()=>void}) {
   const [pass,setPass]=useState("");
   const [err,setErr]=useState(false);
+  const [shake,setShake]=useState(false);
   const [loading,setLoading]=useState(false);
-  function submit(){if(!pass.trim()){setErr(true);return;}setLoading(true);setTimeout(()=>{setLoading(false);onLogin();},700);}
+  function submit(){if(!pass.trim()){setErr(true);setShake(true);setTimeout(()=>setShake(false),500);return;}setLoading(true);setTimeout(()=>{setLoading(false);onLogin();},700);}
   return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#020e1f 0%,#041426 50%,#071b33 100%)",position:"relative",overflow:"hidden"}}>
       <style>{css}</style>
+      <style>{"@keyframes _shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-7px)}30%{transform:translateX(6px)}45%{transform:translateX(-5px)}60%{transform:translateX(4px)}75%{transform:translateX(-3px)}90%{transform:translateX(2px)}}"}</style>
       <div style={{position:"absolute",top:"20%",left:"28%",width:480,height:480,borderRadius:"50%",background:"rgba(56,189,248,0.04)",filter:"blur(90px)",pointerEvents:"none"}}/>
       <div style={{position:"absolute",bottom:"10%",right:"20%",width:360,height:360,borderRadius:"50%",background:"rgba(212,175,55,0.05)",filter:"blur(70px)",pointerEvents:"none"}}/>
-      <div style={{width:"100%",maxWidth:420,margin:"0 20px",background:"rgba(4,20,38,0.9)",border:"1px solid rgba(212,175,55,0.25)",borderRadius:28,padding:"44px 38px",backdropFilter:"blur(24px)",boxShadow:"0 32px 64px rgba(0,0,0,0.55),0 0 0 1px rgba(255,255,255,0.04)"}}>
+      <div style={{width:"100%",maxWidth:420,margin:"0 20px",background:"rgba(4,20,38,0.9)",border:"1px solid rgba(212,175,55,0.25)",borderRadius:28,padding:"44px 38px",backdropFilter:"blur(24px)",boxShadow:"0 32px 64px rgba(0,0,0,0.55),0 0 0 1px rgba(255,255,255,0.04)",animation:shake?"_shake 0.5s ease":"none"}}>
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",marginBottom:36}}>
           <div style={{padding:8,background:"white",borderRadius:18,border:"2px solid rgba(212,175,55,0.5)",boxShadow:"0 0 28px rgba(212,175,55,0.22)",marginBottom:18}}>
             <img src={LOGO_CENVIT} alt="CENVIT" style={{width:64,height:64,objectFit:"contain",display:"block"}}/>
