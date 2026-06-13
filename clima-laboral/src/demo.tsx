@@ -210,8 +210,21 @@ function StepPeriodo({co, onNext}: {co: DemoCompany; onNext: ()=>void}) {
               </div>
             </div>
           </div>
-          <div style={{background:"rgba(56,189,248,0.06)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:10,padding:"12px 14px",marginBottom:22}}>
-            <p style={{fontSize:"0.8rem",color:"#94a3b8",margin:0}}><strong style={{color:"#38bdf8"}}>Período:</strong> {yr} · {sem} Semestre · Apertura hoy · Cierre sugerido: 30 días</p>
+          <div style={{background:"rgba(56,189,248,0.06)",border:"1px solid rgba(56,189,248,0.15)",borderRadius:14,padding:"16px 18px",marginBottom:22}}>
+            <div style={{fontSize:"0.8rem",color:"#94a3b8",marginBottom:12}}><strong style={{color:"#38bdf8"}}>Período:</strong> {yr} · {sem} Semestre · Apertura hoy · Cierre sugerido: 30 días</div>
+            <div style={{display:"flex",gap:4}}>
+              {(sem==="I"?["Ene","Feb","Mar","Abr","May","Jun"]:["Jul","Ago","Sep","Oct","Nov","Dic"]).map((mn,mi)=>{
+                const mIdx=sem==="I"?mi:mi+6;
+                const isCur=new Date().getMonth()===mIdx&&parseInt(yr)===new Date().getFullYear();
+                const isPast=new Date().getFullYear()>parseInt(yr)||(new Date().getFullYear()===parseInt(yr)&&new Date().getMonth()>mIdx);
+                return(
+                  <div key={mn} style={{flex:1,textAlign:"center",padding:"8px 2px",borderRadius:9,background:isCur?"rgba(56,189,248,0.18)":isPast?"rgba(255,255,255,0.02)":"rgba(255,255,255,0.03)",border:`1px solid ${isCur?"rgba(56,189,248,0.42)":"rgba(255,255,255,0.06)"}`}}>
+                    <div style={{fontSize:"0.64rem",fontWeight:isCur?900:600,color:isCur?"#38bdf8":isPast?"#64748b":"#475569"}}>{mn}</div>
+                    {isCur&&<div style={{width:5,height:5,borderRadius:"50%",background:"#38bdf8",margin:"3px auto 0"}}/>}
+                  </div>
+                );
+              })}
+            </div>
           </div>
           <button onClick={()=>setOk(true)} style={{padding:"11px 28px",background:"#38bdf8",color:"#071b33",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.88rem",cursor:"pointer"}}>Crear período y generar enlace →</button>
         </div>
@@ -404,13 +417,14 @@ function SurveyPreview() {
         <p style={{color:"rgba(148,163,184,0.72)",fontSize:"0.8rem",margin:0}}>{dim.description}</p>
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
-        {qs.map(q=><div key={q.id} style={{background:"rgba(7,27,51,0.65)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:12,padding:"16px 18px"}}>
-          <p style={{fontSize:"0.65rem",color:dim.color,fontWeight:900,letterSpacing:"0.09em",marginBottom:5}}>Pregunta {qs.indexOf(q)+1}/{qs.length}</p>
+        {qs.map(q=>{const isAns=ans[q.id]!=null,ac=isAns?LL_C[(ans[q.id]||1)-1]:"";return(
+          <div key={q.id} style={{background:isAns?`${ac}0b`:"rgba(7,27,51,0.65)",border:`1px solid ${isAns?ac+"38":"rgba(255,255,255,0.07)"}`,borderRadius:12,padding:"16px 18px",transition:"background 0.22s,border-color 0.22s"}}>
+          <p style={{fontSize:"0.65rem",color:isAns?ac:dim.color,fontWeight:900,letterSpacing:"0.09em",marginBottom:5}}>Pregunta {qs.indexOf(q)+1}/{qs.length}{isAns&&" ✓"}</p>
           <p style={{fontSize:"0.92rem",color:"rgba(255,255,255,0.86)",margin:"0 0 12px",lineHeight:1.5}}>{q.text}</p>
           <div style={{display:"flex",gap:5}}>
             {LL_ES.map((lb,li)=><button key={li} onClick={()=>setAns(a=>({...a,[q.id]:li+1}))} title={lb} style={{flex:1,padding:"9px 3px",borderRadius:9,border:`2px solid ${ans[q.id]===li+1?LL_C[li]:"rgba(255,255,255,0.1)"}`,background:ans[q.id]===li+1?LL_C[li]+"33":"transparent",color:ans[q.id]===li+1?LL_C[li]:"rgba(148,163,184,0.45)",fontWeight:900,fontSize:"0.92rem",cursor:"pointer"}}>{li+1}</button>)}
           </div>
-        </div>)}
+        </div>);})}
       </div>
       {di<DIMENSIONS.length-1&&<button onClick={()=>setDi(di+1)} style={{marginTop:18,padding:"11px 28px",background:dim.color,color:"white",border:"none",borderRadius:999,fontWeight:800,fontSize:"0.87rem",cursor:"pointer"}}>Siguiente → {DIMENSIONS[di+1].label}</button>}
     </div>
@@ -660,6 +674,7 @@ function DashboardHome({onGoCompany}: {onGoCompany:(id:string)=>void}) {
               <span style={{fontSize:"0.74rem",color:"#64748b"}}>vs. semestre anterior</span>
             </div>
             <div style={{fontSize:"0.72rem",color:"#64748b"}}>103/120 respondieron · 85.8%</div>
+            <button onClick={()=>onGoCompany("demo")} style={{marginTop:10,padding:"5px 14px",borderRadius:999,background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.28)",color:"#38bdf8",fontSize:"0.74rem",fontWeight:700,cursor:"pointer"}}>Ver empresa →</button>
           </div>
         </div>
       </div>
@@ -863,10 +878,10 @@ function MedicionesSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
   type SortKey="Empresa"|"Período"|"Puntaje";
   const [sortKey,setSortKey]=useState<SortKey>("Período");
   const meds=[
-    {co:"Empresa Demostración S.A.",periodo:"2026 · I Semestre",respuestas:103,total:120,score:curPct,status:"validated",  id:"demo"},
-    {co:"Empresa Demostración S.A.",periodo:"2025 · II Semestre",respuestas:109,total:120,score:prevPct,status:"validated", id:"demo"},
-    {co:"Constructora Andina Cía.",  periodo:"2026 · I Semestre",respuestas:55, total:85, score:null,   status:"collecting",id:"andina"},
-    {co:"Hospital del Valle",        periodo:"2026 · I Semestre",respuestas:187,total:210,score:68,     status:"pending_validation",id:"hospital"},
+    {co:"Empresa Demostración S.A.",periodo:"2026 · I Semestre",respuestas:103,total:120,score:curPct,  trend:[62,65,prevPct-2,prevPct,curPct],status:"validated",  id:"demo"},
+    {co:"Empresa Demostración S.A.",periodo:"2025 · II Semestre",respuestas:109,total:120,score:prevPct,trend:[60,62,65,prevPct],               status:"validated", id:"demo"},
+    {co:"Constructora Andina Cía.",  periodo:"2026 · I Semestre",respuestas:55, total:85, score:null,   trend:null,                              status:"collecting",id:"andina"},
+    {co:"Hospital del Valle",        periodo:"2026 · I Semestre",respuestas:187,total:210,score:68,     trend:[60,64,66,68],                     status:"pending_validation",id:"hospital"},
   ];
   const sorted=[...meds].sort((a,b)=>{
     if(sortKey==="Empresa")return a.co.localeCompare(b.co);
@@ -908,7 +923,14 @@ function MedicionesSection({onOpenCompany}: {onOpenCompany:(id:string)=>void}) {
                     <span style={{fontSize:"0.78rem",color:"#94a3b8"}}>{pct}%</span>
                   </div>
                 </td>
-                <td style={{padding:"13px 16px",fontSize:"0.9rem",fontWeight:800,color:m.score!=null?scoreLevelColor(m.score):"#94a3b8"}}>{m.score!=null?`${m.score}%`:"—"}</td>
+                <td style={{padding:"11px 16px"}}>
+                  {m.score!=null&&m.trend!=null?(
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <Sparkline data={m.trend} color={scoreLevelColor(m.score)} w={44} h={20}/>
+                      <span style={{fontSize:"0.9rem",fontWeight:800,color:scoreLevelColor(m.score)}}>{m.score}%</span>
+                    </div>
+                  ):<span style={{fontSize:"0.9rem",color:"#94a3b8"}}>—</span>}
+                </td>
                 <td style={{padding:"13px 16px"}}><span style={{padding:"4px 11px",borderRadius:999,fontSize:"0.7rem",fontWeight:800,background:sc.bg,border:`1px solid ${sc.color}44`,color:sc.color}}>{sc.label}</span></td>
                 <td style={{padding:"13px 16px"}}>
                   <button onClick={()=>onOpenCompany(m.id)} style={{padding:"5px 13px",borderRadius:8,background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.24)",color:"#38bdf8",fontSize:"0.74rem",fontWeight:700,cursor:"pointer"}}>Ver →</button>
@@ -1037,6 +1059,8 @@ function ConfigSection() {
   const toggle=(k:string)=>setNotifs(n=>({...n,[k]:!n[k]}));
   const [twofa,setTwofa]=useState(false);
   const [pwSaved,setPwSaved]=useState(false);
+  const [integs,setIntegs]=useState<Record<string,boolean>>({"Slack":true,"Correo SMTP":true,"Google Sheets":false,"API REST":false});
+  const toggleInteg=(k:string)=>setIntegs(n=>({...n,[k]:!n[k]}));
   return (
     <div style={{maxWidth:620}}>
       <div style={{marginBottom:22}}><h2 style={{fontSize:"1.3rem",fontWeight:900,color:"#f8fafc",marginBottom:3}}>Configuración</h2><p style={{fontSize:"0.84rem",color:"#94a3b8"}}>Perfil del consultor y preferencias de la plataforma.</p></div>
@@ -1096,6 +1120,27 @@ function ConfigSection() {
             2FA activado · Escanea el QR en tu app autenticadora para completar la configuración
           </div>}
         </div>
+      </div>
+      {/* Integraciones */}
+      <div style={{background:"rgba(7,27,51,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:18,padding:"20px 24px",marginTop:14}}>
+        <h3 style={{fontSize:"0.88rem",fontWeight:800,color:"#94a3b8",marginBottom:16}}>Integraciones</h3>
+        {[
+          {name:"Slack",          icon:"💬",desc:"Notificaciones al canal #clima-laboral",   color:"#4ade80"},
+          {name:"Correo SMTP",    icon:"✉️",desc:"Envío automático de informes al cliente",  color:"#38bdf8"},
+          {name:"Google Sheets",  icon:"📊",desc:"Exportar resultados a hoja de cálculo",    color:"#22c55e"},
+          {name:"API REST",       icon:"🔌",desc:"Webhooks para sistemas externos",           color:"#a855f7"},
+        ].map((integ,i,arr)=>(
+          <div key={integ.name} onClick={()=>toggleInteg(integ.name)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 0",borderBottom:i<arr.length-1?"1px solid rgba(255,255,255,0.05)":"none",cursor:"pointer"}}>
+            <div style={{width:38,height:38,borderRadius:10,background:`${integ.color}12`,border:`1px solid ${integ.color}28`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{integ.icon}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:"0.84rem",fontWeight:700,color:"#f8fafc",marginBottom:1}}>{integ.name}</div>
+              <div style={{fontSize:"0.71rem",color:"#64748b"}}>{integ.desc}</div>
+            </div>
+            <div style={{width:36,height:20,borderRadius:999,background:integs[integ.name]?integ.color:"rgba(255,255,255,0.12)",position:"relative",transition:"background 0.2s",flexShrink:0}}>
+              <div style={{width:14,height:14,borderRadius:"50%",background:"white",position:"absolute",top:3,left:integs[integ.name]?19:3,transition:"left 0.2s"}}/>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
