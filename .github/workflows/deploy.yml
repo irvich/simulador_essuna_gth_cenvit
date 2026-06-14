@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -32,7 +33,7 @@ jobs:
           npm install
           npm run build
 
-      - name: Compilar medidor de clima laboral
+      - name: Compilar app real de clima laboral (App.tsx + Supabase)
         env:
           GITHUB_PAGES: "1"
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -41,12 +42,24 @@ jobs:
         run: |
           cd clima-laboral
           npm install
-          npm run build
+          npm run build:app
+
+      - name: Compilar demo (panel consultor, datos simulados)
+        env:
+          GITHUB_PAGES: "1"
+        run: |
+          cd clima-laboral
+          npx vite build --base=/simulador_essuna_gth_cenvit/clima-laboral/demo/
 
       - name: Unir carpetas dist
         run: |
+          # App real → /clima-laboral/  (principal)
           mkdir -p dist/clima-laboral
-          cp -r clima-laboral/dist/. dist/clima-laboral/
+          cp -r clima-laboral/dist-app/. dist/clima-laboral/
+          mv dist/clima-laboral/app.html dist/clima-laboral/index.html
+          # Demo → /clima-laboral/demo/
+          mkdir -p dist/clima-laboral/demo
+          cp -r clima-laboral/dist/. dist/clima-laboral/demo/
 
       - name: Subir carpeta dist combinada
         uses: actions/upload-pages-artifact@v3
