@@ -35,9 +35,9 @@ type Screen =
 function getInitialScreen(): Screen {
   if (typeof window === "undefined") return "landing";
   const params = new URLSearchParams(window.location.search);
-  // Employee survey URL: ?periodo=UUID&empresa=UUID
-  if (IS_SUPABASE_ENABLED && params.get("periodo") && params.get("empresa")) return "home";
-  return IS_SUPABASE_ENABLED ? "landing" : "home";
+  // Employee survey URL: ?periodo=UUID&empresa=UUID (funciona con Supabase o en modo local)
+  if (params.get("periodo") && params.get("empresa")) return "home";
+  return "landing";
 }
 
 function TopBar({
@@ -140,7 +140,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const pId = params.get("periodo");
     const eId = params.get("empresa");
-    if (!IS_SUPABASE_ENABLED || !pId || !eId) return;
+    if (!pId || !eId) return;
     setSurveyPeriodoId(pId);
     setSurveyEmpresaId(eId);
     // Check if this device already submitted for this period
@@ -241,7 +241,7 @@ export default function App() {
       // Employee mode: go back to home so another person can fill on same device
       setScreen("home");
     } else {
-      setScreen(IS_SUPABASE_ENABLED ? "landing" : "home");
+      setScreen("landing");
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -267,7 +267,7 @@ export default function App() {
 
         {/* ── ADMIN ─────────────────────────────────────────────── */}
         {screen === "admin" && (
-          <Admin onExit={() => setScreen(IS_SUPABASE_ENABLED ? "landing" : "home")} />
+          <Admin onExit={() => setScreen("landing")} />
         )}
 
         {/* ── LANDING (Supabase mode entry point) ───────────────── */}
@@ -281,6 +281,33 @@ export default function App() {
                 Cada empresa gestiona sus propios períodos y accede a su historial de resultados.
               </p>
             </header>
+
+            {!IS_SUPABASE_ENABLED && (
+              <div
+                style={{
+                  maxWidth: 720,
+                  margin: "0 auto 24px",
+                  background: "rgba(212,175,55,0.08)",
+                  border: "1px solid rgba(212,175,55,0.35)",
+                  borderRadius: 14,
+                  padding: "14px 18px",
+                  fontSize: "0.86rem",
+                  lineHeight: 1.5,
+                }}
+              >
+                <strong style={{ color: "var(--gold, #d4af37)" }}>▲ Modo local (sin base de datos)</strong>
+                <p style={{ margin: "6px 0 0", color: "var(--muted, #94a3b8)" }}>
+                  Puedes probar el flujo completo — crear períodos, generar el enlace/QR y recolectar respuestas —
+                  pero los datos se guardan solo en <strong>este navegador</strong> y no se comparten entre dispositivos.
+                  Para medir de verdad con varios colaboradores, conecta Supabase.
+                </p>
+                <p style={{ margin: "8px 0 0", color: "var(--muted, #94a3b8)" }}>
+                  Acceso de prueba → Empresa: <code style={{ color: "#e2e8f0" }}>demo</code> /{" "}
+                  <code style={{ color: "#e2e8f0" }}>demo</code>. Administración: contraseña{" "}
+                  <code style={{ color: "#e2e8f0" }}>cenvit2026</code>.
+                </p>
+              </div>
+            )}
 
             <div className="landing-cards">
               <div className="landing-card" onClick={() => setScreen("companyLogin")}>

@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { ADMIN_PASSWORD, IS_SUPABASE_ENABLED } from "./config";
+import { ADMIN_PASSWORD } from "./config";
 import { QUESTIONS } from "./questions";
 import { scoreLevelColor, scoreLevelLabel } from "./shared";
 import { PeriodDashboard } from "./PeriodDashboard";
 import {
-  clearLocalResponses,
   createEmpresa,
   getAllEmpresas,
-  getAllResponses,
   getPlanAccion,
   getPeriodsForCompany,
   getResponsesForPeriod,
@@ -41,11 +39,7 @@ export function Admin({ onExit }: { onExit: () => void }) {
   const [pw, setPw] = useState("");
   const [loginError, setLoginError] = useState("");
 
-  // Demo mode (no Supabase)
-  const [demoResponses, setDemoResponses] = useState<SurveyResponse[]>([]);
-  const [demoLoading, setDemoLoading] = useState(false);
-
-  // Supabase mode state
+  // Estado de gestión multi-empresa (Supabase o backend local)
   const [adminView, setAdminView] = useState<AdminView>("companies");
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null);
@@ -80,19 +74,10 @@ export function Admin({ onExit }: { onExit: () => void }) {
 
   useEffect(() => {
     if (!authed) return;
-    if (IS_SUPABASE_ENABLED) {
-      loadEmpresas();
-    } else {
-      loadDemo();
-    }
+    // La gestión multi-empresa funciona tanto con Supabase como en modo local
+    // (localStorage), gracias al backend local de storage.ts.
+    loadEmpresas();
   }, [authed]);
-
-  async function loadDemo() {
-    setDemoLoading(true);
-    try { setDemoResponses(await getAllResponses()); }
-    catch { /* ignore */ }
-    finally { setDemoLoading(false); }
-  }
 
   async function loadEmpresas() {
     setDataLoading(true);
@@ -208,42 +193,6 @@ export function Admin({ onExit }: { onExit: () => void }) {
         <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <button className="btn-primary" onClick={tryLogin}>Ingresar</button>
           <button className="btn-secondary" onClick={onExit}>Volver</button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Demo mode ─────────────────────────────────────────────────────────────
-  if (!IS_SUPABASE_ENABLED) {
-    return (
-      <div>
-        <div style={{ marginBottom: 20 }}>
-          <button className="btn-secondary" onClick={onExit}>← Volver al inicio</button>
-        </div>
-        <div className="results-header">
-          <p className="eyebrow gold">Panel Administrativo · Modo Demo</p>
-          <h1 className="results-title">Resultados (localStorage)</h1>
-          <p className="results-meta">Los datos solo existen en este navegador. Configura Supabase para modo multi-empresa.</p>
-        </div>
-        {demoLoading ? (
-          <p style={{ color: "var(--muted)", textAlign: "center", padding: 40 }}>Cargando…</p>
-        ) : (
-          <PeriodDashboard responses={demoResponses} periodoLabel="Demo" />
-        )}
-        <div className="results-actions no-print" style={{ marginTop: 20 }}>
-          <button className="btn-secondary" onClick={loadDemo}>Actualizar datos</button>
-          <button className="btn-secondary" onClick={onExit}>Volver al inicio</button>
-          <button
-            className="btn-danger"
-            onClick={() => {
-              if (confirm("¿Borrar todas las respuestas guardadas en este navegador?")) {
-                clearLocalResponses();
-                loadDemo();
-              }
-            }}
-          >
-            Borrar datos locales
-          </button>
         </div>
       </div>
     );
