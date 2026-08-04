@@ -80,6 +80,75 @@ function surveyUrl(periodoId: string, empresaId: string): string {
   return `${base}?periodo=${periodoId}&empresa=${empresaId}`;
 }
 
+/** Mensaje de invitación listo para pegar en correo, WhatsApp, Teams, etc. */
+function invitationMessage(empresaNombre: string, url: string): string {
+  return `Hola 👋
+
+Estamos midiendo el clima laboral de ${empresaNombre} y tu opinión cuenta.
+
+✅ Es 100% anónima y confidencial
+⏱️ Toma alrededor de 5 minutos
+📱 Puedes responderla desde tu celular
+
+Ingresa aquí:
+${url}
+
+¡Gracias por participar!`;
+}
+
+/** URL de un código QR generado para el enlace de la encuesta. */
+function qrSrc(url: string, size = 240): string {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=6&ecc=M&data=${encodeURIComponent(
+    url
+  )}`;
+}
+
+/** Abre una ventana con un cartel imprimible (QR + instrucciones) y lanza el diálogo de impresión. */
+function openPrintablePoster(empresaNombre: string, url: string): void {
+  const w = window.open("", "_blank", "width=800,height=1000");
+  if (!w) return;
+  const safe = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8" />
+<title>Encuesta de Clima Laboral — ${safe(empresaNombre)}</title>
+<style>
+  @page { size: A4; margin: 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; color: #0f172a; }
+  .poster { max-width: 620px; margin: 0 auto; text-align: center; padding: 24px 20px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: 3px; font-size: 13px; font-weight: 700; color: #b45309; margin: 0 0 6px; }
+  h1 { font-size: 34px; line-height: 1.15; margin: 0 0 6px; }
+  .company { font-size: 20px; font-weight: 700; color: #334155; margin: 0 0 22px; }
+  .qr-frame { display: inline-block; padding: 18px; border: 3px solid #0f172a; border-radius: 20px; background: #fff; }
+  .qr-frame img { display: block; width: 300px; height: 300px; }
+  .scan { font-size: 20px; font-weight: 800; margin: 20px 0 4px; }
+  .scan span { color: #b45309; }
+  .steps { display: flex; justify-content: center; gap: 26px; margin: 22px 0 18px; flex-wrap: wrap; }
+  .step { max-width: 150px; font-size: 14px; color: #475569; }
+  .step b { display: block; font-size: 24px; margin-bottom: 4px; }
+  .url { font-size: 13px; word-break: break-all; color: #64748b; background: #f1f5f9; border-radius: 10px; padding: 10px 14px; margin: 8px auto 0; max-width: 520px; }
+  .foot { margin-top: 26px; font-size: 12px; color: #94a3b8; }
+  .privacy { display: inline-block; margin-top: 14px; font-size: 13px; font-weight: 700; color: #15803d; background: #dcfce7; border-radius: 999px; padding: 7px 16px; }
+</style></head>
+<body onload="setTimeout(function(){window.print();},400)">
+  <div class="poster">
+    <p class="eyebrow">Diagnóstico Organizacional</p>
+    <h1>Encuesta de Clima Laboral</h1>
+    <p class="company">${safe(empresaNombre)}</p>
+    <div class="qr-frame"><img src="${qrSrc(url, 300)}" alt="Código QR de la encuesta" /></div>
+    <p class="scan">Escanea el <span>código QR</span> con tu celular</p>
+    <div class="steps">
+      <div class="step"><b>📱</b>Abre la cámara y apunta al QR</div>
+      <div class="step"><b>✍️</b>Responde con sinceridad, ~5 min</div>
+      <div class="step"><b>🔒</b>Es anónima y confidencial</div>
+    </div>
+    <span class="privacy">Tus respuestas son 100% anónimas</span>
+    <p class="url">${safe(url)}</p>
+    <p class="foot">Medición facilitada por CENVIT GTH · Iván Viteri, Psicólogo Laboral</p>
+  </div>
+</body></html>`);
+  w.document.close();
+}
+
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es-ES", {
     day: "2-digit", month: "short", year: "numeric",
@@ -342,6 +411,8 @@ export function CompanyDashboard({
   const [activeLoading, setActiveLoading] = useState(false);
 
   const [copyOk, setCopyOk] = useState(false);
+  const [msgCopyOk, setMsgCopyOk] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const [closingId, setClosingId] = useState<string | null>(null);
 
   const [showPwChange, setShowPwChange] = useState(false);
@@ -645,6 +716,13 @@ export function CompanyDashboard({
     });
   }
 
+  function copyInvitation(url: string) {
+    navigator.clipboard.writeText(invitationMessage(empresa.nombre, url)).then(() => {
+      setMsgCopyOk(true);
+      setTimeout(() => setMsgCopyOk(false), 2500);
+    });
+  }
+
   if (viewingPeriodo) {
     return (
       <PeriodDashboard
@@ -852,15 +930,96 @@ export function CompanyDashboard({
                     style={{ flexShrink: 0 }}
                     onClick={() => {
                       const url = surveyUrl(activePeriodo.id, empresa.id);
-                      const msg = `Hola, te comparto el enlace de la encuesta de clima laboral de *${empresa.nombre}*. Es anónima y toma ~5 minutos:\n${url}`;
-                      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+                      window.open(
+                        `https://wa.me/?text=${encodeURIComponent(invitationMessage(empresa.nombre, url))}`,
+                        "_blank",
+                        "noopener,noreferrer"
+                      );
                     }}
                     title="Compartir por WhatsApp"
                   >
                     💬 WhatsApp
                   </button>
+                  <a
+                    className="btn-secondary"
+                    style={{ flexShrink: 0, padding: "6px 14px", fontSize: "0.8rem", textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                    href={`mailto:?subject=${encodeURIComponent(
+                      `Encuesta de Clima Laboral — ${empresa.nombre}`
+                    )}&body=${encodeURIComponent(
+                      invitationMessage(empresa.nombre, surveyUrl(activePeriodo.id, empresa.id))
+                    )}`}
+                    title="Enviar por correo"
+                  >
+                    ✉️ Correo
+                  </a>
+                  <button
+                    className="btn-secondary"
+                    style={{ flexShrink: 0, padding: "6px 14px", fontSize: "0.8rem" }}
+                    onClick={() => setShowQR(true)}
+                    title="Ver código QR y cartel imprimible"
+                  >
+                    ▦ QR / Cartel
+                  </button>
+                </div>
+                <div className="survey-link-actions" style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <button
+                    className="btn-ghost-link"
+                    style={{ background: "none", border: "none", color: "var(--gold, #d4af37)", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer", padding: 0 }}
+                    onClick={() => copyInvitation(surveyUrl(activePeriodo.id, empresa.id))}
+                  >
+                    {msgCopyOk ? "✓ Mensaje copiado" : "📋 Copiar mensaje de invitación"}
+                  </button>
                 </div>
               </div>
+
+              {showQR && (
+                <div
+                  onClick={() => setShowQR(false)}
+                  style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ background: "#0f172a", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 18, padding: "26px 28px", maxWidth: 380, width: "100%", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
+                  >
+                    <h3 style={{ margin: "0 0 4px", fontSize: "1.15rem" }}>Código QR de la encuesta</h3>
+                    <p style={{ margin: "0 0 18px", fontSize: "0.82rem", color: "var(--muted, #94a3b8)" }}>
+                      {empresa.nombre} · los colaboradores lo escanean con su celular
+                    </p>
+                    <div style={{ background: "#fff", borderRadius: 14, padding: 16, display: "inline-block", lineHeight: 0 }}>
+                      <img
+                        src={qrSrc(surveyUrl(activePeriodo.id, empresa.id), 240)}
+                        alt="Código QR"
+                        width={220}
+                        height={220}
+                        style={{ display: "block", width: 220, height: 220 }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 9, marginTop: 20 }}>
+                      <button
+                        className="btn-primary"
+                        style={{ width: "100%" }}
+                        onClick={() => openPrintablePoster(empresa.nombre, surveyUrl(activePeriodo.id, empresa.id))}
+                      >
+                        🖨️ Imprimir cartel
+                      </button>
+                      <button
+                        className="btn-secondary"
+                        style={{ width: "100%" }}
+                        onClick={() => copyInvitation(surveyUrl(activePeriodo.id, empresa.id))}
+                      >
+                        {msgCopyOk ? "✓ Mensaje copiado" : "📋 Copiar invitación"}
+                      </button>
+                      <button
+                        className="btn-ghost-link"
+                        style={{ background: "none", border: "none", color: "var(--muted, #94a3b8)", fontSize: "0.85rem", cursor: "pointer", marginTop: 2 }}
+                        onClick={() => setShowQR(false)}
+                      >
+                        Cerrar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {showDeptManager && (
                 <div className="create-period-form" style={{ marginBottom: 20 }}>
