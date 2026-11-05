@@ -1,10 +1,40 @@
+# ─── Dependencias ───────────────────────────────────────────────
 node_modules/
+
+# ─── Builds / salidas ───────────────────────────────────────────
 dist/
 dist-app/
 demo-dist/
+build/
+*.tsbuildinfo
+
+# ─── Artefactos generados ───────────────────────────────────────
 demo-clima-laboral.html
 CENVIT-Panel-Demo.html
 INFORME_ejemplo_14pags.pdf
+*.local.pdf
+
+# ─── Secretos, variables de entorno y credenciales ──────────────
+# NUNCA subir claves de Supabase, contraseñas ni API keys.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets.*
+credentials.*
+
+# ─── Datos reales de personas (respuestas, exportaciones) ───────
+# No versionar datos reales de colaboradores ni exportaciones.
+*.csv
+datos-reales/
+respuestas/
+export/
 src/logoData.local.ts
-.env.local
-.env.*.local
+
+# ─── Sistema operativo / editores ───────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
