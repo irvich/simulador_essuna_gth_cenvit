@@ -303,8 +303,8 @@ export default function App() {
                 </p>
                 <p style={{ margin: "8px 0 0", color: "var(--muted, #94a3b8)" }}>
                   Acceso de prueba → Empresa: <code style={{ color: "#e2e8f0" }}>demo</code> /{" "}
-                  <code style={{ color: "#e2e8f0" }}>demo</code>. Administración: contraseña{" "}
-                  <code style={{ color: "#e2e8f0" }}>cenvit2026</code>.
+                  <code style={{ color: "#e2e8f0" }}>demo</code>. La Administración requiere
+                  definir la variable <code style={{ color: "#e2e8f0" }}>VITE_ADMIN_PASSWORD</code>.
                 </p>
               </div>
             )}

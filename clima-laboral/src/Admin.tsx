@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ADMIN_PASSWORD } from "./config";
+import { ADMIN_PASSWORD, IS_ADMIN_CONFIGURED } from "./config";
 import { QUESTIONS } from "./questions";
 import { scoreLevelColor, scoreLevelLabel } from "./shared";
 import { PeriodDashboard } from "./PeriodDashboard";
@@ -12,6 +12,7 @@ import {
   savePlanAccion,
   updateEmpresaPassword,
 } from "./storage";
+import { seedBaseNavalDemo } from "./demoSeed";
 import type { ActionRow, Empresa, Periodo, SurveyResponse } from "./types";
 
 type AdminView = "companies" | "periods" | "results";
@@ -67,7 +68,30 @@ export function Admin({ onExit }: { onExit: () => void }) {
   // Portfolio overview: latest climate index per company
   const [portfolio, setPortfolio] = useState<Map<string, PortfolioStat | null>>(new Map());
 
+  // Carga de datos de demostración
+  const [seeding, setSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState<string | null>(null);
+
+  async function handleSeedDemo() {
+    setSeeding(true);
+    setSeedMsg(null);
+    try {
+      const res = await seedBaseNavalDemo();
+      setPortfolio(new Map()); // fuerza recálculo del portafolio
+      await loadEmpresas();
+      setSeedMsg(res.message);
+    } catch (e) {
+      setSeedMsg("No se pudieron cargar los datos de demostración: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setSeeding(false);
+    }
+  }
+
   function tryLogin() {
+    if (!IS_ADMIN_CONFIGURED) {
+      setLoginError("El panel de administración no está habilitado: falta configurar VITE_ADMIN_PASSWORD.");
+      return;
+    }
     if (pw === ADMIN_PASSWORD) { setAuthed(true); setLoginError(""); }
     else setLoginError("Contraseña incorrecta.");
   }
@@ -180,20 +204,50 @@ export function Admin({ onExit }: { onExit: () => void }) {
     return (
       <div className="admin-login">
         <h1>Panel Administrativo</h1>
-        <p>Acceso para consultores CENVIT. Ingresa la contraseña para continuar.</p>
-        <input
-          className="org-input"
-          type="password"
-          placeholder="Contraseña"
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && tryLogin()}
-        />
-        {loginError && <p className="admin-error">{loginError}</p>}
-        <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-          <button className="btn-primary" onClick={tryLogin}>Ingresar</button>
-          <button className="btn-secondary" onClick={onExit}>Volver</button>
-        </div>
+        {!IS_ADMIN_CONFIGURED ? (
+          <>
+            <div
+              style={{
+                margin: "14px auto 0",
+                maxWidth: 440,
+                background: "rgba(248,113,113,0.08)",
+                border: "1px solid rgba(248,113,113,0.35)",
+                borderRadius: 12,
+                padding: "16px 18px",
+                textAlign: "left",
+                fontSize: "0.88rem",
+                lineHeight: 1.5,
+              }}
+            >
+              <strong style={{ color: "#fca5a5" }}>⚠ Panel de administración deshabilitado</strong>
+              <p style={{ margin: "8px 0 0", color: "var(--muted)" }}>
+                No hay una contraseña de administración configurada. Define la variable de
+                entorno <code>VITE_ADMIN_PASSWORD</code> (en <code>.env.local</code> para
+                desarrollo, o como secreto del despliegue) y vuelve a cargar la aplicación.
+              </p>
+            </div>
+            <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center" }}>
+              <button className="btn-secondary" onClick={onExit}>Volver</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p>Acceso para consultores CENVIT. Ingresa la contraseña para continuar.</p>
+            <input
+              className="org-input"
+              type="password"
+              placeholder="Contraseña"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && tryLogin()}
+            />
+            {loginError && <p className="admin-error">{loginError}</p>}
+            <div style={{ marginTop: 18, display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+              <button className="btn-primary" onClick={tryLogin}>Ingresar</button>
+              <button className="btn-secondary" onClick={onExit}>Volver</button>
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -304,6 +358,36 @@ export function Admin({ onExit }: { onExit: () => void }) {
       <div className="results-header">
         <p className="eyebrow gold">Panel Administrativo</p>
         <h1 className="results-title">Gestión de Empresas</h1>
+      </div>
+
+      {/* Datos de demostración */}
+      <div
+        style={{
+          margin: "0 0 18px",
+          background: "rgba(56,189,248,0.06)",
+          border: "1px dashed rgba(56,189,248,0.4)",
+          borderRadius: 12,
+          padding: "14px 18px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 14,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ fontSize: "0.86rem", color: "var(--muted)", maxWidth: 520 }}>
+          <strong style={{ color: "#7dd3fc" }}>Demostración</strong> — crea la empresa
+          «Base Naval Norte (DATOS FICTICIOS)» con ~80 respuestas simuladas en 2 períodos
+          semestrales, para ver el tablero y la comparación histórica.
+          {seedMsg && (
+            <div style={{ marginTop: 8, color: seedMsg.startsWith("No se") ? "#fca5a5" : "#4ade80", fontWeight: 600 }}>
+              {seedMsg}
+            </div>
+          )}
+        </div>
+        <button className="btn-secondary" onClick={handleSeedDemo} disabled={seeding} style={{ flexShrink: 0 }}>
+          {seeding ? "Cargando…" : "📊 Cargar datos de demostración"}
+        </button>
       </div>
 
       {dataError && <p className="admin-error">{dataError}</p>}

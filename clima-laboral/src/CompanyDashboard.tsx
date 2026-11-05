@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
 import { computePeriodSummary, HistoricalComparison, type PeriodSummary } from "./HistoricalComparison";
 import { PeriodDashboard } from "./PeriodDashboard";
 import { DIMENSIONS, QUESTIONS } from "./questions";
@@ -96,15 +97,14 @@ ${url}
 ¡Gracias por participar!`;
 }
 
-/** URL de un código QR generado para el enlace de la encuesta. */
-function qrSrc(url: string, size = 240): string {
-  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=6&ecc=M&data=${encodeURIComponent(
-    url
-  )}`;
+/** Genera un código QR del enlace como data URL (PNG), 100% local/offline. */
+async function makeQrDataUrl(url: string, size = 240): Promise<string> {
+  return QRCode.toDataURL(url, { width: size, margin: 2, errorCorrectionLevel: "M" });
 }
 
-/** Abre una ventana con un cartel imprimible (QR + instrucciones) y lanza el diálogo de impresión. */
-function openPrintablePoster(empresaNombre: string, url: string): void {
+/** Abre una ventana con un cartel imprimible (QR + instrucciones) y lanza el diálogo de impresión.
+ *  Recibe el QR ya generado localmente como data URL. */
+function openPrintablePoster(empresaNombre: string, url: string, qrDataUrl: string): void {
   const w = window.open("", "_blank", "width=800,height=1000");
   if (!w) return;
   const safe = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
@@ -134,7 +134,7 @@ function openPrintablePoster(empresaNombre: string, url: string): void {
     <p class="eyebrow">Diagnóstico Organizacional</p>
     <h1>Encuesta de Clima Laboral</h1>
     <p class="company">${safe(empresaNombre)}</p>
-    <div class="qr-frame"><img src="${qrSrc(url, 300)}" alt="Código QR de la encuesta" /></div>
+    <div class="qr-frame"><img src="${qrDataUrl}" alt="Código QR de la encuesta" /></div>
     <p class="scan">Escanea el <span>código QR</span> con tu celular</p>
     <div class="steps">
       <div class="step"><b>📱</b>Abre la cámara y apunta al QR</div>
@@ -413,6 +413,7 @@ export function CompanyDashboard({
   const [copyOk, setCopyOk] = useState(false);
   const [msgCopyOk, setMsgCopyOk] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [closingId, setClosingId] = useState<string | null>(null);
 
   const [showPwChange, setShowPwChange] = useState(false);
@@ -450,6 +451,23 @@ export function CompanyDashboard({
 
   const activePeriodo = periodos.find((p) => p.estado === "activo") ?? null;
   const closedPeriodos = periodos.filter((p) => p.estado === "cerrado");
+
+  // Genera el QR (local, offline) al abrir el modal.
+  useEffect(() => {
+    if (!showQR || !activePeriodo) { setQrDataUrl(""); return; }
+    let cancelled = false;
+    makeQrDataUrl(surveyUrl(activePeriodo.id, empresa.id), 240)
+      .then((u) => { if (!cancelled) setQrDataUrl(u); })
+      .catch(() => { if (!cancelled) setQrDataUrl(""); });
+    return () => { cancelled = true; };
+  }, [showQR, activePeriodo, empresa.id]);
+
+  async function handlePrintPoster() {
+    if (!activePeriodo) return;
+    const url = surveyUrl(activePeriodo.id, empresa.id);
+    const hi = await makeQrDataUrl(url, 600); // mayor resolución para impresión
+    openPrintablePoster(empresa.nombre, url, hi);
+  }
 
   async function loadPeriodos() {
     setLoading(true);
@@ -985,20 +1003,26 @@ export function CompanyDashboard({
                     <p style={{ margin: "0 0 18px", fontSize: "0.82rem", color: "var(--muted, #94a3b8)" }}>
                       {empresa.nombre} · los colaboradores lo escanean con su celular
                     </p>
-                    <div style={{ background: "#fff", borderRadius: 14, padding: 16, display: "inline-block", lineHeight: 0 }}>
-                      <img
-                        src={qrSrc(surveyUrl(activePeriodo.id, empresa.id), 240)}
-                        alt="Código QR"
-                        width={220}
-                        height={220}
-                        style={{ display: "block", width: 220, height: 220 }}
-                      />
+                    <div style={{ background: "#fff", borderRadius: 14, padding: 16, display: "inline-block", lineHeight: 0, minWidth: 252, minHeight: 252 }}>
+                      {qrDataUrl ? (
+                        <img
+                          src={qrDataUrl}
+                          alt="Código QR"
+                          width={220}
+                          height={220}
+                          style={{ display: "block", width: 220, height: 220 }}
+                        />
+                      ) : (
+                        <div style={{ width: 220, height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: "0.8rem" }}>
+                          Generando QR…
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 9, marginTop: 20 }}>
                       <button
                         className="btn-primary"
                         style={{ width: "100%" }}
-                        onClick={() => openPrintablePoster(empresa.nombre, surveyUrl(activePeriodo.id, empresa.id))}
+                        onClick={handlePrintPoster}
                       >
                         🖨️ Imprimir cartel
                       </button>

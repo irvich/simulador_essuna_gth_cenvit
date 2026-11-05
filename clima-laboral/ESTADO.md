@@ -28,17 +28,16 @@ El repositorio contiene **dos aplicaciones** que comparten el mismo código base
 ## 2. Tecnologías
 
 - **Lenguaje:** TypeScript
-- **Framework UI:** React 18
-- **Bundler / dev server:** Vite
-- **Estilos:** CSS-in-JS mediante estilos inline y una hoja de estilos en
-  `src/styles.ts` (sin Tailwind ni CSS modules).
+- **Framework UI:** React 19
+- **Bundler / dev server:** Vite 8
+- **Estilos:** CSS-in-JS (estilos inline + hoja en `src/styles.ts`; sin Tailwind).
 - **Base de datos (opcional):** Supabase (PostgreSQL) vía su API REST.
   Si no hay credenciales, la app usa un **backend local** en `localStorage`.
-- **Gráficos:** SVG propio (sin librerías externas): medidores, anillos,
-  radar, áreas de tendencia, sparklines.
+- **Códigos QR:** librería local `qrcode` (generación offline, sin servicios externos).
+- **Gráficos:** SVG propio (medidores, anillos, radar, áreas de tendencia).
 - **Despliegue:** GitHub Pages (workflow de Actions) y/o Vercel (`vercel.json`).
-- **Dependencias (package.json):** `react`, `react-dom`, `typescript`, `vite`,
-  `@vitejs/plugin-react`. Sin dependencias de terceros para gráficos, estado ni UI.
+- **Dependencias (versiones fijas):** `react` 19.2.6, `react-dom` 19.2.6,
+  `qrcode` 1.5.4; dev: `vite` 8.0.14, `typescript` 6.0.3, `@vitejs/plugin-react` 6.0.2.
 
 ---
 
@@ -48,82 +47,74 @@ Raíz del proyecto: `clima-laboral/`
 
 | Archivo / carpeta | Qué hace |
 |-------------------|----------|
-| `index.html` | Entrada del **demo** (carga `src/demo.tsx`). |
-| `demo.html` | Entrada alternativa del demo. |
+| `index.html` / `demo.html` | Entrada del **demo** (carga `src/demo.tsx`). |
 | `app.html` | Entrada de la **app real** (carga `src/main.tsx`). |
 | `vite.config.ts` | Build por defecto (demo); define el `base` para GitHub Pages. |
 | `vite.app.config.ts` | Build de la app real → carpeta `dist-app/`. |
 | `vite.demo.config.ts` | Build del demo autónomo en un solo HTML (IIFE). |
-| `vercel.json` | Configuración de despliegue en Vercel. |
-| `tsconfig.json` | Configuración de TypeScript (modo estricto). |
+| `vercel.json` / `tsconfig.json` | Despliegue en Vercel / configuración TypeScript. |
 | `.env.example` | Plantilla de variables de entorno (sin valores reales). |
-| `package.json` | Scripts y dependencias. |
+| `package.json` | Scripts y dependencias con versiones fijas. |
 | `public/` | Logos de CENVIT e Iván Viteri (recursos estáticos). |
-| `scripts/renderReport.tsx` | Script para renderizar el informe a HTML estático con datos de muestra. |
+| `scripts/renderReport.tsx` | Render del informe a HTML estático con datos de muestra. |
 | **`src/`** | Código fuente: |
-| `src/main.tsx` | Punto de montaje de la app real (renderiza `App`). |
+| `src/main.tsx` | Punto de montaje de la app real. |
 | `src/App.tsx` | App real: ruteo de pantallas (landing, login, panel, encuesta, gracias, admin). |
-| `src/Admin.tsx` | Panel del consultor CENVIT: gestión de empresas, períodos y portafolio. |
-| `src/CompanyDashboard.tsx` | Panel de la empresa: período activo, enlace/QR, participación, historial, plan. |
-| `src/PeriodDashboard.tsx` | Tablero de resultados de un período (índice global, radar, dimensiones, comentarios). |
+| `src/Admin.tsx` | Panel del consultor: gestión de empresas, portafolio y **carga de datos de demostración**. |
+| `src/demoSeed.ts` | Generador de datos ficticios (empresa, 2 períodos y ~80 respuestas simuladas). |
+| `src/CompanyDashboard.tsx` | Panel de la empresa: período activo, enlace, **QR local y cartel**, participación, historial, plan. |
+| `src/PeriodDashboard.tsx` | Tablero del período (índice global, radar, dimensiones, comentarios) y **exportar informe PDF**. |
 | `src/HistoricalComparison.tsx` | Comparación entre períodos (tendencias). |
 | `src/ActionMatrix.tsx` | Matriz editable del plan de acción por dimensión. |
-| `src/ReportDocument.tsx` | Documento de informe imprimible/exportable. |
-| `src/questions.ts` | Instrumento: **10 dimensiones y ~50 preguntas** (Likert 1–5) y lista de departamentos. |
+| `src/ReportDocument.tsx` | Documento de informe imprimible/exportable (destino del PDF). |
+| `src/questions.ts` | Instrumento: **10 dimensiones y ~50 preguntas** (Likert 1–5) y departamentos. |
 | `src/types.ts` | Tipos TypeScript (Empresa, Periodo, SurveyResponse, ActionRow, etc.). |
 | `src/storage.ts` | Capa de datos: Supabase **o** backend local (localStorage). |
 | `src/config.ts` | Lee variables de entorno de Supabase y la contraseña de administración. |
-| `src/shared.tsx` | Componentes y utilidades compartidas (radar, niveles, colores). |
-| `src/styles.ts` | Hoja de estilos global de la app real. |
+| `src/shared.tsx` / `src/styles.ts` | Utilidades/componentes compartidos y hoja de estilos. |
 | `src/demo.tsx` | Demo del panel del consultor (datos simulados). |
-| `src/logoData.ts` | Carga de logos (la variante `logoData.local.ts` está ignorada). |
+| `src/logoData.ts` | Carga de logos. |
 
 ---
 
 ## 4. Lo que ya funciona (terminado y probado)
 
-- **Instrumento de medición** — 10 dimensiones, ~50 preguntas, escala Likert 1–5,
-  con recomendaciones y plantillas de acción por dimensión (`questions.ts`).
-- **Encuesta en línea para el colaborador** — flujo por dimensiones, selección de
-  departamento, comentario anónimo opcional, pantalla de agradecimiento y control
-  básico anti-duplicado por dispositivo (`App.tsx`).
-- **Enlace y QR por empresa/período** — generación de URL única
-  (`?periodo=…&empresa=…`), botones de copiar, WhatsApp y correo, **código QR** y
-  **cartel imprimible** de invitación (`CompanyDashboard.tsx`).
-- **Tablero de resultados** — índice global, radar de 10 dimensiones, barras por
-  dimensión, nivel (favorable/moderado/crítico), comentarios y anillo de
-  participación (`PeriodDashboard.tsx`).
-- **Comparación histórica** entre períodos / tendencia semestral
-  (`HistoricalComparison.tsx`).
-- **Plan de acción** editable y persistente por período (`ActionMatrix.tsx`).
-- **Panel de administración del consultor** — alta y gestión de empresas, vista de
-  portafolio con el índice de clima más reciente de cada cliente (`Admin.tsx`).
-- **Modo local sin backend** — toda la app funciona guardando en el navegador,
-  sin necesidad de configurar Supabase (ideal para probar o demostrar).
-- **Demo del panel del consultor** con datos simulados (`demo.tsx`), publicado.
-- **Build e integración continua** — compila limpio; workflow de GitHub Pages que
-  publica la app real y el demo.
+- **Instrumento de medición** — 10 dimensiones, ~50 preguntas, escala Likert 1–5.
+- **Encuesta en línea para el colaborador** — flujo por dimensiones, departamento,
+  comentario anónimo, pantalla de agradecimiento, anti-duplicado por dispositivo.
+- **Enlace, QR local y cartel imprimible** — URL única por empresa/período, copiar,
+  WhatsApp, correo, **código QR generado localmente (offline)** y cartel A4.
+- **Tablero de resultados** — índice global, radar de 10 dimensiones, barras,
+  nivel, comentarios y anillo de participación.
+- **Comparación histórica** entre períodos / tendencia semestral.
+- **Plan de acción** editable y persistente por período.
+- **Exportar informe PDF** — botón en el tablero del período que imprime el informe
+  formal (`ReportDocument.tsx`) vía diálogo de impresión / «Guardar como PDF».
+- **Panel de administración** — alta/gestión de empresas, portafolio por cliente, y
+  botón **«Cargar datos de demostración»** (empresa Base Naval Norte, 2 períodos, ~80
+  respuestas) para ver tablero y comparación sin configurar nada.
+- **Seguridad del panel admin** — la contraseña se lee **solo** de
+  `VITE_ADMIN_PASSWORD`; si no está definida, el panel queda deshabilitado con aviso.
+- **Modo local sin backend** — toda la app funciona guardando en el navegador.
+- **Build e integración continua** — compila limpio; workflow de GitHub Pages.
+
+Probado con navegador headless (2026-11-05): login admin por variable de entorno,
+carga de datos demo, login de empresa, QR local (data URL) y bloqueo del panel admin
+cuando falta la contraseña. Sin errores de consola.
 
 ---
 
 ## 5. Lo que está a medias
 
-- **Base de datos (Supabase)** — todo el código cliente está escrito y probado
-  contra el esquema, **pero el proyecto Supabase aún no está creado/credenciado**.
-  Mientras no se configuren las variables de entorno, la app corre en modo local
-  (los datos no se comparten entre dispositivos). *Falta:* crear el proyecto,
-  ejecutar el SQL del esquema y cargar las 3 variables de entorno.
-- **Informe automático (`ReportDocument.tsx`)** — el documento está construido y
-  hay un script de render con datos de muestra; *falta* un botón de exportar a PDF
-  integrado en el flujo de la app real y pruebas con datos reales.
-- **Carga de datos ficticios** — el demo trae datos simulados, pero la app real no
-  tiene todavía un botón de "sembrar datos de prueba" para un período real.
+- **Base de datos (Supabase)** — código cliente escrito y probado contra el esquema,
+  pero **el proyecto Supabase aún no está creado/credenciado**. Sin las variables de
+  entorno, la app corre en modo local (datos no compartidos entre dispositivos).
+  *Falta:* crear el proyecto, ejecutar el SQL (documentado en `src/config.ts`) y
+  cargar `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_ADMIN_PASSWORD`.
 - **Anti-duplicado de respuestas** — hoy se controla con `localStorage` del
-  dispositivo; *falta* un mecanismo robusto (token por colaborador) para evitar
-  respuestas repetidas desde navegadores distintos.
-- **Versión instalable para servidores** — hay despliegue a GitHub Pages y Vercel;
-  *falta* un empaquetado para auto-hospedaje (p. ej. imagen Docker o instrucciones
-  de servidor propio).
+  dispositivo; *falta* un mecanismo robusto (token por colaborador).
+- **Versión instalable para servidores** — hay despliegue web (Pages/Vercel);
+  *falta* un empaquetado para auto-hospedaje (imagen Docker o guía de servidor propio).
 
 ---
 
@@ -132,11 +123,11 @@ Raíz del proyecto: `clima-laboral/`
 | Módulo | Estado |
 |--------|--------|
 | Cuestionario de clima | ✅ Terminado (10 dimensiones, ~50 preguntas) |
-| Encuesta en línea | ✅ Terminado (enlace + QR + cartel) |
+| Encuesta en línea | ✅ Terminado (enlace + QR local + cartel) |
 | Base de datos | 🟡 Código listo; **falta crear/credenciar Supabase** |
 | Tablero de resultados | ✅ Terminado (radar, tendencias, comentarios) |
-| Informe automático | 🟡 Documento listo; falta exportar a PDF en el flujo real |
-| Carga de datos ficticios | 🟡 Existe en el demo; falta botón de siembra en la app real |
+| Informe automático | ✅ Integrado (botón «Exportar informe PDF» en el tablero) |
+| Carga de datos ficticios | ✅ Terminado (botón en Administración) |
 | Versión instalable para servidores | 🟡 Web (Pages/Vercel) listo; falta empaquetado self-host |
 
 Leyenda: ✅ listo · 🟡 a medias · ⬜ no iniciado.
@@ -148,31 +139,27 @@ Leyenda: ✅ listo · 🟡 a medias · ⬜ no iniciado.
 Requisitos: **Node.js 20+** y npm.
 
 ```bash
-# 1. Entrar a la carpeta del proyecto
 cd clima-laboral
-
-# 2. Instalar dependencias
 npm install
 
-# 3a. Levantar la APP REAL (login de empresa, panel, encuesta)
-npm run dev:app
-#    → abre la URL que muestra Vite (p. ej. http://localhost:5173/app.html)
+# APP REAL (login de empresa, panel, encuesta)
+npm run dev:app      # → http://localhost:5173/app.html
 
-# 3b. (Opcional) Levantar el DEMO del panel del consultor
-npm run dev
-#    → http://localhost:5173/
+# DEMO del panel del consultor (opcional)
+npm run dev          # → http://localhost:5173/
 ```
 
 **Accesos en modo local (sin Supabase):**
-- Empresa de prueba: usuario `demo` / contraseña `demo`
-- Administración (consultor): contraseña `cenvit2026`
+- Empresa de prueba: usuario `demo` / contraseña `demo`.
+- **Administración:** requiere definir `VITE_ADMIN_PASSWORD` (ver abajo). Sin esa
+  variable el panel de administración queda deshabilitado (por seguridad).
+- Datos de demostración: dentro de Administración, botón **«Cargar datos de
+  demostración»**. Crea la empresa *Base Naval Norte (DATOS FICTICIOS)* — ingresa
+  luego como empresa con `base-naval` / `demo` para ver el tablero y la comparación.
 
-**Para activar la base de datos real (Supabase):**
-1. Copia `.env.example` a `.env.local` y completa `VITE_SUPABASE_URL`,
-   `VITE_SUPABASE_ANON_KEY` y `VITE_ADMIN_PASSWORD`.
-2. Crea el proyecto en supabase.com y ejecuta el SQL del esquema (documentado en
-   `src/config.ts`).
-3. Reinicia el servidor de desarrollo.
+**Variables de entorno:** copia `.env.example` a `.env.local` y define
+`VITE_ADMIN_PASSWORD` (y, para base de datos real, las de Supabase). Reinicia el
+servidor de desarrollo.
 
 **Compilar para producción:**
 ```bash
@@ -184,21 +171,20 @@ npm run build       # demo      → dist/
 
 ## 8. Errores conocidos o problemas detectados
 
-- **Contraseña de administración por defecto:** `src/config.ts` usa `cenvit2026`
-  como valor por defecto si no se define `VITE_ADMIN_PASSWORD`. **Debe cambiarse
-  antes de producción** (configurarla como variable de entorno).
 - **Modo local = un solo navegador:** sin Supabase, los datos (empresas, períodos,
   respuestas) viven solo en el navegador donde se crearon; no se comparten entre
   dispositivos. Para medición real multi-dispositivo es obligatorio Supabase.
-- **El QR usa un servicio externo** (`api.qrserver.com`): requiere conexión a
-  internet para mostrarse; si no hay red, el enlace de texto sigue disponible.
-- **Dependencias con versión `latest`:** `package.json` fija `latest` en varias
-  dependencias; conviene fijar versiones exactas para builds reproducibles.
-- **Chequeo de tipos:** el build (Vite/esbuild) compila correctamente, pero un
-  `tsc` estricto puede reportar advertencias de tipos de React según el entorno.
+- **Administración deshabilitada sin `VITE_ADMIN_PASSWORD`:** es el comportamiento
+  esperado (seguridad). Para usar el panel y la carga de datos demo hay que definir
+  esa variable en `.env.local` (desarrollo) o como secreto del despliegue.
+- **Dependencias:** versiones fijadas para builds reproducibles (ver sección 2).
+- **Chequeo de tipos:** el build (Vite/esbuild) compila correctamente; un `tsc`
+  estricto puede reportar advertencias de tipos de React según el entorno.
 - **Anti-duplicado limitado:** ver sección 5 (control solo por `localStorage`).
+- **Tamaño del bundle:** ~505 kB (incluye `qrcode`); aviso de Vite por superar 500 kB,
+  sin impacto funcional.
 
 ---
 
-*Este documento describe el estado del software a la fecha indicada. No modifica el
-código: solo lo documenta para respaldo.*
+*Este documento describe el estado del software a la fecha indicada y documenta el
+respaldo. No se eliminó código existente.*

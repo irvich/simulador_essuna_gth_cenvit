@@ -90,7 +90,13 @@
 export const SUPABASE_URL      = import.meta.env.VITE_SUPABASE_URL      ?? "";
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
 
-/** Contraseña para el panel administrativo de CENVIT. */
-export const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? "cenvit2026";
+/** Contraseña del panel administrativo de CENVIT.
+ *  Se lee EXCLUSIVAMENTE de la variable de entorno VITE_ADMIN_PASSWORD.
+ *  No hay contraseña por defecto: si no está definida, el panel de
+ *  administración queda deshabilitado. */
+export const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? "";
+
+/** true solo si se configuró una contraseña de administración. */
+export const IS_ADMIN_CONFIGURED = ADMIN_PASSWORD.trim() !== "";
 
 export const IS_SUPABASE_ENABLED = SUPABASE_URL !== "" && SUPABASE_ANON_KEY !== "";
